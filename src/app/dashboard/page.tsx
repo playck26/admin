@@ -24,6 +24,9 @@ export default function DashboardPage() {
         <Link href="/quadras" className="text-[var(--color-primary)] hover:underline">
           Quadras
         </Link>
+        <Link href="/turmas" className="text-[var(--color-primary)] hover:underline">
+          Turmas
+        </Link>
       </nav>
     </main>
   );

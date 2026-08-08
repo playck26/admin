@@ -13,6 +13,8 @@ export type UpdateLevelDto = components["schemas"]["UpdateLevelDto"];
 export type CreateCourtDto = components["schemas"]["CreateCourtDto"];
 export type UpdateCourtDto = components["schemas"]["UpdateCourtDto"];
 export type CreateBookingDto = components["schemas"]["CreateBookingDto"];
+export type CreateClassDto = components["schemas"]["CreateClassDto"];
+export type UpdateClassDto = components["schemas"]["UpdateClassDto"];
 
 export interface LoginResult {
   accessToken: string;
@@ -95,6 +97,31 @@ export interface Booking {
 export interface BookingConflictInfo {
   ocupacaoId: string;
   origemTipo: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  companyId: string;
+  nome: string;
+  nivelId: string | null;
+  professorId: string | null;
+  quadraId: string;
+  diaSemana: number;
+  horaInicio: string;
+  horaFim: string;
+  capacidade: number;
+  status: "ativa" | "inativa";
+  alunosAlocados: number;
+}
+
+export interface SchoolClassStudent {
+  alunoId: string;
+  nome: string;
+  email: string;
+}
+
+export interface SchoolClassDetail extends SchoolClass {
+  alunos: SchoolClassStudent[];
 }
 
 export class ApiError extends Error {
@@ -253,4 +280,32 @@ export async function listBookings(filters: { data?: string; status?: string } =
 
 export async function cancelBooking(id: string): Promise<void> {
   await authFetch(`/bookings/${id}/cancel`, { method: "POST" });
+}
+
+export async function listClasses(page = 1, pageSize = 20): Promise<Paginated<SchoolClass>> {
+  const res = await authFetch(`/classes?page=${page}&pageSize=${pageSize}`);
+  return (await res.json()) as Paginated<SchoolClass>;
+}
+
+export async function createClass(dto: CreateClassDto): Promise<SchoolClass> {
+  const res = await authFetch("/classes", { method: "POST", body: JSON.stringify(dto) });
+  return (await res.json()) as SchoolClass;
+}
+
+export async function getClass(id: string): Promise<SchoolClassDetail> {
+  const res = await authFetch(`/classes/${id}`);
+  return (await res.json()) as SchoolClassDetail;
+}
+
+export async function updateClass(id: string, dto: UpdateClassDto): Promise<SchoolClass> {
+  const res = await authFetch(`/classes/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+  return (await res.json()) as SchoolClass;
+}
+
+export async function allocateStudentInClass(classId: string, alunoId: string): Promise<void> {
+  await authFetch(`/classes/${classId}/students/${alunoId}`, { method: "POST" });
+}
+
+export async function removeStudentFromClass(classId: string, alunoId: string): Promise<void> {
+  await authFetch(`/classes/${classId}/students/${alunoId}`, { method: "DELETE" });
 }
