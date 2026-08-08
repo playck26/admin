@@ -21,6 +21,9 @@ export default function DashboardPage() {
         <Link href="/pessoas/niveis" className="text-[var(--color-primary)] hover:underline">
           Níveis
         </Link>
+        <Link href="/quadras" className="text-[var(--color-primary)] hover:underline">
+          Quadras
+        </Link>
       </nav>
     </main>
   );

@@ -1,0 +1,90 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ApiError, createCourt } from "@/lib/api-client";
+
+export function CreateCourtForm() {
+  const router = useRouter();
+  const [nome, setNome] = useState("");
+  const [esporte, setEsporte] = useState("");
+  const [precoHora, setPrecoHora] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await createCourt({ nome, esporte, precoHora: Number(precoHora) });
+      router.push("/quadras");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Não foi possível criar a quadra.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-lg">
+      <CardHeader>
+        <CardTitle className="text-2xl">Nova quadra</CardTitle>
+        <CardDescription>Preço estático por hora (sem variação por horário/dia no MVP)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="nome">Nome</Label>
+            <Input
+              id="nome"
+              placeholder="Quadra 1"
+              required
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="esporte">Esporte</Label>
+            <Input
+              id="esporte"
+              placeholder="tenis"
+              required
+              value={esporte}
+              onChange={(e) => setEsporte(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="precoHora">Preço por hora (R$)</Label>
+            <Input
+              id="precoHora"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value={precoHora}
+              onChange={(e) => setPrecoHora(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {error ? (
+            <p role="alert" className="text-sm text-[var(--color-error)]">
+              {error}
+            </p>
+          ) : null}
+
+          <Button type="submit" disabled={loading} className="mt-2">
+            {loading ? "Criando..." : "Criar quadra"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
