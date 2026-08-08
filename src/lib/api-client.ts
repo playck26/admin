@@ -124,6 +124,12 @@ export interface SchoolClassDetail extends SchoolClass {
   alunos: SchoolClassStudent[];
 }
 
+export interface DashboardSummary {
+  alunosAtivos: number;
+  ocupacaoTurmasPct: number;
+  ocupacaoQuadrasPct: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -308,4 +314,10 @@ export async function allocateStudentInClass(classId: string, alunoId: string): 
 
 export async function removeStudentFromClass(classId: string, alunoId: string): Promise<void> {
   await authFetch(`/classes/${classId}/students/${alunoId}`, { method: "DELETE" });
+}
+
+export async function getDashboardSummary(periodo?: string): Promise<DashboardSummary> {
+  const params = periodo ? `?periodo=${periodo}` : "";
+  const res = await authFetch(`/dashboard/summary${params}`);
+  return (await res.json()) as DashboardSummary;
 }
