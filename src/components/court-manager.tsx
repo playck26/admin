@@ -15,6 +15,7 @@ import {
   getCourt,
   listBookings,
   listStudents,
+  updateBookingPaymentStatus,
   updateCourt,
   type Availability,
   type AvailabilitySlot,
@@ -50,6 +51,7 @@ export function CourtManager({ id }: { id: string }) {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getCourt(id), listStudents(1, 100)])
@@ -142,6 +144,24 @@ export function CourtManager({ id }: { id: string }) {
       setAvailError(err instanceof ApiError ? err.message : "Não foi possível cancelar a reserva.");
     } finally {
       setCancelingId(null);
+    }
+  }
+
+  // REQ-003 (SPEC-006): admin marca reserva avulsa como paga.
+  async function handleMarkPaid(slot: AvailabilitySlot) {
+    const [horaInicio] = slot.slot.split("-");
+    const booking = bookingsDoDia.find((b) => b.horaInicio === horaInicio);
+    if (!booking) return;
+
+    setMarkingPaidId(booking.id);
+    setAvailError(null);
+    try {
+      await updateBookingPaymentStatus(booking.id, "pago");
+      await loadAvailability();
+    } catch (err) {
+      setAvailError(err instanceof ApiError ? err.message : "Não foi possível marcar como pago.");
+    } finally {
+      setMarkingPaidId(null);
     }
   }
 
@@ -262,18 +282,41 @@ export function CourtManager({ id }: { id: string }) {
                   <span className="text-xs">
                     {slot.status === "livre" ? "Livre" : slot.status === "ocupado_turma" ? "Turma" : "Reservado"}
                   </span>
-                  {slot.status === "ocupado_avulso" ? (
-                    <span
-                      role="button"
-                      className="mt-1 block underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleCancelSlot(slot);
-                      }}
-                    >
-                      {cancelingId ? "Cancelando..." : "Cancelar"}
-                    </span>
-                  ) : null}
+                  {slot.status === "ocupado_avulso"
+                    ? (() => {
+                        const [horaInicioSlot] = slot.slot.split("-");
+                        const booking = bookingsDoDia.find((b) => b.horaInicio === horaInicioSlot);
+                        return (
+                          <span className="mt-1 flex flex-col items-center gap-0.5">
+                            <span className="text-[0.65rem]">
+                              {booking?.statusPagamento === "pago" ? "Pago" : "Pendente"}
+                            </span>
+                            {booking?.statusPagamento === "pendente_pagamento" ? (
+                              <span
+                                role="button"
+                                className="block underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleMarkPaid(slot);
+                                }}
+                              >
+                                {markingPaidId === booking.id ? "Marcando..." : "Marcar pago"}
+                              </span>
+                            ) : null}
+                            <span
+                              role="button"
+                              className="block underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleCancelSlot(slot);
+                              }}
+                            >
+                              {cancelingId === booking?.id ? "Cancelando..." : "Cancelar"}
+                            </span>
+                          </span>
+                        );
+                      })()
+                    : null}
                 </button>
               ))}
             </div>

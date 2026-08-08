@@ -15,6 +15,7 @@ export type UpdateCourtDto = components["schemas"]["UpdateCourtDto"];
 export type CreateBookingDto = components["schemas"]["CreateBookingDto"];
 export type CreateClassDto = components["schemas"]["CreateClassDto"];
 export type UpdateClassDto = components["schemas"]["UpdateClassDto"];
+export type UpdatePaymentConfigDto = components["schemas"]["UpdatePaymentConfigDto"];
 
 export interface LoginResult {
   accessToken: string;
@@ -97,6 +98,12 @@ export interface Booking {
 export interface BookingConflictInfo {
   ocupacaoId: string;
   origemTipo: string;
+}
+
+export interface PaymentConfig {
+  companyId: string;
+  linkPagamentoUrl: string | null;
+  whatsappNumero: string | null;
 }
 
 export interface SchoolClass {
@@ -320,4 +327,25 @@ export async function getDashboardSummary(periodo?: string): Promise<DashboardSu
   const params = periodo ? `?periodo=${periodo}` : "";
   const res = await authFetch(`/dashboard/summary${params}`);
   return (await res.json()) as DashboardSummary;
+}
+
+export async function getPaymentConfig(): Promise<PaymentConfig> {
+  const res = await authFetch("/payment-config");
+  return (await res.json()) as PaymentConfig;
+}
+
+export async function updatePaymentConfig(dto: UpdatePaymentConfigDto): Promise<PaymentConfig> {
+  const res = await authFetch("/payment-config", { method: "PUT", body: JSON.stringify(dto) });
+  return (await res.json()) as PaymentConfig;
+}
+
+export async function updateBookingPaymentStatus(
+  id: string,
+  status: "pago" | "cancelado",
+): Promise<Booking> {
+  const res = await authFetch(`/bookings/${id}/payment-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  return (await res.json()) as Booking;
 }

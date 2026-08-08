@@ -109,6 +109,9 @@ export function DashboardSummaryView() {
         <Link href="/turmas" className="text-[var(--color-primary)] hover:underline">
           Turmas
         </Link>
+        <Link href="/pagamentos" className="text-[var(--color-primary)] hover:underline">
+          Pagamento
+        </Link>
       </nav>
     </div>
   );
