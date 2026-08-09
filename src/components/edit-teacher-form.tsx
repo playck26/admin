@@ -2,10 +2,12 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormActions, FormCard } from "@/components/form-card";
+import { StatusBadge } from "@/components/status-badge";
 import { ApiError, getTeacher, updateTeacher, type Teacher } from "@/lib/api-client";
 
 export function EditTeacherForm({ id }: { id: string }) {
@@ -75,58 +77,78 @@ export function EditTeacherForm({ id }: { id: string }) {
   }
 
   if (!teacher) {
-    return <p className="text-[var(--color-text-secondary)]">Carregando...</p>;
+    return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
   }
 
   return (
-    <Card className="w-full max-w-lg">
-      <CardHeader>
-        <CardTitle className="text-2xl">Editar professor</CardTitle>
-        <CardDescription>{teacher.status === "ativo" ? "Ativo" : "Inativo"}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nome">Nome</Label>
-            <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} disabled={loading} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="telefone">Telefone</Label>
-            <Input id="telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={loading} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+    <FormCard
+      title="Editar professor"
+      description={<StatusBadge ativo={teacher.status === "ativo"} />}
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="nome">Nome</Label>
+          <Input
+            id="nome"
+            required
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="telefone">Telefone</Label>
+          <Input
+            id="telefone"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-[var(--color-error)]">
-              {error}
-            </p>
-          ) : null}
+        {error ? (
+          <p role="alert" className="text-sm text-[var(--color-error)]">
+            {error}
+          </p>
+        ) : null}
 
-          <Button type="submit" disabled={loading} className="mt-2">
-            {loading ? "Salvando..." : "Salvar alterações"}
-          </Button>
-        </form>
+        <FormActions
+          submitLabel="Salvar alterações"
+          loadingLabel="Salvando..."
+          loading={loading}
+          onCancel={() => router.push("/pessoas/professores")}
+        />
+      </form>
 
-        <hr className="border-border" />
+      <hr className="my-6 border-border" />
 
-        <Button
-          type="button"
-          variant={teacher.status === "ativo" ? "destructive" : "outline"}
-          disabled={statusLoading}
-          onClick={() => void handleToggleStatus()}
-        >
-          {statusLoading ? "Aplicando..." : teacher.status === "ativo" ? "Inativar professor" : "Reativar professor"}
-        </Button>
-      </CardContent>
-    </Card>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={statusLoading}
+        onClick={() => void handleToggleStatus()}
+        className={
+          teacher.status === "ativo"
+            ? "h-11 gap-2 border-[1.5px] border-[var(--color-error)] px-6 text-[13px] font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/5"
+            : "h-11 gap-2 border-[1.5px] border-primary px-6 text-[13px] font-semibold text-primary hover:bg-primary/5"
+        }
+      >
+        <Ban className="size-4" />
+        {statusLoading ? "Aplicando..." : teacher.status === "ativo" ? "Inativar professor" : "Reativar professor"}
+      </Button>
+    </FormCard>
   );
 }

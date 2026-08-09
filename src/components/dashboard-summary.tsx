@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Armchair, LayoutGrid } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, getDashboardSummary, type DashboardSummary } from "@/lib/api-client";
@@ -10,6 +10,15 @@ import { ApiError, getDashboardSummary, type DashboardSummary } from "@/lib/api-
 function mesAtualIso(): string {
   return new Date().toISOString().slice(0, 7);
 }
+
+const NAV_LINKS = [
+  { href: "/pessoas/alunos", label: "Alunos" },
+  { href: "/pessoas/professores", label: "Professores" },
+  { href: "/pessoas/niveis", label: "Níveis" },
+  { href: "/quadras", label: "Quadras" },
+  { href: "/turmas", label: "Turmas" },
+  { href: "/pagamentos", label: "Pagamento" },
+];
 
 export function DashboardSummaryView() {
   const [periodo, setPeriodo] = useState(mesAtualIso());
@@ -37,24 +46,25 @@ export function DashboardSummaryView() {
   }, []);
 
   return (
-    <div className="flex w-full max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-        <div className="flex items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="periodo" className="text-xs">
-              Mês
-            </Label>
-            <Input
-              id="periodo"
-              type="month"
-              value={periodo}
-              onChange={(e) => {
-                setPeriodo(e.target.value);
-                void load(e.target.value);
-              }}
-            />
-          </div>
+    <div className="flex w-full flex-col gap-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
+          Dashboard
+        </h1>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="periodo" className="text-xs text-[var(--color-on-surface-variant)]">
+            Mês
+          </Label>
+          <Input
+            id="periodo"
+            type="month"
+            value={periodo}
+            onChange={(e) => {
+              setPeriodo(e.target.value);
+              void load(e.target.value);
+            }}
+            className="w-44"
+          />
         </div>
       </div>
 
@@ -63,56 +73,66 @@ export function DashboardSummaryView() {
           {error}
         </p>
       ) : loading || !summary ? (
-        <p className="text-[var(--color-text-secondary)]">Carregando...</p>
+        <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardDescription>Alunos ativos</CardDescription>
-              <CardTitle className="text-4xl">{summary.alunosAtivos}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Ocupação de turmas</CardDescription>
-              <CardTitle className="text-4xl">{summary.ocupacaoTurmasPct}%</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-[var(--color-text-secondary)]">Alunos alocados / capacidade das turmas ativas</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Ocupação de quadras</CardDescription>
-              <CardTitle className="text-4xl">{summary.ocupacaoQuadrasPct}%</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-[var(--color-text-secondary)]">Horas ocupadas (turma + avulso) no período</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <KpiCard icon={Users} label="Alunos ativos" value={String(summary.alunosAtivos)} />
+          <KpiCard
+            icon={Armchair}
+            label="Ocupação de turmas"
+            value={`${summary.ocupacaoTurmasPct}%`}
+            description="Alunos alocados / capacidade das turmas ativas"
+            progress={summary.ocupacaoTurmasPct}
+          />
+          <KpiCard
+            icon={LayoutGrid}
+            label="Ocupação de quadras"
+            value={`${summary.ocupacaoQuadrasPct}%`}
+            description="Horas ocupadas (turma + avulso) no período"
+            progress={summary.ocupacaoQuadrasPct}
+          />
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-3 border-t border-border pt-6">
-        <Link href="/pessoas/alunos" className="text-[var(--color-primary)] hover:underline">
-          Alunos
-        </Link>
-        <Link href="/pessoas/professores" className="text-[var(--color-primary)] hover:underline">
-          Professores
-        </Link>
-        <Link href="/pessoas/niveis" className="text-[var(--color-primary)] hover:underline">
-          Níveis
-        </Link>
-        <Link href="/quadras" className="text-[var(--color-primary)] hover:underline">
-          Quadras
-        </Link>
-        <Link href="/turmas" className="text-[var(--color-primary)] hover:underline">
-          Turmas
-        </Link>
-        <Link href="/pagamentos" className="text-[var(--color-primary)] hover:underline">
-          Pagamento
-        </Link>
+      <nav className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-6">
+        {NAV_LINKS.map((link) => (
+          <Link key={link.href} href={link.href} className="text-sm font-medium text-primary hover:underline">
+            {link.label}
+          </Link>
+        ))}
       </nav>
+    </div>
+  );
+}
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  description,
+  progress,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string;
+  description?: string;
+  progress?: number;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)]">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xs font-medium tracking-wider text-[var(--color-on-surface-variant)] uppercase">{label}</h3>
+        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="size-[18px]" />
+        </div>
+      </div>
+      <p className="mb-2 text-[42px] leading-tight font-bold text-[var(--color-on-surface)]">{value}</p>
+      {description ? <p className="text-xs text-[var(--color-on-surface-variant)]">{description}</p> : null}
+      {progress !== undefined ? (
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-variant)]">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,10 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormActions, FormCard } from "@/components/form-card";
 import { ApiError, createCourt } from "@/lib/api-client";
 
 export function CreateCourtForm() {
@@ -31,60 +30,60 @@ export function CreateCourtForm() {
   }
 
   return (
-    <Card className="w-full max-w-lg">
-      <CardHeader>
-        <CardTitle className="text-2xl">Nova quadra</CardTitle>
-        <CardDescription>Preço estático por hora (sem variação por horário/dia no MVP)</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nome">Nome</Label>
-            <Input
-              id="nome"
-              placeholder="Quadra 1"
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="esporte">Esporte</Label>
-            <Input
-              id="esporte"
-              placeholder="tenis"
-              required
-              value={esporte}
-              onChange={(e) => setEsporte(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="precoHora">Preço por hora (R$)</Label>
-            <Input
-              id="precoHora"
-              type="number"
-              min="0"
-              step="0.01"
-              required
-              value={precoHora}
-              onChange={(e) => setPrecoHora(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+    <FormCard title="Nova quadra" description="Preço estático por hora (sem variação por horário/dia no MVP)">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="nome">Nome</Label>
+          <Input
+            id="nome"
+            placeholder="Quadra 1"
+            required
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="esporte">Esporte</Label>
+          <Input
+            id="esporte"
+            placeholder="tenis"
+            required
+            value={esporte}
+            onChange={(e) => setEsporte(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="precoHora">Preço por hora (R$)</Label>
+          <Input
+            id="precoHora"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            value={precoHora}
+            onChange={(e) => setPrecoHora(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-[var(--color-error)]">
-              {error}
-            </p>
-          ) : null}
+        {error ? (
+          <p role="alert" className="text-sm text-[var(--color-error)]">
+            {error}
+          </p>
+        ) : null}
 
-          <Button type="submit" disabled={loading} className="mt-2">
-            {loading ? "Criando..." : "Criar quadra"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <FormActions
+          submitLabel="Criar quadra"
+          loadingLabel="Criando..."
+          loading={loading}
+          onCancel={() => router.push("/quadras")}
+        />
+      </form>
+    </FormCard>
   );
 }

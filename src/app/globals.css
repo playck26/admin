@@ -3,47 +3,103 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Tokens de design PlayCK — copiados localmente deste repositório
- * (fonte de verdade: DESIGN.md, raiz do projeto; ADR-001, sem pacote
- * compartilhado). Tema claro único no MVP (escuro é gap não confirmado —
- * DESIGN.md, seção Temas).
+ * Tokens de design PlayCK Admin — copiados localmente deste repositório
+ * (ADR-001, sem pacote compartilhado). Tema claro único no MVP (escuro é
+ * gap não confirmado — DESIGN.md raiz, seção Temas).
  */
 :root {
-  /* Tokens PlayCK (nomes de DESIGN.md) */
-  --color-primary: #2f6b3a;
-  --color-primary-hover: #234f2b;
-  --color-accent: #8fbf3f;
-  --color-surface: #ffffff;
-  --color-background: #f7f6f1;
-  --color-text-primary: #12140f;
-  --color-text-secondary: #5b6058;
-  --color-error: #c6423a;
-  --color-success: #2f6b3a;
+  /* Tokens PlayCK Admin — paleta "Performance Court Admin" (SPEC-008,
+     2026-08-08). Fonte: apps/Admin/stitch_painel_administrativo_playck/
+     performance_court_admin/DESIGN.md — YAML de tokens, que é a paleta
+     que o Stitch efetivamente renderizou nas 7 telas (tailwind.config
+     embutido idêntico nas 7). Decisão do usuário: seguir essa paleta,
+     não os hex citados na prosa do mesmo DESIGN.md (#009C3F/#00763A/
+     #00BD90/#ED0040, que são os mesmos já usados em apps/Cliente) — o
+     Admin diverge conscientemente da cor de marca do Cliente (ver
+     spec.md, "Achado: Paleta"). Hex hardcoded que aparecem nos 7
+     code.html só batendo com a prosa (ex. bg-[#00763A] em botões) foram
+     normalizados para o token nomeado mais próximo abaixo, em vez de
+     replicados 1:1 — evita reproduzir a inconsistência tela a tela da
+     própria referência. */
+  --color-primary: #006b29;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #008735;
+  --color-on-primary-container: #f7fff2;
+
+  --color-secondary: #006c51;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #66f8c7;
+  --color-on-secondary-container: #007054;
+
+  --color-tertiary: #ba0030;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #e9003f;
+  --color-on-tertiary-container: #fffbff;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* Mantido do AS-IS — não faz parte da tríade primary/secondary/tertiary
+     que divergiu (achado de paleta), bate com a prosa do DESIGN.md pro
+     badge "Pendente" (pagamento avulso em Gerenciar Quadra). */
   --color-warning: #b8862e;
-  --color-border: #e4e1d6;
+  --color-success: var(--color-primary);
+
+  --color-surface: #f4fcef;
+  --color-surface-dim: #d5dcd1;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eef6ea;
+  --color-surface-container: #e9f0e4;
+  --color-surface-container-high: #e3eade;
+  --color-surface-container-highest: #dde5d9;
+  --color-surface-variant: #dde5d9;
+  --color-background: #f4fcef;
+
+  --color-on-surface: #161d16;
+  --color-on-surface-variant: #3e4a3d;
+  --color-on-background: #161d16;
+  --color-outline: #6e7b6c;
+  --color-outline-variant: #bdcab9;
+
+  /* Não é token M3 — valor próprio da referência pra borda de tabela/
+     input (DESIGN.md, seção Tables: "1px solid border-bottom #EAECE6"),
+     bem mais sutil que outline-variant. */
+  --color-border: #eaece6;
+
+  /* Aliases usados diretamente por alguns componentes de tela
+     (var(--color-text-secondary) etc.) — mantidos por compatibilidade
+     com o código existente, mapeados pro par on-surface/on-surface-variant. */
+  --color-text-primary: var(--color-on-surface);
+  --color-text-secondary: var(--color-on-surface-variant);
 
   --radius: 8px;
   --radius-hero: 16px;
+  --radius-xl: 24px;
 
-  --shadow-low: 0 1px 2px rgba(15, 18, 15, 0.06);
-  --shadow-elevated: 0 8px 24px rgba(15, 18, 15, 0.12);
+  --shadow-low: 0 4px 8px rgba(18, 22, 15, 0.05);
+  --shadow-elevated: 0 8px 16px rgba(18, 22, 15, 0.12);
 
-  /* Tokens semânticos do shadcn/ui, mapeados para os tokens PlayCK acima —
-     nunca uma cor nova aqui, só remapeamento (regra de DESIGN.md). */
+  /* Tokens semânticos do shadcn/ui, mapeados para os tokens PlayCK Admin
+     acima — nunca uma cor nova aqui, só remapeamento. */
   --background: var(--color-background);
-  --foreground: var(--color-text-primary);
-  --card: var(--color-surface);
-  --card-foreground: var(--color-text-primary);
-  --popover: var(--color-surface);
-  --popover-foreground: var(--color-text-primary);
+  --foreground: var(--color-on-background);
+  --card: var(--color-surface-container-lowest);
+  --card-foreground: var(--color-on-surface);
+  --popover: var(--color-surface-container-lowest);
+  --popover-foreground: var(--color-on-surface);
   --primary: var(--color-primary);
-  --primary-foreground: var(--color-background);
-  --secondary: var(--color-accent);
-  --secondary-foreground: var(--color-text-primary);
-  --muted: #ece9de;
-  --muted-foreground: var(--color-text-secondary);
-  --accent: var(--color-accent);
-  --accent-foreground: var(--color-text-primary);
+  --primary-foreground: var(--color-on-primary);
+  /* --secondary é o token que Badge variant="secondary" usa (estado
+     "Inativo") — a referência mostra esse badge em cinza neutro, não em
+     teal, então mapeia pra surface-variant, não pra --color-secondary. */
+  --secondary: var(--color-surface-variant);
+  --secondary-foreground: var(--color-on-surface-variant);
+  --muted: var(--color-surface-container);
+  --muted-foreground: var(--color-on-surface-variant);
+  --accent: var(--color-surface-container-high);
+  --accent-foreground: var(--color-on-surface);
   --destructive: var(--color-error);
   --border: var(--color-border);
   --input: var(--color-border);
@@ -52,17 +108,30 @@
 
 @theme inline {
   --color-primary: var(--color-primary);
-  --color-primary-hover: var(--color-primary-hover);
-  --color-accent: var(--color-accent);
+  --color-primary-container: var(--color-primary-container);
+  --color-on-primary-container: var(--color-on-primary-container);
+  --color-secondary-container: var(--color-secondary-container);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+  --color-tertiary: var(--color-tertiary);
+  --color-tertiary-container: var(--color-tertiary-container);
+  --color-on-tertiary-container: var(--color-on-tertiary-container);
   --color-surface: var(--color-surface);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-low: var(--color-surface-container-low);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-highest: var(--color-surface-container-highest);
+  --color-surface-variant: var(--color-surface-variant);
   --color-background: var(--color-background);
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
   --color-error: var(--color-error);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
+  --color-outline: var(--color-outline);
+  --color-outline-variant: var(--color-outline-variant);
 
   --radius-hero: var(--radius-hero);
+  --radius-xl-hero: var(--radius-xl);
   --shadow-low: var(--shadow-low);
   --shadow-elevated: var(--shadow-elevated);
 

@@ -2,11 +2,10 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormActions, FormCard } from "@/components/form-card";
 import { ApiError, getStudent, listLevels, updateStudent, type Level, type Student } from "@/lib/api-client";
 
 const SEM_NIVEL = "sem-nivel";
@@ -63,58 +62,63 @@ export function EditStudentForm({ id }: { id: string }) {
   }
 
   if (!student) {
-    return <p className="text-[var(--color-text-secondary)]">Carregando...</p>;
+    return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
   }
 
   return (
-    <Card className="w-full max-w-lg">
-      <CardHeader>
-        <CardTitle className="text-2xl">Editar aluno</CardTitle>
-        <CardDescription>{student.email}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nome">Nome</Label>
-            <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} disabled={loading} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="telefone">Telefone</Label>
-            <Input
-              id="telefone"
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nivel">Nível</Label>
-            <Select value={nivelId} onValueChange={setNivelId} disabled={loading}>
-              <SelectTrigger id="nivel">
-                <SelectValue placeholder="Sem nível" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SEM_NIVEL}>Sem nível</SelectItem>
-                {levels.map((nivel) => (
-                  <SelectItem key={nivel.id} value={nivel.id}>
-                    {nivel.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <FormCard title="Editar aluno" description={student.email}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="nome">Nome</Label>
+          <Input
+            id="nome"
+            required
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="telefone">Telefone</Label>
+          <Input
+            id="telefone"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="nivel">Nível</Label>
+          <Select value={nivelId} onValueChange={setNivelId} disabled={loading}>
+            <SelectTrigger id="nivel" className="h-11 w-full px-4">
+              <SelectValue placeholder="Sem nível" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={SEM_NIVEL}>Sem nível</SelectItem>
+              {levels.map((nivel) => (
+                <SelectItem key={nivel.id} value={nivel.id}>
+                  {nivel.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-[var(--color-error)]">
-              {error}
-            </p>
-          ) : null}
+        {error ? (
+          <p role="alert" className="text-sm text-[var(--color-error)]">
+            {error}
+          </p>
+        ) : null}
 
-          <Button type="submit" disabled={loading} className="mt-2">
-            {loading ? "Salvando..." : "Salvar alterações"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <FormActions
+          submitLabel="Salvar alterações"
+          loadingLabel="Salvando..."
+          loading={loading}
+          onCancel={() => router.push("/pessoas/alunos")}
+        />
+      </form>
+    </FormCard>
   );
 }

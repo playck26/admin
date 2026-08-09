@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { ArrowLeft, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge } from "@/components/status-badge";
 import {
   ApiError,
   allocateStudentInClass,
@@ -157,7 +158,7 @@ export function ClassManager({ id }: { id: string }) {
   }
 
   if (!turma) {
-    return <p className="text-[var(--color-text-secondary)]">Carregando...</p>;
+    return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
   }
 
   const alocadosIds = new Set(turma.alunos.map((aluno) => aluno.alunoId));
@@ -166,27 +167,42 @@ export function ClassManager({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">{turma.nome}</CardTitle>
-            <Badge variant={turma.status === "ativa" ? "default" : "secondary"}>
-              {turma.status === "ativa" ? "Ativa" : "Inativa"}
-            </Badge>
+      <div className="mb-2 flex items-center gap-4">
+        <Link
+          href="/turmas"
+          className="-ml-2 rounded-full p-2 text-[var(--color-on-surface-variant)] transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="size-5" />
+        </Link>
+        <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
+          Gerenciar Turma
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-7">
+          <div className="mb-6 flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">{turma.nome}</h2>
+            <StatusBadge ativo={turma.status === "ativa"} activeLabel="Ativa" inactiveLabel="Inativa" />
           </div>
-          <CardDescription>Editar dados da turma</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+
           <form onSubmit={handleSave} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <Label htmlFor="nome">Nome</Label>
-              <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} disabled={editLoading} />
+              <Input
+                id="nome"
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                disabled={editLoading}
+                className="h-10 px-3"
+              />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <Label htmlFor="quadra">Quadra</Label>
               <Select value={quadraId} onValueChange={setQuadraId} disabled={editLoading}>
-                <SelectTrigger id="quadra">
+                <SelectTrigger id="quadra" className="h-10 w-full px-3">
                   <SelectValue placeholder="Selecione uma quadra" />
                 </SelectTrigger>
                 <SelectContent>
@@ -200,10 +216,10 @@ export function ClassManager({ id }: { id: string }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <Label htmlFor="nivel">Nível</Label>
                 <Select value={nivelId} onValueChange={setNivelId} disabled={editLoading}>
-                  <SelectTrigger id="nivel">
+                  <SelectTrigger id="nivel" className="h-10 w-full px-3">
                     <SelectValue placeholder="Sem nível" />
                   </SelectTrigger>
                   <SelectContent>
@@ -216,10 +232,10 @@ export function ClassManager({ id }: { id: string }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <Label htmlFor="professor">Professor</Label>
                 <Select value={professorId} onValueChange={setProfessorId} disabled={editLoading}>
-                  <SelectTrigger id="professor">
+                  <SelectTrigger id="professor" className="h-10 w-full px-3">
                     <SelectValue placeholder="Sem professor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -234,24 +250,23 @@ export function ClassManager({ id }: { id: string }) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="diaSemana">Dia da semana</Label>
-              <Select value={diaSemana} onValueChange={setDiaSemana} disabled={editLoading}>
-                <SelectTrigger id="diaSemana">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIAS_SEMANA.map((label, index) => (
-                    <SelectItem key={label} value={String(index)}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="diaSemana">Dia da semana</Label>
+                <Select value={diaSemana} onValueChange={setDiaSemana} disabled={editLoading}>
+                  <SelectTrigger id="diaSemana" className="h-10 w-full px-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DIAS_SEMANA.map((label, index) => (
+                      <SelectItem key={label} value={String(index)}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1">
                 <Label htmlFor="horaInicio">Início</Label>
                 <Input
                   id="horaInicio"
@@ -260,9 +275,10 @@ export function ClassManager({ id }: { id: string }) {
                   value={horaInicio}
                   onChange={(e) => setHoraInicio(e.target.value)}
                   disabled={editLoading}
+                  className="h-10 px-3"
                 />
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <Label htmlFor="horaFim">Fim</Label>
                 <Input
                   id="horaFim"
@@ -271,11 +287,12 @@ export function ClassManager({ id }: { id: string }) {
                   value={horaFim}
                   onChange={(e) => setHoraFim(e.target.value)}
                   disabled={editLoading}
+                  className="h-10 px-3"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1 md:w-1/3">
               <Label htmlFor="capacidade">Capacidade</Label>
               <Input
                 id="capacidade"
@@ -286,6 +303,7 @@ export function ClassManager({ id }: { id: string }) {
                 value={capacidade}
                 onChange={(e) => setCapacidade(e.target.value)}
                 disabled={editLoading}
+                className="h-10 px-3"
               />
             </div>
 
@@ -295,49 +313,58 @@ export function ClassManager({ id }: { id: string }) {
               </p>
             ) : null}
 
-            <Button type="submit" disabled={editLoading}>
-              {editLoading ? "Salvando..." : "Salvar alterações"}
-            </Button>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={editLoading} className="h-10 px-6 text-[13px] font-semibold">
+                {editLoading ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
           </form>
 
-          <hr className="border-border" />
+          <hr className="my-6 border-border" />
 
           <Button
             type="button"
-            variant={turma.status === "ativa" ? "destructive" : "outline"}
+            variant="outline"
             disabled={statusLoading}
             onClick={() => void handleToggleStatus()}
+            className={
+              turma.status === "ativa"
+                ? "h-10 gap-2 border-[1.5px] border-[var(--color-error)] px-5 text-[13px] font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/5"
+                : "h-10 gap-2 border-[1.5px] border-primary px-5 text-[13px] font-semibold text-primary hover:bg-primary/5"
+            }
           >
+            <Ban className="size-4" />
             {statusLoading ? "Aplicando..." : turma.status === "ativa" ? "Inativar turma" : "Reativar turma"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-xl">Alunos alocados</CardTitle>
-          <CardDescription>
-            {turma.alunosAlocados}/{turma.capacidade} vagas ocupadas
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-5">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">Alunos alocados</h2>
+            <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">
+              {turma.alunosAlocados}/{turma.capacidade} vagas ocupadas
+            </p>
+          </div>
+
           {turma.alunos.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">Nenhum aluno alocado ainda.</p>
+            <p className="text-sm text-[var(--color-on-surface-variant)]">Nenhum aluno alocado ainda.</p>
           ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">Nome</TableHead>
+                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">Email</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-[var(--color-on-surface-variant)]">
+                      Ações
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {turma.alunos.map((aluno) => (
-                    <TableRow key={aluno.alunoId}>
-                      <TableCell className="font-medium">{aluno.nome}</TableCell>
-                      <TableCell>{aluno.email}</TableCell>
+                    <TableRow key={aluno.alunoId} className="border-border">
+                      <TableCell className="font-medium text-[var(--color-on-surface)]">{aluno.nome}</TableCell>
+                      <TableCell className="text-[var(--color-on-surface-variant)]">{aluno.email}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           type="button"
@@ -345,6 +372,7 @@ export function ClassManager({ id }: { id: string }) {
                           size="sm"
                           disabled={removingId === aluno.alunoId}
                           onClick={() => void handleRemove(aluno.alunoId)}
+                          className="h-7 border-primary px-3 text-xs text-primary hover:bg-primary/5"
                         >
                           {removingId === aluno.alunoId ? "Removendo..." : "Remover"}
                         </Button>
@@ -356,12 +384,11 @@ export function ClassManager({ id }: { id: string }) {
             </div>
           )}
 
-          <form onSubmit={handleAllocate} className="flex flex-col gap-3 rounded-[var(--radius)] border border-border p-4">
-            <p className="text-sm font-medium text-foreground">Alocar aluno</p>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="novoAluno">Aluno</Label>
+          <form onSubmit={handleAllocate} className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+            <p className="text-sm font-semibold text-[var(--color-on-surface)]">Alocar aluno</p>
+            <div className="flex gap-3">
               <Select value={novoAlunoId} onValueChange={setNovoAlunoId} disabled={allocLoading || cheia}>
-                <SelectTrigger id="novoAluno">
+                <SelectTrigger id="novoAluno" className="h-10 flex-1 px-3">
                   <SelectValue placeholder={cheia ? "Turma sem vagas" : "Selecione um aluno"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -372,18 +399,22 @@ export function ClassManager({ id }: { id: string }) {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="submit"
+                disabled={allocLoading || !novoAlunoId || cheia}
+                className="h-10 shrink-0 px-5 text-[13px] font-semibold whitespace-nowrap"
+              >
+                {allocLoading ? "Alocando..." : "Alocar aluno"}
+              </Button>
             </div>
             {allocError ? (
               <p role="alert" className="text-sm text-[var(--color-error)]">
                 {allocError}
               </p>
             ) : null}
-            <Button type="submit" disabled={allocLoading || !novoAlunoId || cheia}>
-              {allocLoading ? "Alocando..." : "Alocar aluno"}
-            </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
