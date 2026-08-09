@@ -25,6 +25,12 @@ export function LoginForm() {
     try {
       const result = await login({ email, senha });
       saveAccessToken(result.accessToken);
+      // `email` aqui é o estado do formulário (o que o usuário digitou),
+      // não `result.usuario.email` — LoginResult.usuario não tem esse
+      // campo. Login só teve sucesso se as credenciais bateram, então é
+      // o mesmo e-mail da conta autenticada (achado da validação
+      // cruzada, Codex — esclarecendo para não parecer leitura de um
+      // campo que não existe no tipo).
       saveAdminUser({ nome: result.usuario.nome, email });
       router.push("/dashboard");
     } catch (err) {
@@ -55,6 +61,7 @@ export function LoginForm() {
             id="email"
             type="email"
             autoComplete="email"
+            placeholder="seu@email.com"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -69,6 +76,7 @@ export function LoginForm() {
               id="senha"
               type={showSenha ? "text" : "password"}
               autoComplete="current-password"
+              placeholder="••••••••"
               required
               minLength={8}
               value={senha}
