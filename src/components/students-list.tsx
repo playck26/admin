@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -46,12 +46,26 @@ export function StudentsList() {
         <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
           Alunos
         </h1>
-        <Button asChild className="h-10 gap-2 px-5 text-[13px] font-semibold">
-          <Link href="/pessoas/alunos/novo">
-            <Plus className="size-[18px]" />
-            Novo aluno
-          </Link>
-        </Button>
+        <div className="flex gap-3">
+          {/*
+            Convite antes de "Novo aluno" de propósito: é o caminho em que o
+            aluno cria a própria senha, então nada sensível trafega por
+            WhatsApp. O cadastro direto existe para quando não dá para
+            esperar a pessoa agir.
+          */}
+          <Button asChild variant="outline" className="h-10 gap-2 px-5 text-[13px] font-semibold">
+            <Link href="/pessoas/alunos/convite">
+              <Send className="size-[18px]" />
+              Convidar
+            </Link>
+          </Button>
+          <Button asChild className="h-10 gap-2 px-5 text-[13px] font-semibold">
+            <Link href="/pessoas/alunos/novo">
+              <Plus className="size-[18px]" />
+              Novo aluno
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <CadastrosPendentes onDecidir={() => void load(page)} />

@@ -307,6 +307,29 @@ export async function regenerarSenhaTemporaria(
   return (await res.json()) as StudentComSenha;
 }
 
+/**
+ * SPEC-009/REQ-002 — cria um convite. O `token` volta **uma única vez**,
+ * nesta resposta: é ele que vira o link que o admin encaminha.
+ */
+export interface ConviteCriado {
+  id: string;
+  token: string;
+  expiraEm: string;
+}
+
+export async function criarConvite(dto: {
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  nivelId?: string;
+}): Promise<ConviteCriado> {
+  const res = await authFetch("/invites", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as ConviteCriado;
+}
+
 /** SPEC-009/REQ-008 — fila de aprovação e decisão sobre um cadastro. */
 export async function listStudentsPendentes(): Promise<Paginated<Student>> {
   const res = await authFetch(`/students?vinculo=pendente&pageSize=100`);
