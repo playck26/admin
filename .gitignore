@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Insumos de design (Stitch): 1,1 MB de PNG/HTML, entrada dos redesigns
+# SPEC-007/008. Versionar asset binario e decisao propria (repositorio de
+# codigo vs. de assets), nao efeito colateral de um `git add -A`.
+stitch_painel_administrativo_playck/
