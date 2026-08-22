@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PlayCK Admin - Alunos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#002108",
+                        "inverse-surface": "#2b322a",
+                        "primary-fixed-dim": "#61df78",
+                        "outline-variant": "#bdcab9",
+                        "primary-container": "#008735",
+                        "tertiary-container": "#e9003f",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-tertiary-fixed-variant": "#920024",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#00531e",
+                        "secondary-container": "#66f8c7",
+                        "surface": "#f4fcef",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#47deaf",
+                        "background": "#f4fcef",
+                        "on-secondary-fixed-variant": "#00513c",
+                        "primary-fixed": "#7efc92",
+                        "surface-tint": "#006e2a",
+                        "on-secondary-container": "#007054",
+                        "tertiary": "#ba0030",
+                        "inverse-primary": "#61df78",
+                        "on-background": "#161d16",
+                        "primary": "#006b29",
+                        "outline": "#6e7b6c",
+                        "secondary-fixed": "#69fbca",
+                        "on-surface": "#161d16",
+                        "surface-container-high": "#e3eade",
+                        "on-secondary-fixed": "#002116",
+                        "secondary": "#006c51",
+                        "surface-container": "#e9f0e4",
+                        "surface-bright": "#f4fcef",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#3e4a3d",
+                        "tertiary-fixed": "#ffdad9",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-highest": "#dde5d9",
+                        "on-primary-container": "#f7fff2",
+                        "tertiary-fixed-dim": "#ffb3b4",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#d5dcd1",
+                        "on-tertiary-fixed": "#40000a",
+                        "surface-container-low": "#eef6ea",
+                        "surface-variant": "#dde5d9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "1.5rem",
+                        "gutter": "1.5rem",
+                        "stack-md": "1rem",
+                        "sidebar-width": "250px",
+                        "container-margin": "2rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "section-title": ["Inter"],
+                        "label-md": ["Inter"],
+                        "page-title": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "section-title": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-md": ["13px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "page-title": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F7F8F5; }
+        .soft-shadow { box-shadow: 0 4px 8px rgba(18, 22, 15, 0.05); }
+    </style>
+</head>
+<body class="font-body-sm text-on-background flex h-screen overflow-hidden antialiased">
+<!-- SideNavBar -->
+<aside class="bg-surface dark:bg-inverse-surface fixed left-0 top-0 h-screen w-[250px] bg-surface-container-low dark:bg-inverse-surface shadow-sm z-20 flex flex-col h-full py-6">
+<div class="px-6 mb-8">
+<h1 class="font-page-title text-page-title font-bold text-primary dark:text-primary-fixed-dim">PlayCK</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Admin Management</p>
+</div>
+<nav class="flex-1 overflow-y-auto font-label-md text-label-md space-y-1 px-2">
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 border-l-4 border-primary text-primary font-semibold bg-surface-container-high dark:bg-on-primary-fixed-variant hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Alunos</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>
+<span>Professores</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span>Níveis</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span>Quadras</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="event_seat">event_seat</span>
+<span>Turmas</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors duration-200 cursor-pointer active:scale-95 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Pagamentos</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[250px] w-[calc(100%-250px)] h-screen overflow-y-auto flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background full-width top-0 bg-background dark:bg-background flat no shadows flex justify-between items-center w-full px-8 py-4 sticky z-10 font-section-title text-section-title">
+<div class="flex items-center gap-4">
+<h2 class="text-primary dark:text-primary-fixed-dim font-bold">Alunos</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+<input class="pl-10 pr-4 py-2 w-64 rounded-lg bg-surface-container-lowest border border-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-body-sm text-body-sm" placeholder="Buscar aluno..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary-container transition-all focus:ring-2 focus:ring-primary p-2 rounded-full hover:bg-surface-container-highest">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary-container transition-all focus:ring-2 focus:ring-primary p-2 rounded-full hover:bg-surface-container-highest">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<button class="bg-[#00763A] text-on-primary font-label-md text-label-md px-6 py-2.5 rounded-lg hover:bg-primary transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Novo Registro
+                </button>
+<div class="h-10 w-10 rounded-full overflow-hidden border-2 border-surface-variant">
+<img alt="Admin Profile" class="w-full h-full object-cover" data-alt="A professional headshot of an administrative manager in a corporate setting. High key lighting, clean background, modern office environment. The person is smiling gently, conveying approachability and competence. Warm color palette with soft focus on the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbpSwf2WW5OPu_JJaAISzfPGAYv_zZ-Xaj3bN7kbtY9BjUpISVwZgTik9HmZMH_XP5pv-7uET5qb_wXIx6JT8FGas_8JTf3p61mnY-ySpyZot2IGwQ9yRMl7hrCGhY3wIoBYgp75vIS26UJt9xv48WD4pEYY4Ah4Wuz6rEOD8x29G5ScST4xv7h016O86B5jNn6pOG1MKNVTSG157ygo8zJf7hyhcCDltInKtjwLSU46XpOo3Y7ubLog"/>
+</div>
+</div>
+</header>
+<!-- Page Content Container -->
+<div class="px-8 py-6 flex-1 max-w-7xl mx-auto w-full">
+<!-- Bento-style Stats Grid (Added for modern layout density) -->
+<div class="grid grid-cols-3 gap-6 mb-8">
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow flex items-center justify-between border border-surface-container">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Total de Alunos</p>
+<p class="font-page-title text-page-title text-on-background">342</p>
+</div>
+<div class="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">group</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow flex items-center justify-between border border-surface-container">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Alunos Ativos</p>
+<p class="font-page-title text-page-title text-on-background">298</p>
+</div>
+<div class="h-12 w-12 rounded-full bg-[#009C3F]/10 flex items-center justify-center text-[#009C3F]">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow flex items-center justify-between border border-surface-container">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Inativos (Últimos 30d)</p>
+<p class="font-page-title text-page-title text-on-background">12</p>
+</div>
+<div class="h-12 w-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">person_off</span>
+</div>
+</div>
+</div>
+<!-- Table Card -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow border border-surface-container overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest border-b border-[#EAECE6] font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+<th class="px-6 py-4 font-medium">Nome</th>
+<th class="px-6 py-4 font-medium">Email</th>
+<th class="px-6 py-4 font-medium">Status</th>
+<th class="px-6 py-4 font-medium text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-background">
+<!-- Row 1 -->
+<tr class="border-b border-[#EAECE6] hover:bg-[#F7F8F5] transition-colors cursor-default">
+<td class="px-6 py-4 font-medium">Ana Clara Silva</td>
+<td class="px-6 py-4 text-on-surface-variant">ana.clara@email.com</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-1 rounded-[8px] text-[11px] font-bold uppercase bg-[#009C3F]/15 text-[#009C3F]">
+                                        Ativo
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-label-md text-label-md hover:underline focus:outline-none">Editar</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-[#EAECE6] hover:bg-[#F7F8F5] transition-colors cursor-default">
+<td class="px-6 py-4 font-medium">Carlos Eduardo Mendes</td>
+<td class="px-6 py-4 text-on-surface-variant">carlos.mendes@email.com</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-1 rounded-[8px] text-[11px] font-bold uppercase bg-[#009C3F]/15 text-[#009C3F]">
+                                        Ativo
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-label-md text-label-md hover:underline focus:outline-none">Editar</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-[#EAECE6] hover:bg-[#F7F8F5] transition-colors cursor-default">
+<td class="px-6 py-4 font-medium">Beatriz Souza</td>
+<td class="px-6 py-4 text-on-surface-variant">bia.souza@email.com</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-1 rounded-[8px] text-[11px] font-bold uppercase bg-surface-variant text-on-surface-variant">
+                                        Inativo
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-label-md text-label-md hover:underline focus:outline-none">Editar</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="border-b border-[#EAECE6] hover:bg-[#F7F8F5] transition-colors cursor-default">
+<td class="px-6 py-4 font-medium">Fernando Alves</td>
+<td class="px-6 py-4 text-on-surface-variant">fernando.a@email.com</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-1 rounded-[8px] text-[11px] font-bold uppercase bg-[#009C3F]/15 text-[#009C3F]">
+                                        Ativo
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-label-md text-label-md hover:underline focus:outline-none">Editar</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-[#F7F8F5] transition-colors cursor-default">
+<td class="px-6 py-4 font-medium">Mariana Costa</td>
+<td class="px-6 py-4 text-on-surface-variant">mari.costa@email.com</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-1 rounded-[8px] text-[11px] font-bold uppercase bg-[#B8862E]/15 text-[#B8862E]">
+                                        Pendente
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary font-label-md text-label-md hover:underline focus:outline-none">Editar</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="px-6 py-4 border-t border-[#EAECE6] flex items-center justify-between bg-surface-container-lowest">
+<button class="px-4 py-2 border border-surface-variant rounded-lg font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50" disabled="">
+                        Anterior
+                    </button>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Página 1 de 3</span>
+<button class="px-4 py-2 border border-surface-variant rounded-lg font-label-sm text-label-sm text-on-background hover:bg-surface-container transition-colors">
+                        Próxima
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { ApiError, listStudents, type Student } from "@/lib/api-client";
+import { CadastrosPendentes } from "@/components/cadastros-pendentes";
 
 const PAGE_SIZE = 20;
 
@@ -52,6 +53,8 @@ export function StudentsList() {
           </Link>
         </Button>
       </div>
+
+      <CadastrosPendentes onDecidir={() => void load(page)} />
 
       {loading ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>

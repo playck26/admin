@@ -39,6 +39,17 @@ export interface Student {
   telefone: string | null;
   nivelId: string | null;
   status: "ativo" | "inativo";
+  /** SPEC-009/REQ-008: se a empresa já reconhece esta pessoa como aluna. */
+  vinculo?: "pendente" | "aprovado" | "recusado";
+}
+
+/**
+ * SPEC-009/AC-006 — a senha temporária vem **uma única vez**, na resposta
+ * que a criou. Nenhuma outra rota a devolve, então a tela precisa mostrá-la
+ * no ato: se o admin fechar sem copiar, o caminho é gerar outra.
+ */
+export interface StudentComSenha extends Student {
+  senhaTemporaria: string;
 }
 
 export interface Teacher {
@@ -281,8 +292,34 @@ export async function listStudents(page = 1, pageSize = 20): Promise<Paginated<S
   return (await res.json()) as Paginated<Student>;
 }
 
-export async function createStudent(dto: CreateStudentDto): Promise<Student> {
+export async function createStudent(dto: CreateStudentDto): Promise<StudentComSenha> {
   const res = await authFetch("/students", { method: "POST", body: JSON.stringify(dto) });
+  return (await res.json()) as StudentComSenha;
+}
+
+/** SPEC-009/REQ-005 — gera uma senha temporária nova para o aluno. */
+export async function regenerarSenhaTemporaria(
+  id: string,
+): Promise<StudentComSenha> {
+  const res = await authFetch(`/students/${id}/senha-temporaria`, {
+    method: "POST",
+  });
+  return (await res.json()) as StudentComSenha;
+}
+
+/** SPEC-009/REQ-008 — fila de aprovação e decisão sobre um cadastro. */
+export async function listStudentsPendentes(): Promise<Paginated<Student>> {
+  const res = await authFetch(`/students?vinculo=pendente&pageSize=100`);
+  return (await res.json()) as Paginated<Student>;
+}
+
+export async function aprovarAluno(id: string): Promise<Student> {
+  const res = await authFetch(`/students/${id}/aprovar`, { method: "POST" });
+  return (await res.json()) as Student;
+}
+
+export async function recusarAluno(id: string): Promise<Student> {
+  const res = await authFetch(`/students/${id}/recusar`, { method: "POST" });
   return (await res.json()) as Student;
 }
 

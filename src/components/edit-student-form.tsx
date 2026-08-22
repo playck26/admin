@@ -6,7 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormActions, FormCard } from "@/components/form-card";
-import { ApiError, getStudent, listLevels, updateStudent, type Level, type Student } from "@/lib/api-client";
+import {
+  ApiError,
+  getStudent,
+  listLevels,
+  regenerarSenhaTemporaria,
+  updateStudent,
+  type Level,
+  type Student,
+  type StudentComSenha,
+} from "@/lib/api-client";
+import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
+import { Button } from "@/components/ui/button";
 
 const SEM_NIVEL = "sem-nivel";
 
@@ -20,6 +31,8 @@ export function EditStudentForm({ id }: { id: string }) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [senhaNova, setSenhaNova] = useState<StudentComSenha | null>(null);
+  const [gerandoSenha, setGerandoSenha] = useState(false);
 
   useEffect(() => {
     Promise.all([getStudent(id), listLevels()])
@@ -63,6 +76,18 @@ export function EditStudentForm({ id }: { id: string }) {
 
   if (!student) {
     return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
+  }
+
+  if (senhaNova) {
+    return (
+      <SenhaTemporariaCard
+        nomeAluno={senhaNova.nome}
+        senha={senhaNova.senhaTemporaria}
+        telefone={senhaNova.telefone}
+        onConcluir={() => setSenhaNova(null)}
+        concluirLabel="Voltar para a ficha"
+      />
+    );
   }
 
   return (
@@ -119,6 +144,44 @@ export function EditStudentForm({ id }: { id: string }) {
           onCancel={() => router.push("/pessoas/alunos")}
         />
       </form>
+
+      {/*
+        SPEC-009/REQ-005 — enquanto não houver e-mail transacional
+        (GAP-004), este botão **é** o "esqueci minha senha" do aluno: ele
+        pede ao admin, que gera outra e reencaminha (ADR-013).
+      */}
+      <div className="mt-8 flex flex-col gap-3 border-t border-[var(--color-outline)] pt-6">
+        <div>
+          <h3 className="text-sm font-semibold">Acesso do aluno</h3>
+          <p className="text-sm text-[var(--color-on-surface-variant)]">
+            Gere uma senha temporária se o aluno não conseguir entrar. A
+            anterior deixa de valer e as sessões abertas são encerradas.
+          </p>
+        </div>
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={gerandoSenha}
+            onClick={() => {
+              setError(null);
+              setGerandoSenha(true);
+              regenerarSenhaTemporaria(id)
+                .then(setSenhaNova)
+                .catch((err: unknown) =>
+                  setError(
+                    err instanceof ApiError
+                      ? err.message
+                      : "Não foi possível gerar uma senha nova.",
+                  ),
+                )
+                .finally(() => setGerandoSenha(false));
+            }}
+          >
+            {gerandoSenha ? "Gerando..." : "Gerar nova senha temporária"}
+          </Button>
+        </div>
+      </div>
     </FormCard>
   );
 }

@@ -6,7 +6,8 @@ import { Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormActions, FormCard } from "@/components/form-card";
-import { ApiError, createStudent } from "@/lib/api-client";
+import { ApiError, createStudent, type StudentComSenha } from "@/lib/api-client";
+import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
 
 export function CreateStudentForm() {
   const router = useRouter();
@@ -15,14 +16,21 @@ export function CreateStudentForm() {
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [criado, setCriado] = useState<StudentComSenha | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await createStudent({ nome, email, telefone: telefone || undefined });
-      router.push("/pessoas/alunos");
+      // Não navega direto: a senha temporária vem só nesta resposta
+      // (AC-006). Sair da tela sem mostrá-la seria perdê-la.
+      const aluno = await createStudent({
+        nome,
+        email,
+        telefone: telefone || undefined,
+      });
+      setCriado(aluno);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível criar o aluno.");
     } finally {
@@ -30,8 +38,23 @@ export function CreateStudentForm() {
     }
   }
 
+  if (criado) {
+    return (
+      <SenhaTemporariaCard
+        nomeAluno={criado.nome}
+        senha={criado.senhaTemporaria}
+        telefone={criado.telefone}
+        onConcluir={() => router.push("/pessoas/alunos")}
+        concluirLabel="Ir para a lista de alunos"
+      />
+    );
+  }
+
   return (
-    <FormCard title="Novo aluno" description="Cadastro direto pelo admin — sem senha (aluno pode entrar depois)">
+    <FormCard
+      title="Novo aluno"
+      description="O sistema gera uma senha temporária para o aluno entrar. Ela aparece uma única vez, ao criar."
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <div className="flex flex-col gap-2">
           <Label htmlFor="nome">
