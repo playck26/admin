@@ -95,6 +95,13 @@ export interface AvailabilitySlot {
 export interface Availability {
   quadraId: string;
   data: string;
+  /**
+   * SPEC-010/AC-008 — "fechado" e "aberto sem nada livre" produzem a mesma
+   * lista vazia depois que a tela filtra os slots ocupados. Sem este
+   * campo, os dois casos apareceriam como a mesma grade vazia sem
+   * explicação.
+   */
+  estado: "aberto" | "fechado";
   slots: AvailabilitySlot[];
 }
 
@@ -491,4 +498,82 @@ export async function updateBookingPaymentStatus(
     body: JSON.stringify({ status }),
   });
   return (await res.json()) as Booking;
+}
+
+// =====================================================================
+// SPEC-010 — horário de funcionamento
+// =====================================================================
+
+export interface DiaHorario {
+  diaSemana: number;
+  fechado: boolean;
+  horaInicio: string | null;
+  horaFim: string | null;
+}
+
+export interface OcupacaoAfetada {
+  origemTipo: "AVULSO" | "TURMA";
+  quadraNome: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  responsavel: string | null;
+}
+
+/**
+ * SPEC-010/REQ-006 — reduzir o horário não cancela nada; devolve o que
+ * ficou fora para o gerente decidir.
+ */
+export interface ResultadoHorarios {
+  afetadasCount: number;
+  amostra: OcupacaoAfetada[];
+}
+
+export interface HorariosEmpresa {
+  padrao: DiaHorario[];
+  quadrasComHorarioProprio: { quadraId: string; dias: DiaHorario[] }[];
+}
+
+export async function getHorariosEmpresa(): Promise<HorariosEmpresa> {
+  const res = await authFetch("/company-settings/horarios");
+  return (await res.json()) as HorariosEmpresa;
+}
+
+export async function definirHorariosEmpresa(
+  dias: DiaHorario[],
+): Promise<ResultadoHorarios> {
+  const res = await authFetch("/company-settings/horarios", {
+    method: "PUT",
+    body: JSON.stringify({ dias }),
+  });
+  return (await res.json()) as ResultadoHorarios;
+}
+
+/** `origem` diz se a quadra tem horário próprio ou reflete o padrão. */
+export interface HorariosQuadra {
+  origem: "proprio" | "herdado";
+  dias: DiaHorario[];
+}
+
+export async function getHorariosQuadra(id: string): Promise<HorariosQuadra> {
+  const res = await authFetch(`/courts/${id}/horarios`);
+  return (await res.json()) as HorariosQuadra;
+}
+
+export async function definirHorariosQuadra(
+  id: string,
+  dias: DiaHorario[],
+): Promise<ResultadoHorarios> {
+  const res = await authFetch(`/courts/${id}/horarios`, {
+    method: "PUT",
+    body: JSON.stringify({ dias }),
+  });
+  return (await res.json()) as ResultadoHorarios;
+}
+
+export async function removerHorariosQuadra(
+  id: string,
+): Promise<ResultadoHorarios> {
+  const res = await authFetch(`/courts/${id}/horarios`, { method: "DELETE" });
+  return (await res.json()) as ResultadoHorarios;
 }

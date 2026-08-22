@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HorarioQuadraSection } from "@/components/horario-quadra-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -269,6 +270,8 @@ export function CourtManager({ id }: { id: string }) {
           </Button>
         </div>
 
+        <HorarioQuadraSection quadraId={id} />
+
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)]">
           <div>
             <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">Disponibilidade</h2>
@@ -299,7 +302,14 @@ export function CourtManager({ id }: { id: string }) {
             </p>
           ) : null}
 
-          {availability ? (
+          {availability?.estado === "fechado" ? (
+            /* SPEC-010/AC-008: sem este caso, dia fechado e dia lotado
+               apareceriam como a mesma grade vazia. */
+            <p className="rounded-lg bg-[var(--color-surface-variant)] p-4 text-[var(--color-on-surface-variant)]">
+              Quadra fechada neste dia. Ajuste o horário de funcionamento em
+              Configurações ou na própria quadra.
+            </p>
+          ) : availability ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {availability.slots.map((slot) => {
                 if (slot.status === "livre") {
