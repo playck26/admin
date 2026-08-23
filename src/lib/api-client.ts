@@ -612,6 +612,21 @@ export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
   return (await res.json()) as MinhaEmpresa;
 }
 
+/**
+ * DEF-004 — liga/desliga o auto-cadastro. A SPEC-009/REQ-006 dizia que "a
+ * empresa decide" e nenhuma rota escrevia no campo: a decisão ficava
+ * congelada no default.
+ */
+export async function definirAutoCadastro(
+  permiteAutoCadastro: boolean,
+): Promise<MinhaEmpresa> {
+  const res = await authFetch("/me/company", {
+    method: "PATCH",
+    body: JSON.stringify({ permiteAutoCadastro }),
+  });
+  return (await res.json()) as MinhaEmpresa;
+}
+
 export async function getHorariosEmpresa(): Promise<HorariosEmpresa> {
   const res = await authFetch("/company-settings/horarios");
   return (await res.json()) as HorariosEmpresa;

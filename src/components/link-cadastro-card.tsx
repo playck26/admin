@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, Link2 } from "lucide-react";
-import { ApiError, getMinhaEmpresa, type MinhaEmpresa } from "@/lib/api-client";
+import {
+  ApiError,
+  definirAutoCadastro,
+  getMinhaEmpresa,
+  type MinhaEmpresa,
+} from "@/lib/api-client";
 
 const CLIENTE_URL =
   process.env.NEXT_PUBLIC_CLIENTE_URL ?? "https://app.playck.com.br";
@@ -19,6 +24,7 @@ export function LinkCadastroCard() {
   const [empresa, setEmpresa] = useState<MinhaEmpresa | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     getMinhaEmpresa()
@@ -43,6 +49,21 @@ export function LinkCadastroCard() {
   }
 
   const link = `${CLIENTE_URL}/cadastro/${empresa.slug}`;
+
+  async function alternar() {
+    if (!empresa) return;
+    setErro(null);
+    setSalvando(true);
+    try {
+      setEmpresa(await definirAutoCadastro(!empresa.permiteAutoCadastro));
+    } catch (e) {
+      setErro(
+        e instanceof ApiError ? e.message : "Não foi possível salvar.",
+      );
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   async function copiar() {
     try {
@@ -84,13 +105,36 @@ export function LinkCadastroCard() {
         </button>
       </div>
 
-      {!empresa.permiteAutoCadastro ? (
-        <p className="mt-3 text-sm text-[var(--color-error)]">
-          O auto-cadastro está desligado para esta empresa, então o link
-          responde como inexistente. Hoje não há tela para religá-lo — fale
-          com o suporte.
-        </p>
-      ) : null}
+      {/* DEF-004 — o interruptor que a SPEC-009/REQ-006 prometeu. Antes
+          desta tela, `permite_auto_cadastro` era lida em dois lugares e
+          escrita em nenhum: a empresa "decidia" sobre algo congelado no
+          default. */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--color-outline)] pt-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            {empresa.permiteAutoCadastro
+              ? "Link ligado — qualquer pessoa com ele pode se cadastrar"
+              : "Link desligado — ele responde como se não existisse"}
+          </p>
+          <p className="mt-0.5 text-sm text-[var(--color-on-surface-variant)]">
+            {empresa.permiteAutoCadastro
+              ? "Quem entra por aqui fica pendente até você aprovar. Desligue se estiver recebendo cadastro indesejado."
+              : "Novos alunos só entram por convite ou cadastrados por você."}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={salvando}
+          onClick={() => void alternar()}
+          className="inline-flex h-10 shrink-0 items-center rounded-lg border border-[var(--color-outline)] px-4 text-sm font-semibold disabled:opacity-60"
+        >
+          {salvando
+            ? "Salvando..."
+            : empresa.permiteAutoCadastro
+              ? "Desligar"
+              : "Ligar"}
+        </button>
+      </div>
     </div>
   );
 }

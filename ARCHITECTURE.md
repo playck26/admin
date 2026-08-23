@@ -63,7 +63,7 @@ replicar):
 | `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio |
 | `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager` | turmas e alocação |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
-| `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma |
+| `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum |
 
 ## 4. Estado
 
