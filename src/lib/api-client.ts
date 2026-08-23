@@ -685,3 +685,34 @@ export async function trocarSenha(dto: {
   });
   return (await res.json()) as { accessToken: string };
 }
+
+/**
+ * SPEC-014/AC-009 — histórico de presença da turma. **Só leitura**: nesta
+ * spec o gestor consulta e não corrige (LIM-002). O custo está declarado —
+ * se o professor sair do clube, uma chamada errada dele não tem quem
+ * conserte. Se doer no uso real, vira spec, não remendo.
+ */
+export interface OcorrenciaPresenca {
+  ocupacaoId: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  cancelada: boolean;
+  chamadaFeita: boolean;
+  registradoPor: string | null;
+  alunos: {
+    alunoId: string;
+    nome: string;
+    status: "presente" | "ausente" | "justificado";
+    naTurmaHoje: boolean;
+    alunoAtivo: boolean;
+  }[];
+}
+
+export async function listPresencasDaTurma(
+  turmaId: string,
+  dias = 30,
+): Promise<OcorrenciaPresenca[]> {
+  const res = await authFetch(`/classes/${turmaId}/presencas?dias=${dias}`);
+  return (await res.json()) as OcorrenciaPresenca[];
+}

@@ -118,6 +118,7 @@ Deploy: Netlify (plano Personal desde 2026-08-22, ADR-014).
 |---|---|
 | `page.tsx` fina; lógica em componente cliente | revisão |
 | Todo acesso autenticado por `authFetch` | busca por `fetch(` fora de `lib/` — **0 violações em 2026-08-22** |
+| Presença é só leitura no Admin | não existe função de escrita de presença em `api-client.ts` (LIM-002) |
 | `api-types.ts` nunca editado à mão | arquivo é gerado; diff denuncia |
 | Sem estado global sem ADR | busca por libs de estado no CI seria o gate — **hoje não existe** |
 | `typecheck`, `lint`, `test`, `build` verdes | CI (GitHub Actions) a cada push |
