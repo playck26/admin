@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TennisBallIcon } from "@/components/icons/tennis-ball-icon";
 import { ApiError, login } from "@/lib/api-client";
 import { saveAccessToken, saveAdminUser } from "@/lib/auth-storage";
 
@@ -41,17 +41,14 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-[420px] rounded-2xl bg-[var(--color-surface-container-lowest)] p-8 shadow-[var(--shadow-elevated)]">
+    <div className="min-w-0 w-full overflow-hidden rounded-[var(--radius-hero)] bg-[var(--color-surface-container-lowest)] p-7 shadow-[var(--shadow-lift)] sm:p-8">
       <div className="mb-6 flex flex-col items-center text-center">
-        <div className="mb-6 flex size-12 items-center justify-center rounded-full bg-[var(--color-primary-container)]">
-          <TennisBallIcon className="size-7 text-[var(--color-on-primary-container)]" />
+        <div className="mb-5 flex size-20 items-center justify-center rounded-xl bg-white shadow-[var(--shadow-low)] ring-1 ring-border">
+          <Image src="/playck-logo.png" alt="PlayCK" width={72} height={72} className="size-[70px] object-contain" priority />
         </div>
-        <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
-          Entrar
-        </h1>
-        <p className="mt-2 text-sm text-[var(--color-on-surface-variant)]">
-          Painel do dono da escola/arena — PlayCK
-        </p>
+        <p className="text-xs font-bold tracking-[0.15em] text-[var(--color-primary-strong)] uppercase">Gestão da arena</p>
+        <h1 className="mt-2 text-[28px] leading-tight font-extrabold text-[var(--color-on-surface)]">Bem-vindo de volta</h1>
+        <p className="mt-2 text-sm text-[var(--color-on-surface-variant)]">Entre para acompanhar a operação da sua escola.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
@@ -99,7 +96,7 @@ export function LoginForm() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={loading} className="mt-2 h-11 text-[13px] font-semibold">
+        <Button type="submit" disabled={loading} className="mt-2 h-12 text-sm font-bold">
           {loading ? "Entrando..." : "Entrar"}
         </Button>
       </form>

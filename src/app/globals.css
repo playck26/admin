@@ -2,104 +2,63 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/*
- * Tokens de design PlayCK Admin — copiados localmente deste repositório
- * (ADR-001, sem pacote compartilhado). Tema claro único no MVP (escuro é
- * gap não confirmado — DESIGN.md raiz, seção Temas).
- */
 :root {
-  /* Tokens PlayCK Admin — paleta "Performance Court Admin" (SPEC-008,
-     2026-08-08). Fonte: apps/Admin/stitch_painel_administrativo_playck/
-     performance_court_admin/DESIGN.md — YAML de tokens, que é a paleta
-     que o Stitch efetivamente renderizou nas 7 telas (tailwind.config
-     embutido idêntico nas 7). Decisão do usuário: seguir essa paleta,
-     não os hex citados na prosa do mesmo DESIGN.md (#009C3F/#00763A/
-     #00BD90/#ED0040, que são os mesmos já usados em apps/Cliente) — o
-     Admin diverge conscientemente da cor de marca do Cliente (ver
-     spec.md, "Achado: Paleta"). Hex hardcoded que aparecem nos 7
-     code.html só batendo com a prosa (ex. bg-[#00763A] em botões) foram
-     normalizados para o token nomeado mais próximo abaixo, em vez de
-     replicados 1:1 — evita reproduzir a inconsistência tela a tela da
-     própria referência. */
-  --color-primary: #006b29;
+  --color-primary: #009c3f;
+  --color-primary-strong: #00763a;
+  --color-primary-hover: #005c2d;
   --color-on-primary: #ffffff;
-  --color-primary-container: #008735;
-  --color-on-primary-container: #f7fff2;
-
-  --color-secondary: #006c51;
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: #66f8c7;
-  --color-on-secondary-container: #007054;
-
-  --color-tertiary: #ba0030;
-  --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #e9003f;
-  --color-on-tertiary-container: #fffbff;
-
-  --color-error: #ba1a1a;
-  --color-on-error: #ffffff;
-  --color-error-container: #ffdad6;
-  --color-on-error-container: #93000a;
-
-  /* Mantido do AS-IS — não faz parte da tríade primary/secondary/tertiary
-     que divergiu (achado de paleta), bate com a prosa do DESIGN.md pro
-     badge "Pendente" (pagamento avulso em Gerenciar Quadra). */
+  --color-primary-container: #cff3dc;
+  --color-on-primary-container: #00341a;
+  --color-secondary: #00bd90;
+  --color-secondary-container: #cff7ec;
+  --color-on-secondary-container: #003d2e;
+  --color-tertiary: #ed0040;
+  --color-tertiary-container: #ffd9e1;
+  --color-on-tertiary-container: #5a0018;
+  --color-error: #d00038;
+  --color-error-container: #ffd9e1;
   --color-warning: #b8862e;
   --color-success: var(--color-primary);
-
-  --color-surface: #f4fcef;
-  --color-surface-dim: #d5dcd1;
+  --color-court-dark: #11160f;
+  --color-court-clay: #b9673b;
+  --color-court-blue: #31658c;
+  --color-surface: #ffffff;
+  --color-surface-dim: #e1e5df;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #eef6ea;
-  --color-surface-container: #e9f0e4;
-  --color-surface-container-high: #e3eade;
-  --color-surface-container-highest: #dde5d9;
-  --color-surface-variant: #dde5d9;
-  --color-background: #f4fcef;
-
-  --color-on-surface: #161d16;
-  --color-on-surface-variant: #3e4a3d;
-  --color-on-background: #161d16;
-  --color-outline: #6e7b6c;
-  --color-outline-variant: #bdcab9;
-
-  /* Não é token M3 — valor próprio da referência pra borda de tabela/
-     input (DESIGN.md, seção Tables: "1px solid border-bottom #EAECE6"),
-     bem mais sutil que outline-variant. */
-  --color-border: #eaece6;
-
-  /* Aliases usados diretamente por alguns componentes de tela
-     (var(--color-text-secondary) etc.) — mantidos por compatibilidade
-     com o código existente, mapeados pro par on-surface/on-surface-variant. */
+  --color-surface-container-low: #f3f5f2;
+  --color-surface-container: #edf0eb;
+  --color-surface-container-high: #e5e9e3;
+  --color-surface-container-highest: #dce2da;
+  --color-surface-variant: #e5e9e3;
+  --color-background: #f7f8f5;
+  --color-on-surface: #12160f;
+  --color-on-surface-variant: #4e5951;
+  --color-on-background: #12160f;
+  --color-outline: #707970;
+  --color-outline-variant: #c4ccc1;
+  --color-border: #dee3db;
   --color-text-primary: var(--color-on-surface);
   --color-text-secondary: var(--color-on-surface-variant);
-
   --radius: 8px;
   --radius-hero: 16px;
   --radius-xl: 24px;
-
-  --shadow-low: 0 4px 8px rgba(18, 22, 15, 0.05);
-  --shadow-elevated: 0 8px 16px rgba(18, 22, 15, 0.12);
-
-  /* Tokens semânticos do shadcn/ui, mapeados para os tokens PlayCK Admin
-     acima — nunca uma cor nova aqui, só remapeamento. */
+  --shadow-low: 0 4px 12px rgba(18,20,15,.06);
+  --shadow-elevated: 0 10px 30px rgba(18,20,15,.12);
+  --shadow-lift: 0 18px 44px rgba(18,20,15,.16);
   --background: var(--color-background);
   --foreground: var(--color-on-background);
   --card: var(--color-surface-container-lowest);
   --card-foreground: var(--color-on-surface);
   --popover: var(--color-surface-container-lowest);
   --popover-foreground: var(--color-on-surface);
-  --primary: var(--color-primary);
-  --primary-foreground: var(--color-on-primary);
-  /* --secondary é o token que Badge variant="secondary" usa (estado
-     "Inativo") — a referência mostra esse badge em cinza neutro, não em
-     teal, então mapeia pra surface-variant, não pra --color-secondary. */
+  --primary: var(--color-primary-strong);
+  --primary-foreground: #ffffff;
   --secondary: var(--color-surface-variant);
   --secondary-foreground: var(--color-on-surface-variant);
   --muted: var(--color-surface-container);
   --muted-foreground: var(--color-on-surface-variant);
-  --accent: var(--color-surface-container-high);
-  --accent-foreground: var(--color-on-surface);
+  --accent: var(--color-secondary-container);
+  --accent-foreground: var(--color-on-secondary-container);
   --destructive: var(--color-error);
   --border: var(--color-border);
   --input: var(--color-border);
@@ -108,6 +67,8 @@
 
 @theme inline {
   --color-primary: var(--color-primary);
+  --color-primary-strong: var(--color-primary-strong);
+  --color-primary-hover: var(--color-primary-hover);
   --color-primary-container: var(--color-primary-container);
   --color-on-primary-container: var(--color-on-primary-container);
   --color-secondary-container: var(--color-secondary-container);
@@ -127,16 +88,17 @@
   --color-error: var(--color-error);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
+  --color-court-dark: var(--color-court-dark);
+  --color-court-clay: var(--color-court-clay);
+  --color-court-blue: var(--color-court-blue);
   --color-outline: var(--color-outline);
   --color-outline-variant: var(--color-outline-variant);
-
   --radius-hero: var(--radius-hero);
   --radius-xl-hero: var(--radius-xl);
   --shadow-low: var(--shadow-low);
   --shadow-elevated: var(--shadow-elevated);
-
+  --shadow-lift: var(--shadow-lift);
   --font-sans: var(--font-inter);
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -155,21 +117,25 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * .6);
+  --radius-md: calc(var(--radius) * .8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  html { @apply font-sans; }
+}
+
+@layer utilities {
+  .court-lines {
+    background:
+      linear-gradient(90deg,transparent 18%,rgba(255,255,255,.32) 18% 18.5%,transparent 18.5% 81.5%,rgba(255,255,255,.32) 81.5% 82%,transparent 82%),
+      linear-gradient(0deg,transparent 26%,rgba(255,255,255,.28) 26% 26.5%,transparent 26.5% 73.5%,rgba(255,255,255,.28) 73.5% 74%,transparent 74%),
+      linear-gradient(90deg,transparent 49.7%,rgba(255,255,255,.22) 49.7% 50.3%,transparent 50.3%);
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
 }

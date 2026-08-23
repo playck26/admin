@@ -19,10 +19,11 @@ export function FormCard({
 }) {
   return (
     <div
-      className={`w-full ${className} rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-8 shadow-[var(--shadow-low)]`}
+      className={`w-full ${className} rounded-[var(--radius-hero)] border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] md:p-8`}
     >
       <div className="mb-8">
-        <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">{title}</h1>
+        <div className="mb-3 h-1 w-12 rounded-full bg-[var(--color-secondary)]" />
+        <h1 className="text-[28px] leading-[34px] font-extrabold text-[var(--color-on-surface)]">{title}</h1>
         {description ? <div className="mt-2 text-sm text-[var(--color-on-surface-variant)]">{description}</div> : null}
       </div>
       {children}

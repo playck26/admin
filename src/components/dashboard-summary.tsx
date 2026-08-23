@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, Armchair, LayoutGrid } from "lucide-react";
+import { Users, Armchair, LayoutGrid, ArrowUpRight, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, getDashboardSummary, type DashboardSummary } from "@/lib/api-client";
@@ -46,27 +46,23 @@ export function DashboardSummaryView() {
   }, []);
 
   return (
-    <div className="flex w-full flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
-          Dashboard
-        </h1>
+    <div className="flex w-full flex-col gap-6">
+      <section className="relative overflow-hidden rounded-[var(--radius-hero)] bg-[var(--color-primary-strong)] p-6 text-white shadow-[var(--shadow-elevated)] md:p-8">
+        <span aria-hidden="true" className="court-lines pointer-events-none absolute inset-0 opacity-25" />
+        <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="text-xs font-bold tracking-[0.15em] text-[var(--color-secondary)] uppercase">Visão geral</p>
+            <h1 className="mt-2 text-3xl font-extrabold md:text-4xl">Sua arena em jogo</h1>
+            <p className="mt-2 max-w-xl text-sm text-white/70">Acompanhe alunos, turmas e uso das quadras no período selecionado.</p>
+          </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="periodo" className="text-xs text-[var(--color-on-surface-variant)]">
-            Mês
+          <Label htmlFor="periodo" className="text-xs font-bold text-white/70">
+            Período
           </Label>
-          <Input
-            id="periodo"
-            type="month"
-            value={periodo}
-            onChange={(e) => {
-              setPeriodo(e.target.value);
-              void load(e.target.value);
-            }}
-            className="w-44"
-          />
+          <div className="flex items-center gap-2 rounded-lg bg-white px-3 text-[var(--color-on-surface)]"><CalendarDays className="size-4 text-[var(--color-primary-strong)]" /><Input id="periodo" type="month" value={periodo} onChange={(e) => { setPeriodo(e.target.value); void load(e.target.value); }} className="h-10 w-40 border-0 p-0 focus-visible:ring-0" /></div>
         </div>
-      </div>
+        </div>
+      </section>
 
       {error ? (
         <p role="alert" className="text-[var(--color-error)]">
@@ -75,7 +71,7 @@ export function DashboardSummaryView() {
       ) : loading || !summary ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <KpiCard icon={Users} label="Alunos ativos" value={String(summary.alunosAtivos)} />
           <KpiCard
             icon={Armchair}
@@ -94,10 +90,11 @@ export function DashboardSummaryView() {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-6">
+      <div className="flex items-center justify-between border-t border-border pt-6"><h2 className="text-lg font-extrabold">Acesso rápido</h2><span className="text-xs font-bold text-[var(--color-on-surface-variant)]">Operação diária</span></div>
+      <nav className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className="text-sm font-medium text-primary hover:underline">
-            {link.label}
+          <Link key={link.href} href={link.href} className="flex items-center justify-between rounded-lg bg-white p-4 text-sm font-bold shadow-[var(--shadow-low)] ring-1 ring-border transition-all hover:-translate-y-0.5 hover:ring-[var(--color-primary)]">
+            {link.label}<ArrowUpRight className="size-4 text-[var(--color-primary-strong)]" />
           </Link>
         ))}
       </nav>
@@ -119,10 +116,10 @@ function KpiCard({
   progress?: number;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)]">
+    <div className="relative overflow-hidden rounded-[var(--radius)] border border-border bg-[var(--color-surface-container-lowest)] p-5 shadow-[var(--shadow-low)]">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-xs font-medium tracking-wider text-[var(--color-on-surface-variant)] uppercase">{label}</h3>
-        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--color-primary-container)] text-[var(--color-primary-strong)]">
           <Icon className="size-[18px]" />
         </div>
       </div>
