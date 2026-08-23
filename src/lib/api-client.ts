@@ -427,9 +427,20 @@ export async function getAvailability(quadraId: string, data: string): Promise<A
   return (await res.json()) as Availability;
 }
 
-export async function createBooking(dto: CreateBookingDto): Promise<Booking> {
+/**
+   * SPEC-011 — um pedido pode gerar mais de uma reserva: slots contíguos
+   * viram um bloco, separados viram reservas independentes. O agrupamento
+   * é do servidor, para o app do aluno e o painel não divergirem sobre o
+   * que é "uma reserva".
+   */
+export async function createBooking(dto: {
+  quadraId: string;
+  data: string;
+  slots: { horaInicio: string; horaFim: string }[];
+  alunoId?: string;
+}): Promise<{ reservas: Booking[] }> {
   const res = await authFetch("/bookings", { method: "POST", body: JSON.stringify(dto) });
-  return (await res.json()) as Booking;
+  return (await res.json()) as { reservas: Booking[] };
 }
 
 export async function listBookings(filters: { data?: string; status?: string } = {}): Promise<Paginated<Booking>> {

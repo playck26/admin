@@ -771,14 +771,27 @@ export interface components {
         DefinirHorariosDto: {
             dias: components["schemas"]["DiaHorarioDto"][];
         };
+        SlotDto: {
+            /** @example 09:00 */
+            horaInicio: string;
+            /** @example 10:00 */
+            horaFim: string;
+        };
         CreateBookingDto: {
             quadraId: string;
             /** @example 2026-08-20 */
             data: string;
-            /** @example 14:00 */
-            horaInicio: string;
-            /** @example 15:00 */
-            horaFim: string;
+            slots?: components["schemas"]["SlotDto"][];
+            /**
+             * @deprecated
+             * @example 14:00
+             */
+            horaInicio?: string;
+            /**
+             * @deprecated
+             * @example 15:00
+             */
+            horaFim?: string;
             alunoId?: string;
         };
         CreateClassDto: {

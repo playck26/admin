@@ -48,7 +48,9 @@ export function CourtManager({ id }: { id: string }) {
   const [availLoading, setAvailLoading] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
 
-  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  // SPEC-011: seleção múltipla, guardando os rótulos — a grade recarrega
+  // depois de cada reserva e os objetos deixam de ser os mesmos.
+  const [slotsSelecionados, setSlotsSelecionados] = useState<string[]>([]);
   const [alunoId, setAlunoId] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function CourtManager({ id }: { id: string }) {
   async function loadAvailability() {
     setAvailLoading(true);
     setAvailError(null);
-    setSelectedSlot(null);
+    setSlotsSelecionados([]);
     try {
       const [availData, bookingsData] = await Promise.all([
         getAvailability(id, data),
@@ -116,13 +118,20 @@ export function CourtManager({ id }: { id: string }) {
 
   async function handleCreateBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedSlot) return;
+    if (slotsSelecionados.length === 0) return;
     setBookingError(null);
     setBookingLoading(true);
     try {
-      const [horaInicio, horaFim] = selectedSlot.slot.split("-");
-      await createBooking({ quadraId: id, data, horaInicio, horaFim, alunoId });
-      setSelectedSlot(null);
+      await createBooking({
+        quadraId: id,
+        data,
+        slots: slotsSelecionados.map((rotulo) => {
+          const [horaInicio, horaFim] = rotulo.split("-");
+          return { horaInicio, horaFim };
+        }),
+        alunoId,
+      });
+      setSlotsSelecionados([]);
       setAlunoId("");
       await loadAvailability();
     } catch (err) {
@@ -317,9 +326,15 @@ export function CourtManager({ id }: { id: string }) {
                     <button
                       key={slot.slot}
                       type="button"
-                      onClick={() => setSelectedSlot(slot)}
+                      onClick={() =>
+                        setSlotsSelecionados((atual) =>
+                          atual.includes(slot.slot)
+                            ? atual.filter((s) => s !== slot.slot)
+                            : [...atual, slot.slot],
+                        )
+                      }
                       className={`group flex flex-col gap-2 rounded-lg border-[1.5px] p-3 text-left transition-colors ${
-                        selectedSlot?.slot === slot.slot
+                        slotsSelecionados.includes(slot.slot)
                           ? "border-primary bg-primary/10"
                           : "border-primary hover:bg-primary/5"
                       }`}
@@ -413,9 +428,28 @@ export function CourtManager({ id }: { id: string }) {
             </div>
           ) : null}
 
-          {selectedSlot ? (
+          {slotsSelecionados.length > 0 ? (
             <form onSubmit={handleCreateBooking} className="flex flex-col gap-3 rounded-lg border border-border p-4">
-              <p className="text-sm font-medium text-[var(--color-on-surface)]">Reservar {selectedSlot.slot}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-[var(--color-on-surface)]">
+                  Reservar{" "}
+                  {[...slotsSelecionados].sort().join(", ")}
+                </p>
+                {/*
+                  SPEC-011/AC-003: o total aparece antes de confirmar. O
+                  admin costuma reservar em nome do aluno e informar o
+                  valor na hora — descobrir depois de confirmar significaria
+                  corrigir por WhatsApp.
+                */}
+                {court ? (
+                  <span className="text-sm font-semibold">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(slotsSelecionados.length * Number(court.precoHora))}
+                  </span>
+                ) : null}
+              </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="aluno">Aluno</Label>
                 <Select value={alunoId} onValueChange={setAlunoId} disabled={bookingLoading}>
