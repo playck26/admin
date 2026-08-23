@@ -3,12 +3,23 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BarChart3, LayoutGrid, Armchair, Wallet } from "lucide-react";
+import {
+  Armchair,
+  BarChart3,
+  CalendarDays,
+  LayoutDashboard,
+  LayoutGrid,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { TennisBallIcon } from "@/components/icons/tennis-ball-icon";
 import { getAdminUser, type StoredAdminUser } from "@/lib/auth-storage";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  // SPEC-012: logo abaixo do Dashboard de propósito — é a tela de operação
+  // diária do gestor, a que substitui o Google Agenda que ele usava antes.
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/pessoas/alunos", label: "Alunos", icon: Users },
   { href: "/pessoas/professores", label: "Professores", icon: TennisBallIcon },
   { href: "/pessoas/niveis", label: "Níveis", icon: BarChart3 },

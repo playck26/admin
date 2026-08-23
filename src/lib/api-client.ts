@@ -577,3 +577,35 @@ export async function removerHorariosQuadra(
   const res = await authFetch(`/courts/${id}/horarios`, { method: "DELETE" });
   return (await res.json()) as ResultadoHorarios;
 }
+
+// =====================================================================
+// SPEC-012 — agenda do gestor
+// =====================================================================
+
+export interface DiaDaAgenda {
+  data: string;
+  total: number;
+  pendentes: number;
+  /** Todas as quadras fechadas neste dia (SPEC-010). */
+  fechado: boolean;
+}
+
+export interface ItemDoDia {
+  id: string;
+  quadraNome: string;
+  horaInicio: string;
+  horaFim: string;
+  origemTipo: "AVULSO" | "TURMA";
+  responsavel: string | null;
+  statusPagamento: string;
+}
+
+export async function getAgendaMes(mes: string): Promise<DiaDaAgenda[]> {
+  const res = await authFetch(`/agenda?mes=${mes}`);
+  return (await res.json()) as DiaDaAgenda[];
+}
+
+export async function getAgendaDia(data: string): Promise<ItemDoDia[]> {
+  const res = await authFetch(`/agenda/${data}`);
+  return (await res.json()) as ItemDoDia[];
+}
