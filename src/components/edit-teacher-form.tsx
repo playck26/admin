@@ -2,13 +2,21 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Ban } from "lucide-react";
+import { Ban, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormActions, FormCard } from "@/components/form-card";
 import { StatusBadge } from "@/components/status-badge";
-import { ApiError, getTeacher, updateTeacher, type Teacher } from "@/lib/api-client";
+import {
+  ApiError,
+  gerarAcessoProfessor,
+  getTeacher,
+  updateTeacher,
+  type Teacher,
+  type TeacherComSenha,
+} from "@/lib/api-client";
+import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
 
 export function EditTeacherForm({ id }: { id: string }) {
   const router = useRouter();
@@ -18,6 +26,8 @@ export function EditTeacherForm({ id }: { id: string }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [senhaNova, setSenhaNova] = useState<TeacherComSenha | null>(null);
+  const [gerandoAcesso, setGerandoAcesso] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +90,39 @@ export function EditTeacherForm({ id }: { id: string }) {
     return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
   }
 
+  // A senha existe em texto claro só nesta resposta: a tela para aqui até
+  // alguém dizer que já copiou. Navegar sozinho perderia a senha.
+  if (senhaNova) {
+    return (
+      <SenhaTemporariaCard
+        titulo="Acesso do professor gerado"
+        papel="professor"
+        nomeAluno={senhaNova.nome}
+        senha={senhaNova.senhaTemporaria}
+        telefone={senhaNova.telefone}
+        onConcluir={() => {
+          setSenhaNova(null);
+          void getTeacher(id).then(setTeacher);
+        }}
+        concluirLabel="Voltar para a ficha"
+      />
+    );
+  }
+
+  async function handleGerarAcesso() {
+    setError(null);
+    setGerandoAcesso(true);
+    try {
+      setSenhaNova(await gerarAcessoProfessor(id));
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Não foi possível gerar o acesso.",
+      );
+    } finally {
+      setGerandoAcesso(false);
+    }
+  }
+
   return (
     <FormCard
       title="Editar professor"
@@ -132,6 +175,32 @@ export function EditTeacherForm({ id }: { id: string }) {
           onCancel={() => router.push("/pessoas/professores")}
         />
       </form>
+
+      <hr className="my-6 border-border" />
+
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={gerandoAcesso || !teacher.email}
+          onClick={() => void handleGerarAcesso()}
+          className="h-11 gap-2 border-[1.5px] border-primary px-6 text-[13px] font-semibold text-primary hover:bg-primary/5"
+        >
+          <KeyRound className="size-4" />
+          {gerandoAcesso
+            ? "Gerando..."
+            : teacher.usuarioId
+              ? "Gerar nova senha temporária"
+              : "Gerar acesso do professor"}
+        </Button>
+        <p className="text-xs text-[var(--color-on-surface-variant)]">
+          {!teacher.email
+            ? "Preencha o e-mail acima e salve: ele é o login do professor."
+            : teacher.usuarioId
+              ? "O professor já tem acesso. Gerar outra senha invalida a anterior e encerra as sessões abertas."
+              : "Cria a conta do professor com uma senha temporária de 7 dias. Ele troca a senha no primeiro acesso e enxerga apenas as próprias turmas."}
+        </p>
+      </div>
 
       <hr className="my-6 border-border" />
 

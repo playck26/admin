@@ -10,6 +10,13 @@ interface Props {
   telefone?: string | null;
   onConcluir: () => void;
   concluirLabel?: string;
+  /**
+   * SPEC-013: o mesmo card serve aluno e professor. O texto muda, o
+   * mecanismo nao — senha temporaria, 7 dias, troca no primeiro acesso.
+   * Um segundo card seria uma segunda superficie para manter e para errar.
+   */
+  titulo?: string;
+  papel?: string;
 }
 
 /**
@@ -26,6 +33,8 @@ export function SenhaTemporariaCard({
   telefone,
   onConcluir,
   concluirLabel = "Concluir",
+  titulo = "Aluno criado",
+  papel = "aluno",
 }: Props) {
   const [copiado, setCopiado] = useState(false);
 
@@ -49,10 +58,10 @@ export function SenhaTemporariaCard({
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-[var(--color-outline)] bg-[var(--color-surface)] p-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Aluno criado</h2>
+        <h2 className="text-lg font-semibold">{titulo}</h2>
         <p className="text-sm text-[var(--color-on-surface-variant)]">
-          Envie esta senha para {nomeAluno}. No primeiro acesso, o aluno cria a
-          própria senha.
+          Envie esta senha para {nomeAluno}. No primeiro acesso, o {papel} cria
+          a própria senha.
         </p>
       </div>
 
@@ -91,7 +100,7 @@ export function SenhaTemporariaCard({
       <p className="rounded-lg bg-[var(--color-surface-variant)] p-3 text-sm">
         <strong>Esta senha aparece só agora.</strong> Ela vale por 7 dias e não
         pode ser consultada depois — se precisar, gere uma nova na ficha do
-        aluno.
+        {" "}{papel}.
       </p>
 
       <div className="flex justify-end">

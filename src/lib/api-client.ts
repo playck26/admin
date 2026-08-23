@@ -59,6 +59,8 @@ export interface Teacher {
   telefone: string | null;
   email: string | null;
   status: "ativo" | "inativo";
+  // SPEC-013: nulo é o estado normal — professor cadastrado sem acesso.
+  usuarioId?: string | null;
   createdAt: string;
 }
 
@@ -400,6 +402,18 @@ export async function createTeacher(dto: CreateTeacherDto): Promise<Teacher> {
 export async function getTeacher(id: string): Promise<Teacher> {
   const res = await authFetch(`/teachers/${id}`);
   return (await res.json()) as Teacher;
+}
+
+export type TeacherComSenha = Teacher & { senhaTemporaria: string };
+
+/**
+ * SPEC-013 — cria ou rotaciona o acesso do professor. A senha volta em
+ * texto claro **uma única vez**, nesta resposta; nenhuma outra rota a
+ * devolve. Por isso quem chama tem de mostrá-la antes de navegar.
+ */
+export async function gerarAcessoProfessor(id: string): Promise<TeacherComSenha> {
+  const res = await authFetch(`/teachers/${id}/acesso`, { method: "POST" });
+  return (await res.json()) as TeacherComSenha;
 }
 
 export async function updateTeacher(id: string, dto: UpdateTeacherDto): Promise<Teacher> {
