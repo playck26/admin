@@ -594,6 +594,24 @@ export interface HorariosEmpresa {
   quadrasComHorarioProprio: { quadraId: string; dias: DiaHorario[] }[];
 }
 
+/**
+ * DEF-003 — identidade da própria empresa, para o gestor divulgar o link de
+ * auto-cadastro. O `slug` existia desde a SPEC-009 e não chegava a nenhuma
+ * tela.
+ */
+export interface MinhaEmpresa {
+  nome: string;
+  slug: string;
+  logoUrl: string | null;
+  status: string;
+  permiteAutoCadastro: boolean;
+}
+
+export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
+  const res = await authFetch("/me/company");
+  return (await res.json()) as MinhaEmpresa;
+}
+
 export async function getHorariosEmpresa(): Promise<HorariosEmpresa> {
   const res = await authFetch("/company-settings/horarios");
   return (await res.json()) as HorariosEmpresa;
