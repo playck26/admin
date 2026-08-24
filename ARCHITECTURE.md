@@ -55,15 +55,20 @@ replicar):
 | Rota | Componente | Papel |
 |---|---|---|
 | `/login` | `login-form` | entrada |
-| `/dashboard` | `dashboard-summary` | 3 KPIs do período |
+| `/dashboard` | `dashboard-summary` + `evasao-card` | 3 KPIs do período e, desde a **SPEC-015**, o cartão "alunos em risco" — a única tela do Admin que puxa para uma ação, com cada item clicável para o aluno **e** para a turma |
 | `/agenda` | `agenda-view` + `agenda-dia-dialog` | mês inteiro; clique no dia abre o detalhe operável |
-| `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form` | alunos, fila de aprovação, convite, senha temporária |
+| `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
 | `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio |
-| `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager` | turmas e alocação |
+| `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum |
+
+**`frequenciaPct` chega `null` do servidor em dois casos** — sem registro no
+período, ou cobertura de chamada abaixo do piso — e a tela mostra `—` com
+explicação, **nunca `0%`**. Zero por cento acusaria o aluno por chamada que
+o professor não lançou.
 
 ## 4. Estado
 

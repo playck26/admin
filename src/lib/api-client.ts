@@ -749,3 +749,114 @@ export async function listPresencasDaTurma(
   const res = await authFetch(`/classes/${turmaId}/presencas?dias=${dias}`);
   return (await res.json()) as OcorrenciaPresenca[];
 }
+
+// ---------------------------------------------------------------------
+// SPEC-015 — frequência (TASK-001, 002, 003)
+//
+// As formas abaixo são escritas à mão porque o Nest não gera schema para
+// retorno de rota sem DTO de resposta, e estes três são leitura pura. O
+// contrato de verdade está em `openapi.json`; se divergirem, quem manda é
+// ele.
+// ---------------------------------------------------------------------
+
+/**
+ * AC-013 — três números, não um. `lancadas` diz que alguém salvou algo;
+ * `completas`, que a chamada cobre a turma inteira. Só a segunda sustenta
+ * percentual, e é ela que decide `confianca` (AC-014).
+ */
+export interface CoberturaFrequencia {
+  aconteceram: number;
+  lancadas: number;
+  completas: number;
+  pctCompletas: number | null;
+  confianca: "alta" | "baixa";
+  /** AC-016 — o número sozinho engana; o texto explica o porquê. */
+  aviso: string | null;
+}
+
+export interface LinhaFrequencia {
+  alunoId: string;
+  nome: string;
+  /** `null` = sem registro no período, OU confiança baixa. Nunca 0% por falta de dado. */
+  frequenciaPct: number | null;
+  confianca: "alta" | "baixa";
+  base: number;
+  presente: number;
+  ausente: number;
+  justificado: number;
+  faltasSeguidas: number;
+  faltasSeguidasComposicao: { ausente: number; justificado: number };
+  naTurmaHoje: boolean;
+  alunoAtivo: boolean;
+  vinculo: string;
+}
+
+export interface FrequenciaDaTurma {
+  turmaId: string;
+  turmaNome: string;
+  janelaDias: number;
+  cobertura: CoberturaFrequencia;
+  alunos: LinhaFrequencia[];
+}
+
+export interface FrequenciaDoAluno {
+  alunoId: string;
+  nome: string;
+  alunoAtivo: boolean;
+  vinculo: string;
+  janelaDias: number;
+  agregado: Omit<LinhaFrequencia, "alunoId" | "nome" | "naTurmaHoje" | "alunoAtivo" | "vinculo">;
+  porTurma: (Omit<LinhaFrequencia, "alunoId" | "nome" | "alunoAtivo" | "vinculo"> & {
+    turmaId: string;
+    turmaNome: string | null;
+    cobertura: CoberturaFrequencia;
+  })[];
+  ocorrencias: {
+    turmaId: string;
+    turmaNome: string | null;
+    ocupacaoId: string;
+    data: string;
+    cancelada: boolean;
+    status: "presente" | "ausente" | "justificado";
+  }[];
+}
+
+export interface ItemEvasao {
+  alunoId: string;
+  nome: string;
+  turmaId: string;
+  turmaNome: string | null;
+  motivo: "faltas_seguidas" | "frequencia_baixa";
+  frequenciaPct: number | null;
+  base: number;
+  faltasSeguidas: number;
+  faltasSeguidasComposicao: { ausente: number; justificado: number };
+  confianca: "alta" | "baixa";
+}
+
+export interface ListaDeEvasao {
+  total: number;
+  janelaDias: number;
+  alunos: ItemEvasao[];
+}
+
+export async function getFrequenciaDaTurma(
+  turmaId: string,
+  dias = 30,
+): Promise<FrequenciaDaTurma> {
+  const res = await authFetch(`/classes/${turmaId}/frequencia?dias=${dias}`);
+  return (await res.json()) as FrequenciaDaTurma;
+}
+
+export async function getFrequenciaDoAluno(
+  alunoId: string,
+  dias = 30,
+): Promise<FrequenciaDoAluno> {
+  const res = await authFetch(`/students/${alunoId}/frequencia?dias=${dias}`);
+  return (await res.json()) as FrequenciaDoAluno;
+}
+
+export async function getEvasao(dias = 30): Promise<ListaDeEvasao> {
+  const res = await authFetch(`/dashboard/evasao?dias=${dias}`);
+  return (await res.json()) as ListaDeEvasao;
+}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { EvasaoCard } from "@/components/evasao-card";
 import Link from "next/link";
-import { Users, Armchair, LayoutGrid, ArrowUpRight, CalendarDays } from "lucide-react";
+import { Users, Armchair, ArrowUpRight, CalendarDays } from "lucide-react";
+import { TennisCourtIcon } from "@/components/icons/tennis-court-icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, getDashboardSummary, type DashboardSummary } from "@/lib/api-client";
@@ -81,7 +83,7 @@ export function DashboardSummaryView() {
             progress={summary.ocupacaoTurmasPct}
           />
           <KpiCard
-            icon={LayoutGrid}
+            icon={TennisCourtIcon}
             label="Ocupação de quadras"
             value={`${summary.ocupacaoQuadrasPct}%`}
             description="Horas ocupadas (turma + avulso) no período"
@@ -89,6 +91,12 @@ export function DashboardSummaryView() {
           />
         </div>
       )}
+
+      {/* SPEC-015/TASK-004 — o cartão fica ACIMA do acesso rápido e abaixo
+          dos KPIs: os números do topo dizem como o negócio está; este diz
+          quem precisa de você hoje, que é a única coisa da tela que pede
+          ação. Enterrá-lo no fim faria o alerta existir sem ser visto. */}
+      <EvasaoCard />
 
       <div className="flex items-center justify-between border-t border-border pt-6"><h2 className="text-lg font-extrabold">Acesso rápido</h2><span className="text-xs font-bold text-[var(--color-on-surface-variant)]">Operação diária</span></div>
       <nav className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

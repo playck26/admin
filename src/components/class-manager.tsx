@@ -26,7 +26,7 @@ import {
   type Teacher,
 } from "@/lib/api-client";
 import { DIAS_SEMANA } from "@/lib/dias-semana";
-import { PresencasTurma } from "@/components/presencas-turma";
+import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
 
 const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
@@ -341,7 +341,7 @@ export function ClassManager({ id }: { id: string }) {
 
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-5">
           <div>
-            <PresencasTurma turmaId={id} />
+            <TurmaChamadaAbas turmaId={id} />
 
             <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">Alunos alocados</h2>
             <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">
