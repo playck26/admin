@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { EvasaoCard } from "@/components/evasao-card";
 import Link from "next/link";
 import { Users, Armchair, ArrowUpRight, CalendarDays } from "lucide-react";
@@ -117,7 +117,12 @@ function KpiCard({
   description,
   progress,
 }: {
-  icon: typeof Users;
+  // `typeof Users` amarra o tipo a um ícone da lucide (um
+  // `ForwardRefExoticComponent`), e os ícones próprios do projeto são
+  // função simples — foi o que quebrou o CI ao trocar o ícone de quadra.
+  // O que o componente realmente precisa é de algo que aceite props de
+  // SVG, e é isso que o tipo passa a dizer.
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
   value: string;
   description?: string;
