@@ -296,6 +296,29 @@ async function authFetch(path: string, init: RequestInit = {}): Promise<Response
     throw await parseError(res, "Esta conta está inativa. Procure o administrador.");
   }
 
+  // DEF-008 (2026-08-24) — 403 puro, sem código conhecido, quase sempre é
+  // **claim velha no token**, não falta de permissão de verdade.
+  //
+  // O servidor autoriza pelo TOKEN (`role` e `companyId` das claims); o app
+  // navega e filtra pelo `/auth/me`, que lê do BANCO. Quando o papel ou a
+  // empresa de alguém muda, os dois discordam até o próximo login — e como
+  // 403 nunca disparava a renovação, a divergência **não tinha como se
+  // resolver sozinha**.
+  //
+  // No Admin o sintoma foi pior que um erro: `companyId` velho no token faz
+  // toda consulta ser escopada para a empresa **errada**, e a tela mostra
+  // zero aluno, zero quadra, zero turma — **sem erro nenhum no console**.
+  // Dado que some sem mensagem é pior que erro na cara.
+  //
+  // A renovação relê o usuário do banco e reemite o token com as claims
+  // atuais. Se depois disso ainda for 403, aí é permissão de verdade.
+  if (res.status === 403) {
+    const renovou = await renovarSessao();
+    if (renovou) {
+      res = await requisicaoAutenticada(path, init);
+    }
+  }
+
   if (res.status === 401) {
     const renovou = await renovarSessao();
     if (!renovou) {
