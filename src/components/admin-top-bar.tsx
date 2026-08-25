@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, Settings, User } from "lucide-react";
+import { Bell, LogOut, Settings } from "lucide-react";
 import { ADMIN_NAV_ITEMS, adminItemIsActive } from "@/components/admin-navigation";
 import { clearAccessToken } from "@/lib/auth-storage";
 
@@ -47,17 +47,6 @@ export function AdminTopBar() {
         className="flex size-10 items-center justify-center rounded-lg text-[var(--color-on-surface-variant)] transition-colors hover:bg-accent hover:text-primary"
       >
         <Settings className="size-5" />
-      </Link>
-      {/* SPEC-018/TASK-003 — o acesso ao perfil. Fica aqui, junto de
-          Configurações e Sair, e não na `ADMIN_NAV_ITEMS`: aquela lista é
-          de áreas de trabalho do painel, e a barra do topo já é o canto de
-          "a minha conta". */}
-      <Link
-        href="/perfil"
-        aria-label="Seu perfil"
-        className="flex size-10 items-center justify-center rounded-lg text-[var(--color-on-surface-variant)] transition-colors hover:bg-accent hover:text-primary"
-      >
-        <User className="size-5" />
       </Link>
         <button type="button" aria-label="Sair" onClick={logout} className="flex size-10 items-center justify-center rounded-lg text-[var(--color-on-surface-variant)] transition-colors hover:bg-[var(--color-error-container)] hover:text-[var(--color-error)]">
           <LogOut className="size-5" />
