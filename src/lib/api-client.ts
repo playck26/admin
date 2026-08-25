@@ -631,6 +631,8 @@ export interface HorariosEmpresa {
  * tela.
  */
 export interface MinhaEmpresa {
+  /** SPEC-018/TASK-006: o painel precisa dele para `PUT /companies/:id/logo`. */
+  id: string;
   nome: string;
   slug: string;
   logoUrl: string | null;
@@ -641,6 +643,70 @@ export interface MinhaEmpresa {
 export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
   const res = await authFetch("/me/company");
   return (await res.json()) as MinhaEmpresa;
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-018/TASK-006 — a logo da empresa
+// ---------------------------------------------------------------------------
+
+export interface LogoResolvida {
+  /** Já resolvida pelo servidor: upload quando existe, `logo_url` senão. */
+  logoUrl: string | null;
+}
+
+/**
+ * **A sidebar precisa saber que a logo mudou, e ela não é filha da tela de
+ * configurações.** Sem isto, o gestor sobe a logo, vê a nova no cartão, e a
+ * do canto continua a antiga até ele recarregar a página — parece defeito.
+ *
+ * Um evento de `window` em vez de estado global: este projeto não tem Redux,
+ * Zustand nem React Query (a planta declara isso), e um store inteiro por
+ * causa de um avatar seria a decisão errada. Quem quiser ouvir, ouve.
+ */
+export const EVENTO_LOGO_TROCADA = "playck:logo-trocada";
+
+function anunciarLogo(logo: LogoResolvida): LogoResolvida {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<LogoResolvida>(EVENTO_LOGO_TROCADA, { detail: logo }),
+    );
+  }
+  return logo;
+}
+
+/**
+ * O `arquivo` já vem **comprimido** por `comprimir-imagem.ts`. Subir o
+ * original seria 413 — o servidor recusa acima de 2 MB.
+ */
+export async function enviarLogo(
+  companyId: string,
+  arquivo: File,
+): Promise<LogoResolvida> {
+  const corpo = new FormData();
+  // Nome do campo é contrato (CON-017.1); errar aqui dá 400, não 422.
+  corpo.append("arquivo", arquivo);
+  const res = await authFetch(`/companies/${companyId}/logo`, {
+    method: "PUT",
+    body: corpo,
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível enviar a logo");
+  }
+  return anunciarLogo((await res.json()) as LogoResolvida);
+}
+
+/**
+ * Devolve a logo **resolvida**, não vazio: se a empresa tinha `logo_url`
+ * externa, ela volta a valer (AC-013), e a tela precisa saber disso.
+ */
+export async function removerLogo(companyId: string): Promise<LogoResolvida> {
+  const res = await authFetch(`/companies/${companyId}/logo`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível remover a logo");
+  }
+  return anunciarLogo((await res.json()) as LogoResolvida);
 }
 
 /**

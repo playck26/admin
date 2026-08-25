@@ -13,6 +13,7 @@ import {
   HorariosEditor,
 } from "@/components/horarios-editor";
 import { LinkCadastroCard } from "@/components/link-cadastro-card";
+import { LogoDaEmpresaCard } from "@/components/logo-da-empresa-card";
 
 /**
  * SPEC-010/REQ-001 — horário padrão da empresa.
@@ -64,9 +65,15 @@ export function ConfiguracoesView() {
           Configurações
         </h1>
         <p className="mt-1 text-[var(--color-on-surface-variant)]">
-          Horário de funcionamento padrão e link de cadastro de alunos.
+          Logo da arena, horário de funcionamento padrão e link de cadastro
+          de alunos.
         </p>
       </div>
+
+      {/* SPEC-018/TASK-006 — primeiro cartão de propósito: é o único item
+          desta tela que muda o que o ALUNO vê, e o que aparece na página
+          pública de cadastro. */}
+      <LogoDaEmpresaCard />
 
       <LinkCadastroCard />
 

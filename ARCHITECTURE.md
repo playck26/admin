@@ -190,6 +190,27 @@ diferentes, prefixos de chave diferentes, regimes de acesso diferentes.
 correção do `Content-Type` em `authFetch` também — `FormData` nunca leva
 cabeçalho nosso, porque quem conhece o `boundary` é o navegador.
 
+### A marca da arena, e onde ela se sobe (SPEC-018/TASK-006)
+
+`logo-da-empresa.tsx` desenha; `logo-da-empresa-card.tsx` sobe. O cartão
+mora em **`/configuracoes`**, primeiro na tela de propósito: é o único item
+daquela página que muda o que o **aluno** vê, e o que aparece na página
+pública de cadastro.
+
+A logo substituiu a marca do PlayCK na **sidebar**, junto com o nome da
+arena.
+
+**A sidebar não é filha de Configurações**, e sem isso o gestor veria a logo
+nova no cartão e a antiga no canto até recarregar — o que parece defeito, não
+cache. A costura é um **evento de `window`** (`EVENTO_LOGO_TROCADA`),
+despachado pelo `api-client` depois de subir ou remover: este projeto não tem
+Redux, Zustand nem React Query, e um store inteiro por causa de um avatar
+seria a decisão errada.
+
+**A tela diz que a logo é pública antes do envio.** É a diferença que mais
+importa em relação à foto de perfil: aquela é privada e a URL expira; esta
+vai para o CDN e qualquer pessoa com o link abre.
+
 ## 10. Gaps e pontos de atenção
 
 | # | Gap | Severidade |
