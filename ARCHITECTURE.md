@@ -63,6 +63,7 @@ replicar):
 | `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio |
 | `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
+| `/perfil` | `perfil-view` + `foto-de-perfil` | **SPEC-018/TASK-003** — a foto do gestor. Alcançável pela barra do topo, junto de Configurações e Sair |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum |
 
 **`frequenciaPct` chega `null` do servidor em dois casos** — sem registro no
@@ -166,6 +167,26 @@ escolhido), a leitura de chunk, e **os argumentos exatos** de
 `getContext`/`createImageBitmap`/`toBlob`. **Não provado, e é lacuna real:**
 que um Chrome em tela Display P3 de fato não grava `ICCP` — isso é prova de
 aparelho, e a defesa contra ela estar errada é a inspeção do resultado.
+
+### Foto de perfil (SPEC-018/TASK-003)
+
+`/perfil` → `perfil-view.tsx` → `foto-de-perfil.tsx` → `comprimir-imagem.ts`
+→ `api-client.ts` (`getMinhaFoto`/`enviarMinhaFoto`/`removerMinhaFoto`).
+**A compressão acontece antes do envio, e a ordem é o ponto:** subir o
+original de um celular (≈4 MB) daria 413 depois de a pessoa esperar o upload
+inteiro por uma rede ruim.
+
+**A URL da foto é assinada e expira**, e por isso vem de um `GET /me/foto`
+próprio em vez de dentro de `/auth/me`: embutida na resposta de login,
+ficaria velha numa sessão longa e a tela mostraria imagem quebrada sem ter
+como se recuperar. Pela mesma razão a `<img>` é crua, e não `next/image` —
+não há como otimizar no build uma URL que muda a cada leitura.
+
+**`authFetch` deixou de mandar `Content-Type` quando o corpo é `FormData`.**
+Quem monta o cabeçalho de multipart é o navegador, porque só ele conhece o
+`boundary`. Com `application/json` junto, o campo `arquivo` nunca chegaria ao
+servidor — e o erro apareceria como "envie o arquivo no campo arquivo",
+mandando quem investigasse para o lado errado.
 
 ## 10. Gaps e pontos de atenção
 
