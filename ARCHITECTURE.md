@@ -147,7 +147,7 @@ decisão, e mudança numa é mudança na outra.
 sRGB de 456 bytes, e o validador do `back` é allowlist — recusa. Sem
 tratamento, **nenhuma imagem sobe**.
 
-**O que este parágrafo dizia antes estava errado, e custou o DEF-007.** Dizia
+**O que este parágrafo dizia antes estava errado, e custou o DEF-010.** Dizia
 que era caso de aparelho **Display P3** e que forçar `sRGB` no canvas
 evitaria o chunk. Medido em Chrome 151 headless, sem tela nenhuma:
 `colorSpace: 'srgb'`, contexto sem `colorSpace`, `colorSpaceConversion:
@@ -186,7 +186,7 @@ escolhido), a leitura de chunk, e **os argumentos exatos** de
 (remoção do chunk, queda do bit `ICC`, tamanho do RIFF recalculado, padding
 de payload ímpar, idempotência e totalidade).
 
-**A lacuna que este parágrafo declarava antes era o DEF-007.** Dizia: "não
+**A lacuna que este parágrafo declarava antes era o DEF-010.** Dizia: "não
 provado, e é lacuna real: que um Chrome em tela Display P3 de fato não grava
 `ICCP`". Ele grava — sempre, em qualquer tela. A lacuna foi fechada por
 medição em Chrome 151 headless, e o conserto foi conferido ponta a ponta
