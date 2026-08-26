@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { FotoDoProfessor } from "@/components/foto-do-professor";
 import { useRouter } from "next/navigation";
 import { Ban, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,19 @@ export function EditTeacherForm({ id }: { id: string }) {
       title="Editar professor"
       description={<StatusBadge ativo={teacher.status === "ativo"} />}
     >
+      {/*
+        SPEC-018/TASK-004 — a foto vem antes dos campos porque é a
+        identificação da ficha, não mais um dado dela. E fica FORA do
+        `form`: ela sobe sozinha, na hora, e não tem nada a ver com o
+        "Salvar" dos campos de texto — dentro do form, o botão de escolher
+        arquivo herdaria o `submit` e o Enter salvaria a ficha inteira.
+      */}
+      <FotoDoProfessor
+        professorId={id}
+        fotoInicial={teacher.fotoUrl}
+        temConta={Boolean(teacher.usuarioId)}
+      />
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <div className="flex flex-col gap-2">
           <Label htmlFor="nome">Nome</Label>

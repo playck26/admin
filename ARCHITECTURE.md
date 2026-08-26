@@ -241,6 +241,29 @@ seria a decisão errada.
 importa em relação à foto de perfil: aquela é privada e a URL expira; esta
 vai para o CDN e qualquer pessoa com o link abre.
 
+### A foto do professor, e a única tela que avisa "deu certo e não mudou" (SPEC-018/TASK-004)
+
+`foto-do-professor.tsx`, dentro de `edit-teacher-form`, em
+`/pessoas/professores/[id]`. **Fica FORA do `<form>`**: sobe sozinha, na
+hora, e não tem relação com o "Salvar" dos campos de texto — dentro do form,
+o botão de escolher arquivo herdaria o `submit`.
+
+**Esta é a única tela do produto onde um upload pode dar certo e a imagem não
+mudar.** A INV-034 diz que quem tem conta manda na própria foto: se o
+professor já subiu a dele, a que o gestor mandar fica gravada na ficha e não
+aparece. Sem tratamento isso lê como falha silenciosa — o gestor tenta de
+novo, com outro arquivo, e continua "não funcionando".
+
+O componente compara a URL que voltou com a que já estava na tela; se forem
+iguais **e** o professor tiver conta, mostra um `role="status"` explicando
+que a foto foi salva e que a do perfil dele tem preferência. E antes de
+qualquer upload, quando há conta, avisa que ela pode ser substituída.
+
+**A foto é PRIVADA**, ao contrário da logo e da imagem de quadra — URL
+assinada, que expira. A tela diz isso, porque é a diferença que decide o que
+a pessoa se sente à vontade para subir. Também é por isso que não há
+`next/image`: URL que muda a cada leitura não tem o que cachear.
+
 ### A imagem da quadra, e a caixa que não é enfeite (SPEC-018/TASK-005)
 
 `imagem-da-quadra-section.tsx`, dentro de `court-manager`, em

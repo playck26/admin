@@ -127,11 +127,24 @@ describe("o envio", () => {
 
     await waitFor(() => expect(enviarImagemDeQuadra).toHaveBeenCalled());
     expect(comprimirImagem).toHaveBeenCalledWith(ORIGINAL);
-    expect(enviarImagemDeQuadra).toHaveBeenCalledWith(
-      QUADRA,
-      COMPRIMIDA,
-      true,
-    );
+
+    // **`toHaveBeenCalledWith(COMPRIMIDA)` NÃO prova isto**, e a descoberta
+    // custou uma sabotagem que passou (2026-08-26): `File` e `Blob` não têm
+    // propriedade própria enumerável — `name`, `size` e `type` são getters
+    // do protótipo. A comparação estrutural do vitest vê `{}` contra `{}`, e
+    // considera **qualquer** File igual a qualquer outro.
+    //
+    // A identidade (`toBe`) é o que separa: só passa se for o mesmo objeto.
+    const [id, enviado, confirmou] = enviarImagemDeQuadra.mock.calls[0] as [
+      string,
+      File,
+      boolean,
+    ];
+    expect(id).toBe(QUADRA);
+    expect(enviado).toBe(COMPRIMIDA);
+    expect(enviado).not.toBe(ORIGINAL);
+    expect(enviado.name).toBe("quadra.webp");
+    expect(confirmou).toBe(true);
   });
 
   it("a confirmação vai como `true` no terceiro argumento", async () => {

@@ -62,6 +62,14 @@ export interface Teacher {
   // SPEC-013: nulo é o estado normal — professor cadastrado sem acesso.
   usuarioId?: string | null;
   createdAt: string;
+  /**
+   * SPEC-018/TASK-004 — URL **assinada** (a foto de professor é privada) e já
+   * resolvida pela INV-034: se a pessoa tem conta e foto própria, esta é a
+   * dela, não a que o gestor subiu na ficha.
+   *
+   * A chave crua nunca chega aqui (INV-037).
+   */
+  fotoUrl: string | null;
 }
 
 export interface Level {
@@ -709,6 +717,54 @@ export async function removerLogo(companyId: string): Promise<LogoResolvida> {
     throw await parseError(res, "Não foi possível remover a logo");
   }
   return anunciarLogo((await res.json()) as LogoResolvida);
+}
+
+/** SPEC-018/TASK-004 — o que o `PUT`/`DELETE` da foto devolve. */
+export interface FotoDeProfessorResolvida {
+  fotoUrl: string | null;
+}
+
+/**
+ * SPEC-018/TASK-004 — sobe a foto do professor pela ficha.
+ *
+ * **O que volta pode não ser o que subiu**, e isso é a INV-034 funcionando:
+ * se o professor tem conta e já subiu a própria foto, a dele continua sendo
+ * a exibida. Por isso a resposta é usada, e não descartada — a tela precisa
+ * saber o que vai mostrar para não sugerir que o upload falhou.
+ */
+export async function enviarFotoDeProfessor(
+  professorId: string,
+  arquivo: File,
+): Promise<FotoDeProfessorResolvida> {
+  const corpo = new FormData();
+  // Nome do campo é contrato (CON-017.1); errar aqui dá 400, não 422.
+  corpo.append("arquivo", arquivo);
+  const res = await authFetch(`/teachers/${professorId}/foto`, {
+    method: "PUT",
+    body: corpo,
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível enviar a foto do professor");
+  }
+  return (await res.json()) as FotoDeProfessorResolvida;
+}
+
+/**
+ * AC-010 — apagar sem substituir.
+ *
+ * **Pode não deixar a tela vazia:** apaga só `professores.foto_key`. Se a
+ * pessoa tem foto própria, ela passa a aparecer.
+ */
+export async function removerFotoDeProfessor(
+  professorId: string,
+): Promise<FotoDeProfessorResolvida> {
+  const res = await authFetch(`/teachers/${professorId}/foto`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível remover a foto do professor");
+  }
+  return (await res.json()) as FotoDeProfessorResolvida;
 }
 
 /** SPEC-018/TASK-005 — o que o `PUT`/`DELETE` da imagem devolve. */
