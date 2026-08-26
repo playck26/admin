@@ -87,6 +87,8 @@ export interface Court {
   precoHora: number;
   status: "ativa" | "inativa";
   createdAt: string;
+  /** SPEC-018/TASK-005 — URL de CDN, sem assinatura (AC-002). A chave crua nunca sai do servidor (INV-037). */
+  imagemUrl: string | null;
 }
 
 export interface AvailabilitySlot {
@@ -707,6 +709,60 @@ export async function removerLogo(companyId: string): Promise<LogoResolvida> {
     throw await parseError(res, "Não foi possível remover a logo");
   }
   return anunciarLogo((await res.json()) as LogoResolvida);
+}
+
+/** SPEC-018/TASK-005 — o que o `PUT`/`DELETE` da imagem devolve. */
+export interface ImagemDeQuadraResolvida {
+  imagemUrl: string | null;
+}
+
+/**
+ * SPEC-018/TASK-005 — sobe a imagem da quadra.
+ *
+ * **O `semPessoasIdentificaveis` vai no FormData, e vai como a string
+ * `"true"`.** Não é descuido de tipagem: multipart não transporta boolean,
+ * e o servidor recusa qualquer coisa que não seja exatamente `"true"` —
+ * inclusive `"false"`, que um `String(false)` produziria e que
+ * `Boolean("false")` aceitaria do lado de lá. Por isso o parâmetro aqui é
+ * um boolean e a conversão é explícita: quem chamar com `false` manda um
+ * pedido que o servidor **vai** recusar, que é o comportamento certo.
+ *
+ * O campo vai no corpo e não na query string por decisão da spec: afirmação
+ * não viaja em URL, que fica em log e histórico de navegador.
+ */
+export async function enviarImagemDeQuadra(
+  quadraId: string,
+  arquivo: File,
+  semPessoasIdentificaveis: boolean,
+): Promise<ImagemDeQuadraResolvida> {
+  const corpo = new FormData();
+  // Nome do campo é contrato (CON-017.1); errar aqui dá 400, não 422.
+  corpo.append("arquivo", arquivo);
+  corpo.append(
+    "semPessoasIdentificaveis",
+    semPessoasIdentificaveis ? "true" : "false",
+  );
+  const res = await authFetch(`/courts/${quadraId}/imagem`, {
+    method: "PUT",
+    body: corpo,
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível enviar a imagem da quadra");
+  }
+  return (await res.json()) as ImagemDeQuadraResolvida;
+}
+
+/** AC-010 — apagar sem substituir. */
+export async function removerImagemDeQuadra(
+  quadraId: string,
+): Promise<ImagemDeQuadraResolvida> {
+  const res = await authFetch(`/courts/${quadraId}/imagem`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível remover a imagem da quadra");
+  }
+  return (await res.json()) as ImagemDeQuadraResolvida;
 }
 
 /**

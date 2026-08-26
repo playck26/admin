@@ -60,7 +60,7 @@ replicar):
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
-| `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio |
+| `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
 | `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum |
@@ -240,6 +240,34 @@ seria a decisão errada.
 **A tela diz que a logo é pública antes do envio.** É a diferença que mais
 importa em relação à foto de perfil: aquela é privada e a URL expira; esta
 vai para o CDN e qualquer pessoa com o link abre.
+
+### A imagem da quadra, e a caixa que não é enfeite (SPEC-018/TASK-005)
+
+`imagem-da-quadra-section.tsx`, dentro de `court-manager`, em
+`/quadras/[id]`. Sobe pelo mesmo `comprimir-imagem.ts` da logo.
+
+**O que ela tem a mais é a confirmação (AC-007..009), e cada peça responde
+por um motivo diferente:**
+
+| Peça | Por quê |
+|---|---|
+| aviso de que a imagem é **pública e permanente**, antes da caixa | sem ele a afirmação é cheque em branco: a pessoa confirma sem saber o quê |
+| caixa do **produto**, não `confirm()` do navegador (AC-009) | `confirm()` é texto do sistema operacional: não dá para ler com calma, não fica na tela, some ao clicar |
+| botão **desabilitado** enquanto a caixa não estiver marcada | deixar clicável e recusar no servidor faria a pessoa esperar o upload para ler que faltou marcar algo que está na frente dela |
+| a caixa **desmarca depois de cada envio** | AC-008: a confirmação vale para *aquela* imagem. Marcada, a próxima troca herdaria uma afirmação que ninguém fez — e o banco registraria o nome de quem não afirmou |
+
+**Nada disso é o gate.** O gate é o servidor: `curl` sem o campo leva 422
+`CONFIRMACAO_OBRIGATORIA` e nada é gravado. Esta tela existe para que o
+gestor **leia** o que afirma, e para não gastar um upload descobrindo.
+
+**Um teste aqui nasceu de sabotagem que passou.** Trocar `confirmou` por um
+`true` fixo na chamada deixava os 14 testes verdes, porque todos marcavam a
+caixa antes de subir — nenhum distinguia o estado real do literal. O 15º
+dispara o `change` do input **sem** marcar a caixa e exige `false` no fio.
+
+**Sem `next/image`:** a URL é de CDN externo e o domínio teria de entrar em
+`next.config.ts`. A regra do "NÃO existem no projeto" vale aqui — não se
+carrega otimizador para host de terceiro por causa de uma foto.
 
 ## 10. Gaps e pontos de atenção
 

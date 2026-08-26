@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HorarioQuadraSection } from "@/components/horario-quadra-section";
+import { ImagemDaQuadraSection } from "@/components/imagem-da-quadra-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -278,6 +279,8 @@ export function CourtManager({ id }: { id: string }) {
             {statusLoading ? "Aplicando..." : court.status === "ativa" ? "Inativar quadra" : "Reativar quadra"}
           </Button>
         </div>
+
+        <ImagemDaQuadraSection quadraId={id} imagemInicial={court.imagemUrl} />
 
         <HorarioQuadraSection quadraId={id} />
 
