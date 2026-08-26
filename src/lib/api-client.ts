@@ -87,37 +87,28 @@ export interface Paginated<T> {
   total: number;
 }
 
-/** SPEC-020 — uma opção de catálogo do clube (esporte ou categoria). */
-export interface OpcaoDeQuadra {
-  id: string;
-  companyId: string;
-  nome: string;
-  ordem: number;
-  createdAt: string;
-}
-
-export interface Court {
-  id: string;
-  companyId: string;
-  nome: string;
-  /**
-   * SPEC-020/TASK-003 — **era `string`.** Virou referência ao catálogo do
-   * clube, e é o que tira a barra de filtro do app do aluno das mãos de quem
-   * digita.
-   *
-   * `null` só acontece em quadra cujo `esporte` de texto estava em branco
-   * quando o backfill rodou — a TASK-004 vai cobrar. Tratar como "sem
-   * esporte" e seguir; não é erro de carregamento.
-   */
-  esporte: OpcaoDeQuadra | null;
-  /** Opcional por desenho: nem todo clube classifica piso (decisão 3). */
-  categoria: OpcaoDeQuadra | null;
-  precoHora: number;
-  status: "ativa" | "inativa";
-  createdAt: string;
-  /** SPEC-018/TASK-005 — URL de CDN, sem assinatura (AC-002). A chave crua nunca sai do servidor (INV-037). */
-  imagemUrl: string | null;
-}
+/**
+ * SPEC-020/TASK-007 — **estes tipos eram escritos à mão, e mentiam.**
+ *
+ * `Court.esporte` era tipado como a linha inteira do catálogo
+ * (`OpcaoDeQuadra`, com `ordem`, `companyId`, `createdAt`), mas a API embute
+ * só `{ id, nome }`. Ninguém quebrou por causa disso — mas qualquer código
+ * que lesse `quadra.esporte.ordem` teria `undefined` em runtime com o
+ * typecheck concordando.
+ *
+ * **É o DEF-012 na direção oposta:** lá o tipo negava o objeto, aqui promete
+ * campos que não chegam. A causa é a mesma — tipo escrito à mão é uma
+ * afirmação sobre o contrato, não o contrato.
+ *
+ * Agora vêm do `openapi.json`, e são dois tipos distintos de propósito: o
+ * embutido na quadra e a linha inteira que `/court-sports` devolve.
+ */
+export type OpcaoDeQuadra =
+  components["schemas"]["CatalogoDeQuadraResponseDto"];
+/** O que vem embutido na quadra: só o que a tela mostra e o filtro compara. */
+export type OpcaoEmbutidaNaQuadra =
+  components["schemas"]["OpcaoDeCatalogoResponseDto"];
+export type Court = components["schemas"]["QuadraResponseDto"];
 
 export interface AvailabilitySlot {
   slot: string;

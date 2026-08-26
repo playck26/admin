@@ -107,6 +107,18 @@ coisas acima.
 `lib/api-types.ts` é **gerado** do `openapi.json` do `back`
 (`pnpm run gen:api-types`). Não editar à mão.
 
+**E até 2026-08-26 isso não bastava**, porque `api-client.ts` declarava por
+cima tipos escritos à mão para as **respostas** — que não existiam no
+`openapi.json`. `Court.esporte` era tipado como a linha inteira do catálogo,
+com `ordem` e `createdAt`, quando a API embute só `{ id, nome }`: ninguém
+quebrou, mas ler `quadra.esporte.ordem` daria `undefined` com o typecheck
+concordando. **É o DEF-012 na direção oposta** — lá o tipo negava o objeto,
+aqui prometia campos que não chegam.
+
+Desde a SPEC-020/TASK-007, `Court` e as opções de catálogo vêm do
+`openapi.json`. **`pnpm run api-types:check`** diz em um comando se o
+arquivo gerado está em dia.
+
 **Gap conhecido:** o CI **não** valida se esse arquivo está atualizado — a
 mitigação é lembrar de rodar o comando, que é o tipo de mitigação que falha
 em silêncio. Ver Gaps.
@@ -333,7 +345,7 @@ carrega otimizador para host de terceiro por causa de uma foto.
 
 | # | Gap | Severidade |
 |---|---|---|
-| 1 | **`api-types.ts` pode ficar stale**: o CI não compara com o `openapi.json` do `back`. Já aconteceu — o `sadmin` acumulou 1.461 linhas de diferença | Média |
+| 1 | **`api-types.ts` pode ficar stale**: o CI não compara com o `openapi.json` do `back`, e **não tem como** — em poly-repo o checkout do frontend não vê `../Back`. Este gap estava escrito aqui e **aconteceu de novo**: em 2026-08-26 causou o DEF-012, um apagão de três telas no app do aluno. Desde então existe `pnpm run api-types:check` (local, exit 1 se stale — provado nos dois sentidos), mas **um comando que ninguém roda não é gate** | **Alta** |
 | 2 | **Sem estado global e sem cache de servidor**: cada tela refaz suas chamadas. Adequado hoje; vira problema quando duas telas precisarem do mesmo dado fresco | Média |
 | 3 | Sem tratamento de offline apesar do service worker registrado (`cliente`) | Baixa |
 | 4 | Cobertura de teste concentrada em poucos componentes | Média |
