@@ -87,11 +87,31 @@ export interface Paginated<T> {
   total: number;
 }
 
+/** SPEC-020 — uma opção de catálogo do clube (esporte ou categoria). */
+export interface OpcaoDeQuadra {
+  id: string;
+  companyId: string;
+  nome: string;
+  ordem: number;
+  createdAt: string;
+}
+
 export interface Court {
   id: string;
   companyId: string;
   nome: string;
-  esporte: string;
+  /**
+   * SPEC-020/TASK-003 — **era `string`.** Virou referência ao catálogo do
+   * clube, e é o que tira a barra de filtro do app do aluno das mãos de quem
+   * digita.
+   *
+   * `null` só acontece em quadra cujo `esporte` de texto estava em branco
+   * quando o backfill rodou — a TASK-004 vai cobrar. Tratar como "sem
+   * esporte" e seguir; não é erro de carregamento.
+   */
+  esporte: OpcaoDeQuadra | null;
+  /** Opcional por desenho: nem todo clube classifica piso (decisão 3). */
+  categoria: OpcaoDeQuadra | null;
   precoHora: number;
   status: "ativa" | "inativa";
   createdAt: string;
@@ -765,6 +785,69 @@ export async function removerFotoDeProfessor(
     throw await parseError(res, "Não foi possível remover a foto do professor");
   }
   return (await res.json()) as FotoDeProfessorResolvida;
+}
+
+/**
+ * SPEC-020/TASK-005 — os dois catálogos, com **uma** família de funções.
+ *
+ * O caminho é o único parâmetro que muda, e o servidor já trata os dois com
+ * a mesma base (`CatalogoDeQuadraService`). Duas famílias de funções aqui
+ * seriam duas chances de o cliente divergir do servidor em um dos lados.
+ */
+export type CatalogoDeQuadra = "court-sports" | "court-categories";
+
+export async function listarCatalogo(
+  catalogo: CatalogoDeQuadra,
+): Promise<OpcaoDeQuadra[]> {
+  const res = await authFetch(`/${catalogo}`);
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível carregar as opções");
+  }
+  return (await res.json()) as OpcaoDeQuadra[];
+}
+
+export async function criarOpcaoDeCatalogo(
+  catalogo: CatalogoDeQuadra,
+  dto: { nome: string; ordem?: number },
+): Promise<OpcaoDeQuadra> {
+  const res = await authFetch(`/${catalogo}`, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível criar a opção");
+  }
+  return (await res.json()) as OpcaoDeQuadra;
+}
+
+export async function renomearOpcaoDeCatalogo(
+  catalogo: CatalogoDeQuadra,
+  id: string,
+  dto: { nome?: string; ordem?: number },
+): Promise<OpcaoDeQuadra> {
+  const res = await authFetch(`/${catalogo}/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível renomear a opção");
+  }
+  return (await res.json()) as OpcaoDeQuadra;
+}
+
+/**
+ * **O 422 daqui é informação, não falha.** O servidor recusa apagar opção em
+ * uso e devolve `quadras`, a contagem. Quem chama mostra isso — "está em uso
+ * por 3 quadras" é acionável; "não foi possível remover" não é.
+ */
+export async function removerOpcaoDeCatalogo(
+  catalogo: CatalogoDeQuadra,
+  id: string,
+): Promise<void> {
+  const res = await authFetch(`/${catalogo}/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw await parseError(res, "Não foi possível remover a opção");
+  }
 }
 
 /** SPEC-018/TASK-005 — o que o `PUT`/`DELETE` da imagem devolve. */

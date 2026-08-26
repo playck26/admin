@@ -60,7 +60,7 @@ replicar):
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
-| `/quadras` (+ `novo`, `[id]`) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section` | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
+| `/quadras` (+ `novo`, `[id]`, **`catalogos`**) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section`, **`catalogo-de-quadra-manager`**, **`seletor-de-catalogo`** | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
 | `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum |
@@ -263,6 +263,43 @@ qualquer upload, quando há conta, avisa que ela pode ser substituída.
 assinada, que expira. A tela diz isso, porque é a diferença que decide o que
 a pessoa se sente à vontade para subir. Também é por isso que não há
 `next/image`: URL que muda a cada leitura não tem o que cachear.
+
+### Os catálogos de quadra, e o beco que eles evitam (SPEC-020/TASK-005)
+
+`/quadras/catalogos` guarda os **dois** catálogos — esportes e categorias de
+piso — com um componente só (`catalogo-de-quadra-manager`), no molde de
+`levels-manager`. Duas telas iguais seriam duas chances de divergirem, e a
+divergência apareceria como *"no esporte dá pra apagar em uso e na categoria
+não"*.
+
+**Juntos numa rota só** porque são a mesma pergunta feita duas vezes: como
+este clube classifica as quadras dele. Separados dariam duas entradas de menu
+para uma decisão, e o gestor teria de descobrir que precisa visitar as duas.
+
+**O `seletor-de-catalogo` substitui o `<Input>` de texto livre do esporte**,
+que era a origem do defeito inteiro da SPEC-020: o filtro do app do aluno era
+montado com os valores distintos digitados ali.
+
+**E o estado vazio dele é a parte que importa.** Um `<select>` sem opções é
+um beco — quem vem cadastrar a primeira quadra do clube não encontra nada e
+não tem como saber que precisa cadastrar o catálogo antes. Lista vazia vira
+**link para `/quadras/catalogos`**, não um seletor mudo.
+
+**Falha de rede cai no mesmo caminho, de propósito:** os dois levam a abrir a
+tela de catálogos, e um alarme separado não mudaria o que a pessoa faz.
+
+### O menu passou a acender só o item mais específico
+
+`adminItemIsActive` usava `startsWith`, e com `/quadras/catalogos` ao lado
+de `/quadras` aquela rota acendia **as duas** entradas — uma por igualdade,
+outra por prefixo. Menu com dois itens ativos não é feio, é **enganoso**: a
+pessoa não sabe onde está, e o "voltar" que ela imagina não é o do botão.
+
+O prefixo continua necessário (`/quadras/[id]` acende "Quadras"); o que
+mudou é que ele só vale quando **nenhum item mais longo** casa.
+
+`admin-navigation.test.ts` varre o próprio menu: se alguém acrescentar outra
+rota aninhada, o teste cai **no dia em que a ambiguidade nascer**.
 
 ### A imagem da quadra, e a caixa que não é enfeite (SPEC-018/TASK-005)
 

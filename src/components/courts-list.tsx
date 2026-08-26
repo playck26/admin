@@ -88,7 +88,19 @@ export function CourtsList() {
                 {data.map((quadra) => (
                   <TableRow key={quadra.id} className="border-border">
                     <TableCell className="font-medium text-[var(--color-on-surface)]">{quadra.nome}</TableCell>
-                    <TableCell className="text-[var(--color-on-surface-variant)]">{quadra.esporte}</TableCell>
+                    <TableCell className="text-[var(--color-on-surface-variant)]">
+                      {/*
+                        SPEC-020 — `esporte` virou objeto. O travessão cobre a
+                        quadra cujo texto estava em branco no backfill: ela
+                        existe, só não tem esporte ainda.
+                      */}
+                      {quadra.esporte?.nome ?? "—"}
+                      {quadra.categoria === null ? null : (
+                        <span className="ml-2 text-xs opacity-70">
+                          · {quadra.categoria.nome}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">
                       {quadra.precoHora.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </TableCell>

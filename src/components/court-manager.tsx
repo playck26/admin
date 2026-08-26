@@ -6,6 +6,7 @@ import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HorarioQuadraSection } from "@/components/horario-quadra-section";
 import { ImagemDaQuadraSection } from "@/components/imagem-da-quadra-section";
+import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,7 +37,9 @@ export function CourtManager({ id }: { id: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
-  const [esporte, setEsporte] = useState("");
+  // SPEC-020/TASK-005 — eram texto livre. Agora são ids de catálogo.
+  const [esporteId, setEsporteId] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
   const [precoHora, setPrecoHora] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -63,7 +66,12 @@ export function CourtManager({ id }: { id: string }) {
       .then(([courtData, studentsData]) => {
         setCourt(courtData);
         setNome(courtData.nome);
-        setEsporte(courtData.esporte);
+        // `?? ""` porque `esporte` pode vir nulo: quadra cujo texto
+        // estava em branco quando o backfill rodou. O seletor abre sem
+        // escolha, e o gestor resolve escolhendo — que é o que a TASK-004
+        // vai passar a exigir.
+        setEsporteId(courtData.esporte?.id ?? "");
+        setCategoriaId(courtData.categoria?.id ?? "");
         setPrecoHora(String(courtData.precoHora));
         setStudents(studentsData.data);
       })
@@ -95,7 +103,14 @@ export function CourtManager({ id }: { id: string }) {
     setEditError(null);
     setEditLoading(true);
     try {
-      const updated = await updateCourt(id, { nome, esporte, precoHora: Number(precoHora) });
+      const updated = await updateCourt(id, {
+        nome,
+        esporteId,
+        // `null` explícito LIMPA a categoria; ausente não mexe. É o que
+        // permite desclassificar uma quadra classificada por engano.
+        categoriaId: categoriaId === "" ? null : categoriaId,
+        precoHora: Number(precoHora),
+      });
       setCourt(updated);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Não foi possível salvar as alterações.");
@@ -227,17 +242,24 @@ export function CourtManager({ id }: { id: string }) {
                 className="h-10 px-3"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="esporte">Esporte</Label>
-              <Input
-                id="esporte"
-                required
-                value={esporte}
-                onChange={(e) => setEsporte(e.target.value)}
-                disabled={editLoading}
-                className="h-10 px-3"
-              />
-            </div>
+            <SeletorDeCatalogo
+              catalogo="court-sports"
+              id="esporte"
+              rotulo="Esporte"
+              valor={esporteId}
+              onChange={setEsporteId}
+              obrigatorio
+              desabilitado={editLoading}
+            />
+            <SeletorDeCatalogo
+              catalogo="court-categories"
+              id="categoria"
+              rotulo="Categoria de piso (opcional)"
+              valor={categoriaId}
+              onChange={setCategoriaId}
+              desabilitado={editLoading}
+              opcaoVazia="Sem categoria"
+            />
             <div className="flex flex-col gap-1">
               <Label htmlFor="precoHora">Preço por hora (R$)</Label>
               <Input

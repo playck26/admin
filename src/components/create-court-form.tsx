@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormActions, FormCard } from "@/components/form-card";
+import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
 import { ApiError, createCourt } from "@/lib/api-client";
 
 export function CreateCourtForm() {
   const router = useRouter();
   const [nome, setNome] = useState("");
-  const [esporte, setEsporte] = useState("");
+  // SPEC-020/TASK-005 — eram texto livre. Agora são ids de catálogo.
+  const [esporteId, setEsporteId] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
   const [precoHora, setPrecoHora] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +23,14 @@ export function CreateCourtForm() {
     setError(null);
     setLoading(true);
     try {
-      await createCourt({ nome, esporte, precoHora: Number(precoHora) });
+      await createCourt({
+        nome,
+        esporteId,
+        // String vazia é "não escolhi", e o servidor espera o campo ausente
+        // — mandar `""` num campo `uuid` daria 400 por formato.
+        ...(categoriaId === "" ? {} : { categoriaId }),
+        precoHora: Number(precoHora),
+      });
       router.push("/quadras");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível criar a quadra.");
@@ -44,18 +54,24 @@ export function CreateCourtForm() {
             className="h-11 px-4"
           />
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="esporte">Esporte</Label>
-          <Input
-            id="esporte"
-            placeholder="tenis"
-            required
-            value={esporte}
-            onChange={(e) => setEsporte(e.target.value)}
-            disabled={loading}
-            className="h-11 px-4"
-          />
-        </div>
+        <SeletorDeCatalogo
+          catalogo="court-sports"
+          id="esporte"
+          rotulo="Esporte"
+          valor={esporteId}
+          onChange={setEsporteId}
+          obrigatorio
+          desabilitado={loading}
+        />
+        <SeletorDeCatalogo
+          catalogo="court-categories"
+          id="categoria"
+          rotulo="Categoria de piso (opcional)"
+          valor={categoriaId}
+          onChange={setCategoriaId}
+          desabilitado={loading}
+          opcaoVazia="Sem categoria"
+        />
         <div className="flex flex-col gap-2">
           <Label htmlFor="precoHora">Preço por hora (R$)</Label>
           <Input
