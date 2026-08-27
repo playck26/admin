@@ -151,30 +151,25 @@ export interface PaymentConfig {
   whatsappNumero: string | null;
 }
 
-export interface SchoolClass {
-  id: string;
-  companyId: string;
-  nome: string;
-  nivelId: string | null;
-  professorId: string | null;
-  quadraId: string;
-  diaSemana: number;
-  horaInicio: string;
-  horaFim: string;
-  capacidade: number;
-  status: "ativa" | "inativa";
-  alunosAlocados: number;
-}
-
-export interface SchoolClassStudent {
-  alunoId: string;
-  nome: string;
-  email: string;
-}
-
-export interface SchoolClassDetail extends SchoolClass {
-  alunos: SchoolClassStudent[];
-}
+/**
+ * SPEC-019/REQ-006 (AC-016) — **estes tipos eram escritos à mão, e diziam
+ * `diaSemana`.**
+ *
+ * Enquanto fossem locais, trocar a forma da resposta no `back` deixaria o
+ * typecheck daqui verde e a tela quebrada em runtime — exatamente o DEF-012,
+ * que em 2026-08-26 apagou três telas do app do aluno em produção.
+ *
+ * Agora vêm do `openapi.json`, que vem do `TurmaResponseDto` do `back`, que
+ * está amarrado ao retorno de `toResponse`. A corrente inteira acende
+ * vermelho antes de chegar a um usuário (SPEC-021/INV-058, INV-059).
+ */
+export type EncontroDaTurma =
+  components["schemas"]["TurmaEncontroResponseDto"];
+export type SchoolClass = components["schemas"]["TurmaResponseDto"];
+export type SchoolClassStudent =
+  components["schemas"]["AlunoDaTurmaResponseDto"];
+export type SchoolClassDetail =
+  components["schemas"]["TurmaDetalheResponseDto"];
 
 export interface DashboardSummary {
   alunosAtivos: number;

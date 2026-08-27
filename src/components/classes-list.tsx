@@ -90,7 +90,24 @@ export function ClassesList() {
                   <TableRow key={turma.id} className="border-border">
                     <TableCell className="font-medium text-[var(--color-on-surface)]">{turma.nome}</TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">
-                      {DIAS_SEMANA[turma.diaSemana]}, {turma.horaInicio}–{turma.horaFim}
+                      {/*
+                        SPEC-019 — uma turma pode ter N encontros. Uma linha
+                        por encontro, e não tudo concatenado: "Seg, 07:00–08:00
+                        · Qua, 18:00–19:30 · Sáb, 09:00–10:00" numa célula de
+                        tabela vira ilegível na terceira turma.
+                      */}
+                      {turma.encontros.length === 0 ? (
+                        "—"
+                      ) : (
+                        <ul className="flex flex-col gap-0.5">
+                          {turma.encontros.map((encontro, indice) => (
+                            <li key={indice} className="whitespace-nowrap">
+                              {DIAS_SEMANA[encontro.diaSemana]},{" "}
+                              {encontro.horaInicio}–{encontro.horaFim}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">
                       {turma.alunosAlocados}/{turma.capacidade}

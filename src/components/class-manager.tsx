@@ -25,7 +25,12 @@ import {
   type Student,
   type Teacher,
 } from "@/lib/api-client";
-import { DIAS_SEMANA } from "@/lib/dias-semana";
+import {
+  EncontrosField,
+  ENCONTRO_VAZIO,
+  paraEnvio,
+  type EncontroForm,
+} from "@/components/encontros-field";
 import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
 
 const SEM_NIVEL = "sem-nivel";
@@ -43,9 +48,10 @@ export function ClassManager({ id }: { id: string }) {
   const [quadraId, setQuadraId] = useState("");
   const [nivelId, setNivelId] = useState(SEM_NIVEL);
   const [professorId, setProfessorId] = useState(SEM_PROFESSOR);
-  const [diaSemana, setDiaSemana] = useState("1");
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFim, setHoraFim] = useState("");
+  // SPEC-019/TASK-004 — os três campos soltos viraram uma lista.
+  const [encontros, setEncontros] = useState<EncontroForm[]>([
+    { ...ENCONTRO_VAZIO },
+  ]);
   const [capacidade, setCapacidade] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -63,9 +69,18 @@ export function ClassManager({ id }: { id: string }) {
     setQuadraId(turmaData.quadraId);
     setNivelId(turmaData.nivelId ?? SEM_NIVEL);
     setProfessorId(turmaData.professorId ?? SEM_PROFESSOR);
-    setDiaSemana(String(turmaData.diaSemana));
-    setHoraInicio(turmaData.horaInicio);
-    setHoraFim(turmaData.horaFim);
+    // `?? []` seguido de fallback para um encontro vazio: turma sem
+    // encontro nenhum não deveria existir (INV-051), mas se existir a tela
+    // abre editável em vez de abrir vazia e travada.
+    setEncontros(
+      turmaData.encontros.length > 0
+        ? turmaData.encontros.map((encontro) => ({
+            diaSemana: String(encontro.diaSemana),
+            horaInicio: encontro.horaInicio,
+            horaFim: encontro.horaFim,
+          }))
+        : [{ ...ENCONTRO_VAZIO }],
+    );
     setCapacidade(String(turmaData.capacidade));
     return turmaData;
   }
@@ -95,9 +110,7 @@ export function ClassManager({ id }: { id: string }) {
         quadraId,
         nivelId: nivelId === SEM_NIVEL ? undefined : nivelId,
         professorId: professorId === SEM_PROFESSOR ? undefined : professorId,
-        diaSemana: Number(diaSemana),
-        horaInicio,
-        horaFim,
+        encontros: paraEnvio(encontros),
         capacidade: Number(capacidade),
       });
       await reload();
@@ -251,47 +264,11 @@ export function ClassManager({ id }: { id: string }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="diaSemana">Dia da semana</Label>
-                <Select value={diaSemana} onValueChange={setDiaSemana} disabled={editLoading}>
-                  <SelectTrigger id="diaSemana" className="h-10 w-full px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DIAS_SEMANA.map((label, index) => (
-                      <SelectItem key={label} value={String(index)}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="horaInicio">Início</Label>
-                <Input
-                  id="horaInicio"
-                  type="time"
-                  required
-                  value={horaInicio}
-                  onChange={(e) => setHoraInicio(e.target.value)}
-                  disabled={editLoading}
-                  className="h-10 px-3"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="horaFim">Fim</Label>
-                <Input
-                  id="horaFim"
-                  type="time"
-                  required
-                  value={horaFim}
-                  onChange={(e) => setHoraFim(e.target.value)}
-                  disabled={editLoading}
-                  className="h-10 px-3"
-                />
-              </div>
-            </div>
+            <EncontrosField
+              encontros={encontros}
+              onChange={setEncontros}
+              disabled={editLoading}
+            />
 
             <div className="flex flex-col gap-1 md:w-1/3">
               <Label htmlFor="capacidade">Capacidade</Label>

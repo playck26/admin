@@ -16,7 +16,12 @@ import {
   type Level,
   type Teacher,
 } from "@/lib/api-client";
-import { DIAS_SEMANA } from "@/lib/dias-semana";
+import {
+  EncontrosField,
+  ENCONTRO_VAZIO,
+  paraEnvio,
+  type EncontroForm,
+} from "@/components/encontros-field";
 
 const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
@@ -32,9 +37,12 @@ export function CreateClassForm() {
   const [quadraId, setQuadraId] = useState("");
   const [nivelId, setNivelId] = useState(SEM_NIVEL);
   const [professorId, setProfessorId] = useState(SEM_PROFESSOR);
-  const [diaSemana, setDiaSemana] = useState("1");
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFim, setHoraFim] = useState("");
+  // SPEC-019/TASK-004 — os três campos soltos viraram uma lista. A turma
+  // nasce com UM encontro, que é o caso comum e mantém a tela idêntica à de
+  // antes para quem só quer um dia.
+  const [encontros, setEncontros] = useState<EncontroForm[]>([
+    { ...ENCONTRO_VAZIO },
+  ]);
   const [capacidade, setCapacidade] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +69,7 @@ export function CreateClassForm() {
         quadraId,
         nivelId: nivelId === SEM_NIVEL ? undefined : nivelId,
         professorId: professorId === SEM_PROFESSOR ? undefined : professorId,
-        diaSemana: Number(diaSemana),
-        horaInicio,
-        horaFim,
+        encontros: paraEnvio(encontros),
         capacidade: Number(capacidade),
       });
       router.push("/turmas");
@@ -149,48 +155,11 @@ export function CreateClassForm() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="diaSemana">Dia da semana</Label>
-            <Select value={diaSemana} onValueChange={setDiaSemana} disabled={loading}>
-              <SelectTrigger id="diaSemana" className="h-11 w-full px-4">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DIAS_SEMANA.map((label, index) => (
-                  <SelectItem key={label} value={String(index)}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="horaInicio">Início</Label>
-              <Input
-                id="horaInicio"
-                type="time"
-                required
-                value={horaInicio}
-                onChange={(e) => setHoraInicio(e.target.value)}
-                disabled={loading}
-                className="h-11 px-4"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="horaFim">Fim</Label>
-              <Input
-                id="horaFim"
-                type="time"
-                required
-                value={horaFim}
-                onChange={(e) => setHoraFim(e.target.value)}
-                disabled={loading}
-                className="h-11 px-4"
-              />
-            </div>
-          </div>
+          <EncontrosField
+            encontros={encontros}
+            onChange={setEncontros}
+            disabled={loading}
+          />
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="capacidade">Capacidade</Label>
