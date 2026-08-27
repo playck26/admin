@@ -276,6 +276,33 @@ assinada, que expira. A tela diz isso, porque é a diferença que decide o que
 a pessoa se sente à vontade para subir. Também é por isso que não há
 `next/image`: URL que muda a cada leitura não tem o que cachear.
 
+### A turma acontece em N dias (SPEC-019/TASK-004)
+
+`encontros-field` é o editor da recorrência, **compartilhado** por criar e
+editar turma. Duas cópias divergiriam no primeiro ajuste, e a divergência
+apareceria como *"na criação dá para remover o último e na edição não"* —
+mesma razão do `catalogo-de-quadra-manager`.
+
+**O estado é string de propósito.** `<Select>` e `<input type="time">`
+trabalham com string; converter cedo obrigaria a converter de volta a cada
+render, e um `Number("")` silencioso viraria `0` — **domingo** — sem
+ninguém escolher domingo. A conversão acontece uma vez, no envio.
+
+**A INV-051 aparece aqui sem duplicar a regra:** com um encontro só, o botão
+de remover fica desabilitado. O servidor continua sendo quem garante
+(`422 TURMA_SEM_ENCONTRO`); isto só evita que o gestor descubra a regra por
+mensagem de erro depois de clicar. E o botão **diz por quê** — botão
+desabilitado sem explicação é um mistério.
+
+**A lista mostra uma linha por encontro**, não tudo concatenado: *"Seg,
+07:00–08:00 · Qua, 18:00–19:30 · Sáb, 09:00–10:00"* numa célula de tabela
+fica ilegível na terceira turma.
+
+**E `SchoolClass`/`SchoolClassDetail` deixaram de ser escritos à mão** —
+vêm do schema gerado (AC-016). Foi assim que a quebra da TASK-002 chegou:
+regenerar os tipos deixou o typecheck deste repositório vermelho **com
+arquivo e linha**, em vez de virar tela branca em produção.
+
 ### Os catálogos de quadra, e o beco que eles evitam (SPEC-020/TASK-005)
 
 `/quadras/catalogos` guarda os **dois** catálogos — esportes e categorias de
