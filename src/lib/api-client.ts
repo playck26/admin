@@ -21,64 +21,27 @@ export type CreateClassDto = components["schemas"]["CreateClassDto"];
 export type UpdateClassDto = components["schemas"]["UpdateClassDto"];
 export type UpdatePaymentConfigDto = components["schemas"]["UpdatePaymentConfigDto"];
 
-export interface LoginResult {
-  accessToken: string;
-  refreshToken: string;
-  usuario: {
-    id: string;
-    nome: string;
-    role: "super_admin" | "company_admin" | "aluno";
-    companyId: string | null;
-  };
-}
+export type LoginResult = components["schemas"]["LoginResponseDto"];
 
-export interface Student {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string | null;
-  nivelId: string | null;
-  status: "ativo" | "inativo";
-  /** SPEC-009/REQ-008: se a empresa já reconhece esta pessoa como aluna. */
-  vinculo?: "pendente" | "aprovado" | "recusado";
-}
+export type Student = components["schemas"]["AlunoResponseDto"];
 
 /**
  * SPEC-009/AC-006 — a senha temporária vem **uma única vez**, na resposta
  * que a criou. Nenhuma outra rota a devolve, então a tela precisa mostrá-la
  * no ato: se o admin fechar sem copiar, o caminho é gerar outra.
  */
-export interface StudentComSenha extends Student {
-  senhaTemporaria: string;
-}
+/**
+ * SPEC-009/AC-006 — a senha temporária vem **uma única vez**, na resposta que
+ * a criou. É DTO próprio no contrato, e não `Student & { senha }`: um campo
+ * opcional no tipo comum faria toda leitura de aluno parecer capaz de trazer
+ * senha, e quem integra passaria a procurá-la onde ela nunca vai estar.
+ */
+export type StudentComSenha =
+  components["schemas"]["AlunoComSenhaTemporariaResponseDto"];
 
-export interface Teacher {
-  id: string;
-  companyId: string;
-  nome: string;
-  telefone: string | null;
-  email: string | null;
-  status: "ativo" | "inativo";
-  // SPEC-013: nulo é o estado normal — professor cadastrado sem acesso.
-  usuarioId?: string | null;
-  createdAt: string;
-  /**
-   * SPEC-018/TASK-004 — URL **assinada** (a foto de professor é privada) e já
-   * resolvida pela INV-034: se a pessoa tem conta e foto própria, esta é a
-   * dela, não a que o gestor subiu na ficha.
-   *
-   * A chave crua nunca chega aqui (INV-037).
-   */
-  fotoUrl: string | null;
-}
+export type Teacher = components["schemas"]["ProfessorResponseDto"];
 
-export interface Level {
-  id: string;
-  companyId: string;
-  nome: string;
-  ordem: number;
-  createdAt: string;
-}
+export type Level = components["schemas"]["NivelResponseDto"];
 
 export interface Paginated<T> {
   data: T[];
@@ -110,46 +73,18 @@ export type OpcaoEmbutidaNaQuadra =
   components["schemas"]["OpcaoDeCatalogoResponseDto"];
 export type Court = components["schemas"]["QuadraResponseDto"];
 
-export interface AvailabilitySlot {
-  slot: string;
-  status: "livre" | "ocupado_turma" | "ocupado_avulso";
-}
+export type AvailabilitySlot = components["schemas"]["SlotDeDisponibilidadeResponseDto"];
 
-export interface Availability {
-  quadraId: string;
-  data: string;
-  /**
-   * SPEC-010/AC-008 — "fechado" e "aberto sem nada livre" produzem a mesma
-   * lista vazia depois que a tela filtra os slots ocupados. Sem este
-   * campo, os dois casos apareceriam como a mesma grade vazia sem
-   * explicação.
-   */
-  estado: "aberto" | "fechado";
-  slots: AvailabilitySlot[];
-}
+export type Availability = components["schemas"]["DisponibilidadeResponseDto"];
 
-export interface Booking {
-  id: string;
-  companyId: string;
-  quadraId: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  origemTipo: "TURMA" | "AVULSO";
-  alunoId: string | null;
-  statusPagamento: "pendente_pagamento" | "pago" | "cancelado";
-}
+export type Booking = components["schemas"]["OcupacaoResponseDto"];
 
 export interface BookingConflictInfo {
   ocupacaoId: string;
   origemTipo: string;
 }
 
-export interface PaymentConfig {
-  companyId: string;
-  linkPagamentoUrl: string | null;
-  whatsappNumero: string | null;
-}
+export type PaymentConfig = components["schemas"]["ConfiguracaoDePagamentoResponseDto"];
 
 /**
  * SPEC-019/REQ-006 (AC-016) — **estes tipos eram escritos à mão, e diziam
@@ -171,11 +106,7 @@ export type SchoolClassStudent =
 export type SchoolClassDetail =
   components["schemas"]["TurmaDetalheResponseDto"];
 
-export interface DashboardSummary {
-  alunosAtivos: number;
-  ocupacaoTurmasPct: number;
-  ocupacaoQuadrasPct: number;
-}
+export type DashboardSummary = components["schemas"]["DashboardResumoResponseDto"];
 
 export class ApiError extends Error {
   constructor(
@@ -402,11 +333,7 @@ export async function regenerarSenhaTemporaria(
  * SPEC-009/REQ-002 — cria um convite. O `token` volta **uma única vez**,
  * nesta resposta: é ele que vira o link que o admin encaminha.
  */
-export interface ConviteCriado {
-  id: string;
-  token: string;
-  expiraEm: string;
-}
+export type ConviteCriado = components["schemas"]["ConviteCriadoResponseDto"];
 
 export async function criarConvite(dto: {
   nome?: string;
@@ -462,7 +389,8 @@ export async function getTeacher(id: string): Promise<Teacher> {
   return (await res.json()) as Teacher;
 }
 
-export type TeacherComSenha = Teacher & { senhaTemporaria: string };
+export type TeacherComSenha =
+  components["schemas"]["ProfessorComSenhaTemporariaResponseDto"];
 
 /**
  * SPEC-013 — cria ou rotaciona o acesso do professor. A senha volta em
@@ -611,50 +539,24 @@ export async function updateBookingPaymentStatus(
 // SPEC-010 — horário de funcionamento
 // =====================================================================
 
-export interface DiaHorario {
-  diaSemana: number;
-  fechado: boolean;
-  horaInicio: string | null;
-  horaFim: string | null;
-}
+export type DiaHorario = components["schemas"]["DiaDeHorarioResponseDto"];
 
-export interface OcupacaoAfetada {
-  origemTipo: "AVULSO" | "TURMA";
-  quadraNome: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  responsavel: string | null;
-}
+export type OcupacaoAfetada = components["schemas"]["OcupacaoAfetadaResponseDto"];
 
 /**
  * SPEC-010/REQ-006 — reduzir o horário não cancela nada; devolve o que
  * ficou fora para o gerente decidir.
  */
-export interface ResultadoHorarios {
-  afetadasCount: number;
-  amostra: OcupacaoAfetada[];
-}
+export type ResultadoHorarios = components["schemas"]["ResultadoDeHorariosResponseDto"];
 
-export interface HorariosEmpresa {
-  padrao: DiaHorario[];
-  quadrasComHorarioProprio: { quadraId: string; dias: DiaHorario[] }[];
-}
+export type HorariosEmpresa = components["schemas"]["ConfiguracaoDeHorariosResponseDto"];
 
 /**
  * DEF-003 — identidade da própria empresa, para o gestor divulgar o link de
  * auto-cadastro. O `slug` existia desde a SPEC-009 e não chegava a nenhuma
  * tela.
  */
-export interface MinhaEmpresa {
-  /** SPEC-018/TASK-006: o painel precisa dele para `PUT /companies/:id/logo`. */
-  id: string;
-  nome: string;
-  slug: string;
-  logoUrl: string | null;
-  status: string;
-  permiteAutoCadastro: boolean;
-}
+export type MinhaEmpresa = components["schemas"]["MinhaEmpresaResponseDto"];
 
 export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
   const res = await authFetch("/me/company");
@@ -665,10 +567,7 @@ export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
 // SPEC-018/TASK-006 — a logo da empresa
 // ---------------------------------------------------------------------------
 
-export interface LogoResolvida {
-  /** Já resolvida pelo servidor: upload quando existe, `logo_url` senão. */
-  logoUrl: string | null;
-}
+export type LogoResolvida = components["schemas"]["LogoDaEmpresaResponseDto"];
 
 /**
  * **A sidebar precisa saber que a logo mudou, e ela não é filha da tela de
@@ -726,9 +625,7 @@ export async function removerLogo(companyId: string): Promise<LogoResolvida> {
 }
 
 /** SPEC-018/TASK-004 — o que o `PUT`/`DELETE` da foto devolve. */
-export interface FotoDeProfessorResolvida {
-  fotoUrl: string | null;
-}
+export type FotoDeProfessorResolvida = components["schemas"]["FotoDeProfessorResponseDto"];
 
 /**
  * SPEC-018/TASK-004 — sobe a foto do professor pela ficha.
@@ -837,9 +734,7 @@ export async function removerOpcaoDeCatalogo(
 }
 
 /** SPEC-018/TASK-005 — o que o `PUT`/`DELETE` da imagem devolve. */
-export interface ImagemDeQuadraResolvida {
-  imagemUrl: string | null;
-}
+export type ImagemDeQuadraResolvida = components["schemas"]["ImagemDaQuadraResponseDto"];
 
 /**
  * SPEC-018/TASK-005 — sobe a imagem da quadra.
@@ -921,10 +816,7 @@ export async function definirHorariosEmpresa(
 }
 
 /** `origem` diz se a quadra tem horário próprio ou reflete o padrão. */
-export interface HorariosQuadra {
-  origem: "proprio" | "herdado";
-  dias: DiaHorario[];
-}
+export type HorariosQuadra = components["schemas"]["HorariosDaQuadraResponseDto"];
 
 export async function getHorariosQuadra(id: string): Promise<HorariosQuadra> {
   const res = await authFetch(`/courts/${id}/horarios`);
@@ -953,23 +845,9 @@ export async function removerHorariosQuadra(
 // SPEC-012 — agenda do gestor
 // =====================================================================
 
-export interface DiaDaAgenda {
-  data: string;
-  total: number;
-  pendentes: number;
-  /** Todas as quadras fechadas neste dia (SPEC-010). */
-  fechado: boolean;
-}
+export type DiaDaAgenda = components["schemas"]["DiaDaAgendaResponseDto"];
 
-export interface ItemDoDia {
-  id: string;
-  quadraNome: string;
-  horaInicio: string;
-  horaFim: string;
-  origemTipo: "AVULSO" | "TURMA";
-  responsavel: string | null;
-  statusPagamento: string;
-}
+export type ItemDoDia = components["schemas"]["ItemDaAgendaResponseDto"];
 
 export async function getAgendaMes(mes: string): Promise<DiaDaAgenda[]> {
   const res = await authFetch(`/agenda?mes=${mes}`);
@@ -1003,22 +881,7 @@ export async function trocarSenha(dto: {
  * se o professor sair do clube, uma chamada errada dele não tem quem
  * conserte. Se doer no uso real, vira spec, não remendo.
  */
-export interface OcorrenciaPresenca {
-  ocupacaoId: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  cancelada: boolean;
-  chamadaFeita: boolean;
-  registradoPor: string | null;
-  alunos: {
-    alunoId: string;
-    nome: string;
-    status: "presente" | "ausente" | "justificado";
-    naTurmaHoje: boolean;
-    alunoAtivo: boolean;
-  }[];
-}
+export type OcorrenciaPresenca = components["schemas"]["OcorrenciaNoHistoricoResponseDto"];
 
 export async function listPresencasDaTurma(
   turmaId: string,
@@ -1042,81 +905,17 @@ export async function listPresencasDaTurma(
  * `completas`, que a chamada cobre a turma inteira. Só a segunda sustenta
  * percentual, e é ela que decide `confianca` (AC-014).
  */
-export interface CoberturaFrequencia {
-  aconteceram: number;
-  lancadas: number;
-  completas: number;
-  pctCompletas: number | null;
-  confianca: "alta" | "baixa";
-  /** AC-016 — o número sozinho engana; o texto explica o porquê. */
-  aviso: string | null;
-}
+export type CoberturaFrequencia = components["schemas"]["CoberturaResponseDto"];
 
-export interface LinhaFrequencia {
-  alunoId: string;
-  nome: string;
-  /** `null` = sem registro no período, OU confiança baixa. Nunca 0% por falta de dado. */
-  frequenciaPct: number | null;
-  confianca: "alta" | "baixa";
-  base: number;
-  presente: number;
-  ausente: number;
-  justificado: number;
-  faltasSeguidas: number;
-  faltasSeguidasComposicao: { ausente: number; justificado: number };
-  naTurmaHoje: boolean;
-  alunoAtivo: boolean;
-  vinculo: string;
-}
+export type LinhaFrequencia = components["schemas"]["AlunoNaFrequenciaDaTurmaResponseDto"];
 
-export interface FrequenciaDaTurma {
-  turmaId: string;
-  turmaNome: string;
-  janelaDias: number;
-  cobertura: CoberturaFrequencia;
-  alunos: LinhaFrequencia[];
-}
+export type FrequenciaDaTurma = components["schemas"]["FrequenciaDaTurmaResponseDto"];
 
-export interface FrequenciaDoAluno {
-  alunoId: string;
-  nome: string;
-  alunoAtivo: boolean;
-  vinculo: string;
-  janelaDias: number;
-  agregado: Omit<LinhaFrequencia, "alunoId" | "nome" | "naTurmaHoje" | "alunoAtivo" | "vinculo">;
-  porTurma: (Omit<LinhaFrequencia, "alunoId" | "nome" | "alunoAtivo" | "vinculo"> & {
-    turmaId: string;
-    turmaNome: string | null;
-    cobertura: CoberturaFrequencia;
-  })[];
-  ocorrencias: {
-    turmaId: string;
-    turmaNome: string | null;
-    ocupacaoId: string;
-    data: string;
-    cancelada: boolean;
-    status: "presente" | "ausente" | "justificado";
-  }[];
-}
+export type FrequenciaDoAluno = components["schemas"]["FrequenciaDoAlunoResponseDto"];
 
-export interface ItemEvasao {
-  alunoId: string;
-  nome: string;
-  turmaId: string;
-  turmaNome: string | null;
-  motivo: "faltas_seguidas" | "frequencia_baixa";
-  frequenciaPct: number | null;
-  base: number;
-  faltasSeguidas: number;
-  faltasSeguidasComposicao: { ausente: number; justificado: number };
-  confianca: "alta" | "baixa";
-}
+export type ItemEvasao = components["schemas"]["AlunoEmEvasaoResponseDto"];
 
-export interface ListaDeEvasao {
-  total: number;
-  janelaDias: number;
-  alunos: ItemEvasao[];
-}
+export type ListaDeEvasao = components["schemas"]["EvasaoResponseDto"];
 
 export async function getFrequenciaDaTurma(
   turmaId: string,

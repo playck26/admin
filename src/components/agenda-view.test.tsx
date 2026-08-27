@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DiaDaAgenda, ItemDoDia } from "@/lib/api-client";
 import { AgendaView } from "./agenda-view";
 
 // TEST-012 (SPEC-012): o calendário mostra volume e o pop-up mostra e age.
@@ -16,7 +17,22 @@ const MES = [
   dia("2026-08-03", { total: 3, pendentes: 2 }),
 ];
 
-function mockRotas(itensDoDia: unknown[] = []) {
+/**
+ * SPEC-021/INV-059 — **`unknown[]` era o buraco, e ele anulava o alias.**
+ *
+ * `ItemDoDia` virou apelido de `ItemDaAgendaResponseDto`, mas isso sozinho
+ * não protegia esta tela: a fixture entrava como `unknown[]`, o TypeScript
+ * nunca a confrontava com nada, e `getAgendaDia` faz `as ItemDoDia[]`. Um
+ * `as` de um lado e um `unknown` do outro se cancelam — a corrente inteira
+ * fica sem elo.
+ *
+ * Tipada, **a fixture é que fica vermelha** quando o `back` muda a forma. E
+ * ela já pegou uma coisa hoje: até 2026-08-27 o contrato publicava
+ * `statusPagamento: 'pendente'`, valor que não existe no banco (DEF-016).
+ * Esta fixture sempre disse `pendente_pagamento`, que é o certo — e com
+ * `unknown[]` ninguém tinha como notar a discordância.
+ */
+function mockRotas(itensDoDia: ItemDoDia[] = []) {
   (fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
     const u = String(url);
     const corpo = /\/agenda\/\d{4}-\d{2}-\d{2}/.test(u) ? itensDoDia : MES;
@@ -50,6 +66,9 @@ describe("AgendaView (SPEC-012)", () => {
         origemTipo: "AVULSO",
         responsavel: "Israel",
         statusPagamento: "pendente_pagamento",
+        // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
+        // teste passava: ela descrevia uma API mais pobre que a real.
+        valor: 150,
       },
     ]);
 
@@ -73,6 +92,9 @@ describe("AgendaView (SPEC-012)", () => {
         origemTipo: "TURMA",
         responsavel: "Turma das 14h",
         statusPagamento: "pendente_pagamento",
+        // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
+        // teste passava: ela descrevia uma API mais pobre que a real.
+        valor: 150,
       },
     ]);
 
@@ -94,6 +116,9 @@ describe("AgendaView (SPEC-012)", () => {
         origemTipo: "AVULSO",
         responsavel: "Israel",
         statusPagamento: "pendente_pagamento",
+        // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
+        // teste passava: ela descrevia uma API mais pobre que a real.
+        valor: 150,
       },
     ]);
 
