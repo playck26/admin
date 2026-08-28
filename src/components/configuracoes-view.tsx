@@ -12,6 +12,7 @@ import {
   AvisoReservasAfetadas,
   HorariosEditor,
 } from "@/components/horarios-editor";
+import { LimiteDeTurmasCard } from "@/components/limite-de-turmas-card";
 import { LinkCadastroCard } from "@/components/link-cadastro-card";
 import { LogoDaEmpresaCard } from "@/components/logo-da-empresa-card";
 
@@ -65,8 +66,8 @@ export function ConfiguracoesView() {
           Configurações
         </h1>
         <p className="mt-1 text-[var(--color-on-surface-variant)]">
-          Logo da arena, horário de funcionamento padrão e link de cadastro
-          de alunos.
+          Logo da arena, horário de funcionamento padrão, link de cadastro de
+          alunos e limite de turmas por aluno.
         </p>
       </div>
 
@@ -76,6 +77,11 @@ export function ConfiguracoesView() {
       <LogoDaEmpresaCard />
 
       <LinkCadastroCard />
+
+      {/* SPEC-023 — logo abaixo do link de cadastro de proposito: os dois
+          decidem ate onde vai o "sozinho" do aluno. Um controla quem entra
+          no clube; o outro, em quantas turmas. */}
+      <LimiteDeTurmasCard />
 
       {carregando ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>

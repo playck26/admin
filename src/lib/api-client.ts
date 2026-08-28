@@ -800,6 +800,27 @@ export async function definirAutoCadastro(
   return (await res.json()) as MinhaEmpresa;
 }
 
+/**
+ * SPEC-023 — quantas turmas um aluno pode entrar POR CONTA PROPRIA.
+ *
+ * `null` = sem limite, e e o padrao. **Vale para entrar, nunca para
+ * expulsar** (INV-023a): baixar o limite nao tira ninguem de turma em que ja
+ * esta — ninguem sai de uma turma porque uma configuracao mudou.
+ *
+ * O `PATCH` virou parcial na SPEC-023: manda-se so o campo que mudou. Antes
+ * ele exigia `permiteAutoCadastro` sempre, e reenviar valor que nao se quis
+ * mudar e como configuracao se perde sem ninguem perceber.
+ */
+export async function definirLimiteDeTurmas(
+  limiteTurmasPorAluno: number | null,
+): Promise<MinhaEmpresa> {
+  const res = await authFetch("/me/company", {
+    method: "PATCH",
+    body: JSON.stringify({ limiteTurmasPorAluno }),
+  });
+  return (await res.json()) as MinhaEmpresa;
+}
+
 export async function getHorariosEmpresa(): Promise<HorariosEmpresa> {
   const res = await authFetch("/company-settings/horarios");
   return (await res.json()) as HorariosEmpresa;
