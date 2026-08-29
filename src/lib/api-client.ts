@@ -558,6 +558,10 @@ export type HorariosEmpresa = components["schemas"]["ConfiguracaoDeHorariosRespo
  */
 export type MinhaEmpresa = components["schemas"]["MinhaEmpresaResponseDto"];
 
+/** SPEC-024 — apelido do schema, nunca escrito a mao (INV-059). */
+export type ContratoDaEmpresa =
+  components["schemas"]["ContratoDaEmpresaResponseDto"];
+
 export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
   const res = await authFetch("/me/company");
   return (await res.json()) as MinhaEmpresa;
@@ -811,6 +815,42 @@ export async function definirAutoCadastro(
  * ele exigia `permiteAutoCadastro` sempre, e reenviar valor que nao se quis
  * mudar e como configuracao se perde sem ninguem perceber.
  */
+/**
+ * SPEC-024 — o contrato do clube.
+ *
+ * `versao: null` significa que o clube nunca publicou — e nesse caso o aluno
+ * so precisa aceitar o termo da plataforma (REQ-005).
+ */
+export async function getContratoDaEmpresa(): Promise<ContratoDaEmpresa> {
+  const res = await authFetch("/me/company/contrato");
+  return (await res.json()) as ContratoDaEmpresa;
+}
+
+/**
+ * Quantas pessoas serao obrigadas a reaceitar se publicar agora.
+ *
+ * Existe como chamada separada porque a tela precisa do numero ANTES de o
+ * gestor decidir. "Publicar" sem esse aviso parece salvar um rascunho — e nao
+ * e: interrompe todo mundo no proximo acesso.
+ */
+export async function getAlcanceDoContrato(): Promise<{ pessoas: number }> {
+  const res = await authFetch("/me/company/contrato/alcance");
+  return (await res.json()) as { pessoas: number };
+}
+
+/**
+ * Publica uma versao nova. **Nao existe despublicar** (LIM-024a): publicar
+ * errado exige publicar de novo com o texto certo, e todo mundo reaceita
+ * duas vezes. Apagar uma versao destruiria o registro de quem aceitou o que.
+ */
+export async function publicarContrato(texto: string): Promise<ContratoDaEmpresa> {
+  const res = await authFetch("/me/company/contrato", {
+    method: "PUT",
+    body: JSON.stringify({ texto }),
+  });
+  return (await res.json()) as ContratoDaEmpresa;
+}
+
 export async function definirLimiteDeTurmas(
   limiteTurmasPorAluno: number | null,
 ): Promise<MinhaEmpresa> {

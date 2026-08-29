@@ -12,6 +12,7 @@ import {
   AvisoReservasAfetadas,
   HorariosEditor,
 } from "@/components/horarios-editor";
+import { ContratoDoClubeCard } from "@/components/contrato-do-clube-card";
 import { LimiteDeTurmasCard } from "@/components/limite-de-turmas-card";
 import { LinkCadastroCard } from "@/components/link-cadastro-card";
 import { LogoDaEmpresaCard } from "@/components/logo-da-empresa-card";
@@ -67,7 +68,7 @@ export function ConfiguracoesView() {
         </h1>
         <p className="mt-1 text-[var(--color-on-surface-variant)]">
           Logo da arena, horário de funcionamento padrão, link de cadastro de
-          alunos e limite de turmas por aluno.
+          alunos, limite de turmas por aluno e o contrato do clube.
         </p>
       </div>
 
@@ -82,6 +83,11 @@ export function ConfiguracoesView() {
           decidem ate onde vai o "sozinho" do aluno. Um controla quem entra
           no clube; o outro, em quantas turmas. */}
       <LimiteDeTurmasCard />
+
+      {/* SPEC-024 — o contrato fica junto do resto que o aluno enxerga.
+          Publicar aqui interrompe todo mundo no proximo acesso, e o cartao
+          diz isso com o numero na frente antes de confirmar. */}
+      <ContratoDoClubeCard />
 
       {carregando ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
