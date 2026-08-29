@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FrequenciaTurma } from "@/components/frequencia-turma";
+import { AvaliacoesTurma } from "@/components/avaliacoes-turma";
 import { PresencasTurma } from "@/components/presencas-turma";
 
 /**
@@ -17,6 +18,10 @@ import { PresencasTurma } from "@/components/presencas-turma";
 const ABAS = [
   { id: "presencas", rotulo: "Presenças" },
   { id: "frequencia", rotulo: "Frequência" },
+  // SPEC-025: por último de propósito. As duas primeiras são sobre quem
+  // apareceu; esta é sobre o que acharam. É a leitura que o gestor procura
+  // quando desconfia de alguma coisa, não a que ele abre todo dia.
+  { id: "avaliacoes", rotulo: "Avaliações" },
 ] as const;
 
 type Aba = (typeof ABAS)[number]["id"];
@@ -99,8 +104,10 @@ export function TurmaChamadaAbas({ turmaId }: { turmaId: string }) {
           {visitadas.has(a.id) ? (
             a.id === "presencas" ? (
               <PresencasTurma turmaId={turmaId} />
-            ) : (
+            ) : a.id === "frequencia" ? (
               <FrequenciaTurma turmaId={turmaId} />
+            ) : (
+              <AvaliacoesTurma turmaId={turmaId} />
             )
           ) : null}
         </div>

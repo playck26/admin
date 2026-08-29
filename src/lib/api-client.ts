@@ -562,6 +562,10 @@ export type MinhaEmpresa = components["schemas"]["MinhaEmpresaResponseDto"];
 export type ContratoDaEmpresa =
   components["schemas"]["ContratoDaEmpresaResponseDto"];
 
+/** SPEC-025 — apelido do schema, nunca escrito a mao (INV-059). */
+export type AvaliacoesDaTurma =
+  components["schemas"]["AvaliacoesDaTurmaResponseDto"];
+
 export async function getMinhaEmpresa(): Promise<MinhaEmpresa> {
   const res = await authFetch("/me/company");
   return (await res.json()) as MinhaEmpresa;
@@ -821,6 +825,20 @@ export async function definirAutoCadastro(
  * `versao: null` significa que o clube nunca publicou — e nesse caso o aluno
  * so precisa aceitar o termo da plataforma (REQ-005).
  */
+/**
+ * SPEC-025 — as avaliacoes das aulas de uma turma, para o gestor.
+ *
+ * Vem ORDENADA POR PIOR NOTA e com a contagem de detratores ja calculada. A
+ * ordem e a regua sao do servidor de proposito: se a tela ordenasse ou
+ * comparasse, as duas virariam segundas copias da regra.
+ */
+export async function getAvaliacoesDaTurma(
+  turmaId: string,
+): Promise<AvaliacoesDaTurma> {
+  const res = await authFetch(`/classes/${turmaId}/avaliacoes`);
+  return (await res.json()) as AvaliacoesDaTurma;
+}
+
 export async function getContratoDaEmpresa(): Promise<ContratoDaEmpresa> {
   const res = await authFetch("/me/company/contrato");
   return (await res.json()) as ContratoDaEmpresa;

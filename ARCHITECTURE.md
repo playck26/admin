@@ -242,6 +242,14 @@ pública de cadastro.
 A logo substituiu a marca do PlayCK na **sidebar**, junto com o nome da
 arena.
 
+**SPEC-025 — as avaliações são a terceira aba da turma**, depois de
+Presenças e Frequência. A ordem segue o mesmo princípio das duas primeiras:
+as outras dizem quem apareceu, esta diz o que acharam — é a leitura que o
+gestor procura quando desconfia de alguma coisa, não a que abre todo dia. A
+lista vem **ordenada por pior nota** e com a contagem de detratores, porque o
+pedido era achar o detrator, e ordenar por data enterraria o 1 da semana
+passada embaixo dos 5 de ontem.
+
 **A sidebar não é filha de Configurações**, e sem isso o gestor veria a logo
 nova no cartão e a antiga no canto até recarregar — o que parece defeito, não
 cache. A costura é um **evento de `window`** (`EVENTO_LOGO_TROCADA`),
