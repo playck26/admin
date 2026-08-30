@@ -1,6 +1,6 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: 2026-08-25.
+**Fonte: análise direta do código.** Data: 2026-08-30.
 
 Planta **AS-IS**. Intenção arquitetural vive em `TARGET_ARCHITECTURE.md`
 (raiz do workspace) + ADRs em `DECISIONS.md`. Divergência entre este
@@ -61,7 +61,7 @@ replicar):
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
 | `/quadras` (+ `novo`, `[id]`, **`catalogos`**) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section`, **`catalogo-de-quadra-manager`**, **`seletor-de-catalogo`** | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
-| `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele |
+| `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele. **SPEC-030 deu a esta tela a primeira ação de ESCRITA** — até então era só leitura (LIM-002): o grupo **"Aulas sem chamada"** lista as ocorrências `pendente` e oferece registrar que a aula não aconteceu. Elas **não apareciam aqui**, porque a tela sempre filtrou por `chamadaFeita`; enquanto o professor está no clube isso é coerente (quem lança é ele), mas quando ele sai ninguém mais tem caminho e o dia fica vermelho para sempre no calendário dele. O texto diz de quem é a ação **antes** de oferecer a saída |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` + `limite-de-turmas-card` + `contrato-do-clube-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum. **SPEC-023:** o `limite-de-turmas-card` entrou logo abaixo — os dois decidem até onde vai o "sozinho" do aluno, um controlando quem entra no clube e o outro em quantas turmas. Campo vazio = sem limite, que é o padrão; a tela avisa que o limite **não expulsa ninguém** (INV-023a), porque quem configura precisa saber o que NÃO vai acontecer. **SPEC-024:** o `contrato-do-clube-card` escreve e publica o contrato — e publicar exige um passo de confirmação que mostra **quantas pessoas terão que reaceitar**, com o número na frente. Botão "Publicar" sem esse aviso parece salvar rascunho, e não é: interrompe cada aluno no próximo acesso. Também avisa que **não existe despublicar** (LIM-024a) |
 

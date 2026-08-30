@@ -970,6 +970,32 @@ export async function listPresencasDaTurma(
   return (await res.json()) as OcorrenciaPresenca[];
 }
 
+/**
+ * SPEC-030 — **o gestor registra que a aula não aconteceu.**
+ *
+ * A decisão do Israel (D1) foi que registram os dois, e o motivo é o caso que
+ * o professor não resolve: **professor sai do clube**, e a aula que ele não
+ * registrou fica pendente para sempre, sem ninguém com caminho para fechá-la.
+ *
+ * **Não é cancelar a aula.** Cancelar libera o slot da quadra e continua sem
+ * caminho para ocorrência de turma (GAP-008). Isto só declara o que
+ * aconteceu — a quadra esteve ocupada de qualquer forma.
+ *
+ * `turmaId` vai na URL sem ser usado na busca do servidor (o `ocupacaoId` já
+ * é único e escopado por empresa): ele está ali porque é o recurso ao qual a
+ * ação pertence, e quem lê a URL entende o que está sendo alterado.
+ */
+export async function registrarNaoHouveAula(
+  turmaId: string,
+  ocupacaoId: string,
+): Promise<{ ocupacaoId: string; completude: string }> {
+  const res = await authFetch(
+    `/classes/${turmaId}/presencas/${ocupacaoId}/nao-houve`,
+    { method: "PUT" },
+  );
+  return (await res.json()) as { ocupacaoId: string; completude: string };
+}
+
 // ---------------------------------------------------------------------
 // SPEC-015 — frequência (TASK-001, 002, 003)
 //
