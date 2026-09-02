@@ -69,6 +69,8 @@ describe("AgendaView (SPEC-012)", () => {
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
         // teste passava: ela descrevia uma API mais pobre que a real.
         valor: 150,
+        criadaPor: null,
+        canceladaPor: null,
       },
     ]);
 
@@ -95,6 +97,8 @@ describe("AgendaView (SPEC-012)", () => {
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
         // teste passava: ela descrevia uma API mais pobre que a real.
         valor: 150,
+        criadaPor: null,
+        canceladaPor: null,
       },
     ]);
 
@@ -104,6 +108,58 @@ describe("AgendaView (SPEC-012)", () => {
     expect(await screen.findByText("14:00–15:00 · Quadra 2")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Marcar pago" })).not.toBeInTheDocument();
+  });
+
+  // SPEC-032/AC-009 — as duas pontas, e o caso nulo, que e o mais comum hoje.
+  it("mostra quem criou e quem cancelou", async () => {
+    mockRotas([
+      {
+        id: "o1",
+        quadraNome: "Quadra 1",
+        horaInicio: "09:00",
+        horaFim: "10:00",
+        origemTipo: "AVULSO",
+        responsavel: "Israel",
+        statusPagamento: "cancelado",
+        valor: 150,
+        criadaPor: "Maria",
+        canceladaPor: "Gabriel",
+      },
+    ]);
+
+    render(<AgendaView />);
+    fireEvent.click(await screen.findByText("3 reservas"));
+
+    expect(
+      await screen.findByText("criada por Maria · cancelada por Gabriel"),
+    ).toBeInTheDocument();
+  });
+
+  it("linha sem evento diz 'sem histórico registrado', não 'criada por —'", async () => {
+    mockRotas([
+      {
+        id: "o1",
+        quadraNome: "Quadra 1",
+        horaInicio: "09:00",
+        horaFim: "10:00",
+        origemTipo: "AVULSO",
+        responsavel: "Israel",
+        statusPagamento: "pendente_pagamento",
+        valor: 150,
+        // LIM-032a — as ocupacoes anteriores a spec nasceram sem evento, e
+        // nao ha como inventar um. Este e o estado NORMAL de quase toda linha
+        // em producao no dia do deploy, nao um caso de borda.
+        criadaPor: null,
+        canceladaPor: null,
+      },
+    ]);
+
+    render(<AgendaView />);
+    fireEvent.click(await screen.findByText("3 reservas"));
+
+    expect(
+      await screen.findByText("sem histórico registrado"),
+    ).toBeInTheDocument();
   });
 
   it("AC-006: marcar pago chama o endpoint existente e recarrega o dia", async () => {
@@ -119,6 +175,8 @@ describe("AgendaView (SPEC-012)", () => {
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
         // teste passava: ela descrevia uma API mais pobre que a real.
         valor: 150,
+        criadaPor: null,
+        canceladaPor: null,
       },
     ]);
 

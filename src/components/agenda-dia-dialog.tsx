@@ -119,6 +119,26 @@ export function AgendaDiaDialog({
                       ? ` · ${item.statusPagamento === "pago" ? "pago" : "pendente"}`
                       : ""}
                   </p>
+                  {/*
+                    SPEC-032/AC-009 — quem fez, e quem desfez.
+
+                    **Nulo é o estado normal das linhas anteriores à spec**
+                    (LIM-032a): elas nasceram sem evento. Por isso o texto é
+                    "sem histórico registrado", e nunca "criada por —" — a
+                    segunda forma parece dado faltando; a primeira diz a
+                    verdade, que é que ninguém registrou.
+                  */}
+                  <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
+                    {item.criadaPor === null && item.canceladaPor === null
+                      ? "sem histórico registrado"
+                      : [
+                          item.criadaPor && `criada por ${item.criadaPor}`,
+                          item.canceladaPor &&
+                            `cancelada por ${item.canceladaPor}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                  </p>
                 </div>
 
                 {/*
