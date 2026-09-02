@@ -56,7 +56,7 @@ replicar):
 |---|---|---|
 | `/login` | `login-form` | entrada |
 | `/dashboard` | `dashboard-summary` + `evasao-card` | 3 KPIs do período e, desde a **SPEC-015**, o cartão "alunos em risco" — a única tela do Admin que puxa para uma ação, com cada item clicável para o aluno **e** para a turma |
-| `/agenda` | `agenda-view` + `agenda-dia-dialog` | mês inteiro; clique no dia abre o detalhe operável |
+| `/agenda` | `agenda-view` + `agenda-dia-dialog` | mês inteiro; clique no dia abre o detalhe operável. **SPEC-032:** cada item mostra quem criou e quem cancelou — e quando não há evento diz *"sem histórico registrado"*, nunca "criada por —". Não é caso de borda: é o estado normal de quase toda linha no dia do deploy (LIM-032a), porque as ocupações anteriores à spec nasceram sem evento |
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
@@ -122,6 +122,14 @@ arquivo gerado está em dia.
 **Gap conhecido:** o CI **não** valida se esse arquivo está atualizado — a
 mitigação é lembrar de rodar o comando, que é o tipo de mitigação que falha
 em silêncio. Ver Gaps.
+
+**Reconferido em 2026-09-02** (SPEC-032/TASK-004), e o gap continua: os passos
+do `ci.yml` são `lint`, `typecheck`, `test` e `build` — `api-types:check` não
+está em nenhum. **E vale para os três frontends**: o mesmo grep não acha o
+comando no `sadmin` nem no `cliente`. Ou seja, nada impede o tipo gerado dos
+três de divergir do contrato publicado; o que segura hoje é o `typecheck`
+falhar **quando** o código usa um campo que sumiu — e não quando um campo
+novo aparece e ninguém o consome.
 
 ## 7. Requisitos de plataforma
 

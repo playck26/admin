@@ -78,6 +78,9 @@ export type AvailabilitySlot = components["schemas"]["SlotDeDisponibilidadeRespo
 export type Availability = components["schemas"]["DisponibilidadeResponseDto"];
 
 export type Booking = components["schemas"]["OcupacaoResponseDto"];
+/** SPEC-032 — uma linha do historico de uma ocupacao. */
+export type EventoDeOcupacao =
+  components["schemas"]["EventoDeOcupacaoResponseDto"];
 
 export interface BookingConflictInfo {
   ocupacaoId: string;
@@ -478,6 +481,20 @@ export async function listBookings(filters: { data?: string; status?: string } =
 
 export async function cancelBooking(id: string): Promise<void> {
   await authFetch(`/bookings/${id}/cancel`, { method: "POST" });
+}
+
+/**
+ * SPEC-032/CON-016 — a linha do tempo de uma reserva.
+ *
+ * Sob demanda, e nao no carregamento do dia: o detalhe do dia ja traz
+ * `criadaPor` e `canceladaPor`, que e o que cabe numa lista. Isto aqui e para
+ * quem foi investigar um caso.
+ */
+export async function listBookingEvents(
+  id: string,
+): Promise<EventoDeOcupacao[]> {
+  const res = await authFetch(`/bookings/${id}/eventos`);
+  return (await res.json()) as EventoDeOcupacao[];
 }
 
 export async function listClasses(page = 1, pageSize = 20): Promise<Paginated<SchoolClass>> {
