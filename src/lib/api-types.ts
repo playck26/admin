@@ -3815,7 +3815,12 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "pendente_pagamento" | "pago" | "cancelado";
-                /** @description Exclui ocupações canceladas. Pode ser combinado com `status` — os dois viram um `AND`, então `status=pago&excluirCanceladas=true` devolve só as pagas. */
+                /** @description Separa por horário, comparando o FIM da ocupação com o agora no fuso do clube. Omitido, devolve tudo (comportamento e ordem de hoje). */
+                quando?: "futuras" | "anteriores";
+                /**
+                 * @deprecated
+                 * @description DEPRECIADO (SPEC-041/D5) — desde a SPEC-041 o app mostra as canceladas marcadas em vez de escondê-las; use `status` para filtrar. Mantido só pela janela de skew entre os deploys do Back e do Cliente. Exclui ocupações canceladas. Pode ser combinado com `status` — os dois viram um `AND`, então `status=pago&excluirCanceladas=true` devolve só as pagas.
+                 */
                 excluirCanceladas?: boolean;
                 data?: string;
                 page?: number;
