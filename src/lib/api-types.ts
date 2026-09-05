@@ -2029,6 +2029,8 @@ export interface components {
         ItemDaAgendaResponseDto: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            quadraId: string;
             /** @example Quadra 1 */
             quadraNome: string;
             /** @example 18:00 */

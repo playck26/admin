@@ -119,7 +119,6 @@ export function AgendaSemana() {
     return Array.from({ length: max - min + 1 }, (_, i) => min + i);
   }, [dias]);
 
-  const nomeDaQuadra = quadras.find((q) => q.id === quadraId)?.nome ?? "";
 
   const rotulo = dias.length
     ? `${DIA_CURTO.format(new Date(`${dias[0].data}T00:00:00.000Z`))} – ${DIA_CURTO.format(new Date(`${dias[6].data}T00:00:00.000Z`))}`
@@ -199,10 +198,16 @@ export function AgendaSemana() {
                     {String(h).padStart(2, "0")}h
                   </th>
                   {dias.map((d) => {
+                    // **Filtra por ID, nao por nome.** `quadras.nome` nao tem
+                    // `@unique` no banco: duas quadras da mesma empresa podem
+                    // se chamar igual, e a validacao cruzada reproduziu o
+                    // efeito — escolher a quadra A mostrava a reserva da B
+                    // homonima. O `quadraId` do item entrou no contrato
+                    // (`ItemDaAgendaResponseDto`) para isto.
                     const itens = d.itens.filter(
                       (i) =>
                         horaDe(i.horaInicio) === h &&
-                        (quadraId === "" || i.quadraNome === nomeDaQuadra),
+                        (quadraId === "" || i.quadraId === quadraId),
                     );
                     return (
                       <td

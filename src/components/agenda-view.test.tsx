@@ -60,6 +60,7 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "11:00",
@@ -89,6 +90,7 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o2",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 2",
         horaInicio: "14:00",
         horaFim: "15:00",
@@ -117,6 +119,7 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
@@ -142,6 +145,7 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
@@ -170,6 +174,7 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
