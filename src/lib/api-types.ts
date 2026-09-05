@@ -660,6 +660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["BookingsController_move"];
+        trace?: never;
+    };
     "/api/v1/bookings/{id}/cancel": {
         parameters: {
             query?: never;
@@ -716,6 +732,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AgendaController_resumo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agenda/semana": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AgendaController_semana"];
         put?: never;
         post?: never;
         delete?: never;
@@ -914,6 +946,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["ClassesController_update"];
+        trace?: never;
+    };
+    "/api/v1/classes/{turmaId}/ocorrencias/{ocupacaoId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ClassesController_cancelarOcorrencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/classes/{id}/students/{alunoId}": {
@@ -1918,6 +1966,24 @@ export interface components {
             pageSize: number;
             /** @example 240 */
             total: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-15T23:00:00.000Z
+             */
+            referenciaTemporal: string;
+        };
+        MoveBookingDto: {
+            /**
+             * @description AAAA-MM-DD
+             * @example 2026-09-10
+             */
+            data?: string;
+            /** @example 19:00 */
+            horaInicio?: string;
+            /** @example 20:00 */
+            horaFim?: string;
+            /** Format: uuid */
+            quadraId?: string;
         };
         AutorDoEventoDto: {
             /** Format: uuid */
@@ -1930,14 +1996,14 @@ export interface components {
              * @description O efeito TÉCNICO sobre esta ocupação.
              * @enum {string}
              */
-            tipo: "criada" | "cancelada" | "reativada" | "pagamento_confirmado";
+            tipo: "criada" | "cancelada" | "movida" | "reativada" | "pagamento_confirmado";
             /** Format: date-time */
             em: string;
             /**
              * @description O GESTO humano que provocou o evento.
              * @enum {string}
              */
-            acao: "reserva_criada" | "reserva_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado";
+            acao: "reserva_criada" | "reserva_cancelada" | "reserva_movida" | "aula_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado";
             /** @description Nota interna, e só existe em ação administrativa que a exige. Consumo e devolução não têm motivo — o motivo deles é a própria reserva. */
             motivo: Record<string, never> | null;
             autor: components["schemas"]["AutorDoEventoDto"];
@@ -1963,6 +2029,8 @@ export interface components {
         ItemDaAgendaResponseDto: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            quadraId: string;
             /** @example Quadra 1 */
             quadraNome: string;
             /** @example 18:00 */
@@ -1971,6 +2039,8 @@ export interface components {
             horaFim: string;
             /** @enum {string} */
             origemTipo: "AVULSO" | "TURMA";
+            /** Format: uuid */
+            origemTurmaId: string | null;
             responsavel: string | null;
             /** @enum {string} */
             statusPagamento: "pendente_pagamento" | "pago" | "cancelado";
@@ -1980,6 +2050,12 @@ export interface components {
             criadaPor: string | null;
             /** @example Gabriel */
             canceladaPor: string | null;
+        };
+        DiaComItensResponseDto: {
+            /** @example 2026-09-06 */
+            data: string;
+            fechado: boolean;
+            itens: components["schemas"]["ItemDaAgendaResponseDto"][];
         };
         ImagemDaQuadraResponseDto: {
             imagemUrl: string | null;
@@ -2183,6 +2259,10 @@ export interface components {
             /** @example 4 */
             alunosAlocados: number;
             alunos: components["schemas"]["AlunoDaTurmaResponseDto"][];
+        };
+        CancelarOcorrenciaDto: {
+            /** @example Quadra interditada para manutenção */
+            motivo: string;
         };
         UpdateClassDto: {
             nome?: string;
@@ -3846,6 +3926,8 @@ export interface operations {
                  * @description DEPRECIADO (SPEC-041/D5) — desde a SPEC-041 o app mostra as canceladas marcadas em vez de escondê-las; use `status` para filtrar. Mantido só pela janela de skew entre os deploys do Back e do Cliente. Exclui ocupações canceladas. Pode ser combinado com `status` — os dois viram um `AND`, então `status=pago&excluirCanceladas=true` devolve só as pagas.
                  */
                 excluirCanceladas?: boolean;
+                /** @description Instante que o servidor usou na 1ª página desta travessia. Reenviado nas seguintes para a fronteira não andar entre elas. Omitido = agora. */
+                referenciaTemporal?: string;
                 data?: string;
                 page?: number;
                 pageSize?: number;
@@ -3887,6 +3969,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReservasCriadasResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveBookingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcupacaoResponseDto"];
                 };
             };
         };
@@ -3991,6 +4098,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaDaAgendaResponseDto"][];
+                };
+            };
+        };
+    };
+    AgendaController_semana: {
+        parameters: {
+            query: {
+                /** @description AAAA-MM-DD */
+                inicio: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaComItensResponseDto"][];
                 };
             };
         };
@@ -4427,6 +4556,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TurmaDetalheResponseDto"];
                 };
+            };
+        };
+    };
+    ClassesController_cancelarOcorrencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turmaId: string;
+                ocupacaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarOcorrenciaDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

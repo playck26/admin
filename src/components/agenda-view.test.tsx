@@ -60,10 +60,12 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "11:00",
         origemTipo: "AVULSO",
+        origemTurmaId: null,
         responsavel: "Israel",
         statusPagamento: "pendente_pagamento",
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
@@ -88,10 +90,12 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o2",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 2",
         horaInicio: "14:00",
         horaFim: "15:00",
         origemTipo: "TURMA",
+        origemTurmaId: "11111111-1111-4111-8111-111111111111",
         responsavel: "Turma das 14h",
         statusPagamento: "pendente_pagamento",
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
@@ -115,10 +119,12 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
         origemTipo: "AVULSO",
+        origemTurmaId: null,
         responsavel: "Israel",
         statusPagamento: "cancelado",
         valor: 150,
@@ -139,10 +145,12 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
         origemTipo: "AVULSO",
+        origemTurmaId: null,
         responsavel: "Israel",
         statusPagamento: "pendente_pagamento",
         valor: 150,
@@ -166,10 +174,12 @@ describe("AgendaView (SPEC-012)", () => {
     mockRotas([
       {
         id: "o1",
+        quadraId: "11111111-1111-4111-8111-111111111111",
         quadraNome: "Quadra 1",
         horaInicio: "09:00",
         horaFim: "10:00",
         origemTipo: "AVULSO",
+        origemTurmaId: null,
         responsavel: "Israel",
         statusPagamento: "pendente_pagamento",
         // SPEC-011 — o valor COBRADO, congelado. A fixture não o tinha, e o
