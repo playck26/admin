@@ -548,6 +548,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/company/operacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeCompanyController_operacaoDaMinhaEmpresa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/company": {
         parameters: {
             query?: never;
@@ -717,6 +733,22 @@ export interface paths {
         };
         get: operations["CompanySettingsController_listar"];
         put: operations["CompanySettingsController_definir"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/company-settings/operacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CompanySettingsController_lerOperacao"];
+        put: operations["CompanySettingsController_definirOperacao"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1746,6 +1778,12 @@ export interface components {
             nome: string;
             logoUrl: string | null;
         };
+        ConfigOperacaoResponseDto: {
+            /** @example 2 */
+            prazoCancelamentoAulaHoras: number | null;
+            /** @example 4 */
+            prazoCancelamentoReservaHoras: number | null;
+        };
         MinhaEmpresaResponseDto: {
             /** Format: uuid */
             id: string;
@@ -2003,7 +2041,7 @@ export interface components {
              * @description O GESTO humano que provocou o evento.
              * @enum {string}
              */
-            acao: "reserva_criada" | "reserva_cancelada" | "reserva_movida" | "aula_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado";
+            acao: "reserva_criada" | "reserva_cancelada" | "reserva_movida" | "aula_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado" | "turma_aluno_removido";
             /** @description Nota interna, e só existe em ação administrativa que a exige. Consumo e devolução não têm motivo — o motivo deles é a própria reserva. */
             motivo: Record<string, never> | null;
             autor: components["schemas"]["AutorDoEventoDto"];
@@ -2016,6 +2054,18 @@ export interface components {
         ConfiguracaoDeHorariosResponseDto: {
             padrao: components["schemas"]["DiaDeHorarioResponseDto"][];
             quadrasComHorarioProprio: components["schemas"]["QuadraComHorarioProprioResponseDto"][];
+        };
+        DefinirConfigOperacaoDto: {
+            /**
+             * @description Com quantas horas de antecedência o aluno pode sair de uma aula. `null` = sem antecedência mínima. **Não é "sem limite"**: depois que a aula começou ninguém cancela, nem com `null` (D5b).
+             * @example 2
+             */
+            prazoCancelamentoAulaHoras: number | null;
+            /**
+             * @description Com quantas horas de antecedência o aluno pode cancelar uma reserva avulsa. `null` = sem antecedência mínima.
+             * @example 4
+             */
+            prazoCancelamentoReservaHoras: number | null;
         };
         DiaDaAgendaResponseDto: {
             /** @example 2026-09-01 */
@@ -3643,6 +3693,25 @@ export interface operations {
             };
         };
     };
+    MeCompanyController_operacaoDaMinhaEmpresa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigOperacaoResponseDto"];
+                };
+            };
+        };
+    };
     MeCompanyController_minhaEmpresa: {
         parameters: {
             query?: never;
@@ -4076,6 +4145,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResultadoDeHorariosResponseDto"];
+                };
+            };
+        };
+    };
+    CompanySettingsController_lerOperacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigOperacaoResponseDto"];
+                };
+            };
+        };
+    };
+    CompanySettingsController_definirOperacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirConfigOperacaoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigOperacaoResponseDto"];
                 };
             };
         };

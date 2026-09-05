@@ -896,6 +896,33 @@ export async function definirLimiteDeTurmas(
   return (await res.json()) as MinhaEmpresa;
 }
 
+/**
+ * SPEC-031/REQ-001 — os dois prazos de cancelamento, em horas.
+ *
+ * `null` em qualquer um dos dois é **"sem prazo"**, e é o estado de quem nunca
+ * configurou nada — não um valor faltando. Por isso o tipo é `number | null` e
+ * não `number | undefined`: ausência aqui é uma decisão do clube, e o `?? 0`
+ * que um opcional convida a escrever transformaria "sem prazo" em "prazo
+ * zero", que é o oposto.
+ */
+export type ConfigOperacao =
+  components["schemas"]["ConfigOperacaoResponseDto"];
+
+export async function getConfigOperacao(): Promise<ConfigOperacao> {
+  const res = await authFetch("/company-settings/operacao");
+  return (await res.json()) as ConfigOperacao;
+}
+
+export async function definirConfigOperacao(
+  prazos: ConfigOperacao,
+): Promise<ConfigOperacao> {
+  const res = await authFetch("/company-settings/operacao", {
+    method: "PUT",
+    body: JSON.stringify(prazos),
+  });
+  return (await res.json()) as ConfigOperacao;
+}
+
 export async function getHorariosEmpresa(): Promise<HorariosEmpresa> {
   const res = await authFetch("/company-settings/horarios");
   return (await res.json()) as HorariosEmpresa;

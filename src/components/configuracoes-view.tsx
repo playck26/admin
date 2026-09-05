@@ -16,6 +16,7 @@ import { ContratoDoClubeCard } from "@/components/contrato-do-clube-card";
 import { LimiteDeTurmasCard } from "@/components/limite-de-turmas-card";
 import { LinkCadastroCard } from "@/components/link-cadastro-card";
 import { LogoDaEmpresaCard } from "@/components/logo-da-empresa-card";
+import { PrazosDeCancelamentoCard } from "@/components/prazos-de-cancelamento-card";
 
 /**
  * SPEC-010/REQ-001 — horário padrão da empresa.
@@ -68,7 +69,8 @@ export function ConfiguracoesView() {
         </h1>
         <p className="mt-1 text-[var(--color-on-surface-variant)]">
           Logo da arena, horário de funcionamento padrão, link de cadastro de
-          alunos, limite de turmas por aluno e o contrato do clube.
+          alunos, limite de turmas por aluno, prazo para desistir e o
+          contrato do clube.
         </p>
       </div>
 
@@ -83,6 +85,12 @@ export function ConfiguracoesView() {
           decidem ate onde vai o "sozinho" do aluno. Um controla quem entra
           no clube; o outro, em quantas turmas. */}
       <LimiteDeTurmasCard />
+
+      {/* SPEC-031 — logo depois do limite de turmas, e pelo mesmo motivo que
+          o pôs ali: os três decidem até onde vai o "sozinho" do aluno. Um diz
+          quem entra, outro em quantas turmas, este até quando dá para
+          desistir. */}
+      <PrazosDeCancelamentoCard />
 
       {/* SPEC-024 — o contrato fica junto do resto que o aluno enxerga.
           Publicar aqui interrompe todo mundo no proximo acesso, e o cartao
