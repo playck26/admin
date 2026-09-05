@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ApiError, getAgendaSemana, type DiaComItens, type ItemDoDia } from "@/lib/api-client";
+import {
+  ApiError,
+  getAgendaSemana,
+  listCourts,
+  type Court,
+  type DiaComItens,
+} from "@/lib/api-client";
+import {
+  AgendaSemanaAcoes,
+  type AcaoDaSemana,
+} from "@/components/agenda-semana-acoes";
 
 const DIA_CURTO = new Intl.DateTimeFormat("pt-BR", {
   weekday: "short",
@@ -48,19 +58,14 @@ function horaDe(hhmm: string) {
  * às 6h e fecha à meia-noite não pode ter reserva escondida fora da janela.
  * O padrão 7h–22h vale só quando a semana está vazia.
  */
-export function AgendaSemana({
-  aoAbrirVao,
-  aoAbrirItem,
-  recarregarEm,
-}: {
-  aoAbrirVao?: (data: string, hora: number) => void;
-  aoAbrirItem?: (item: ItemDoDia, data: string) => void;
-  recarregarEm?: number;
-}) {
+export function AgendaSemana() {
   const [inicio, setInicio] = useState(() => chave(domingoDaSemana(new Date())));
   const [dias, setDias] = useState<DiaComItens[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [quadras, setQuadras] = useState<Court[]>([]);
+  const [quadraId, setQuadraId] = useState("");
+  const [acao, setAcao] = useState<AcaoDaSemana | null>(null);
 
   const carregar = useCallback(async (alvo: string) => {
     setCarregando(true);
@@ -79,7 +84,14 @@ export function AgendaSemana({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void carregar(inicio);
-  }, [inicio, carregar, recarregarEm]);
+  }, [inicio, carregar]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void listCourts(1, 100)
+      .then((p) => setQuadras(p.data.filter((q) => q.status === "ativa")))
+      .catch(() => setQuadras([]));
+  }, []);
 
   function navegar(semanas: number) {
     const d = new Date(`${inicio}T00:00:00.000Z`);
@@ -97,6 +109,8 @@ export function AgendaSemana({
     return Array.from({ length: max - min + 1 }, (_, i) => min + i);
   }, [dias]);
 
+  const nomeDaQuadra = quadras.find((q) => q.id === quadraId)?.nome ?? "";
+
   const rotulo = dias.length
     ? `${DIA_CURTO.format(new Date(`${dias[0].data}T00:00:00.000Z`))} – ${DIA_CURTO.format(new Date(`${dias[6].data}T00:00:00.000Z`))}`
     : "";
@@ -105,7 +119,27 @@ export function AgendaSemana({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="min-w-48 font-medium capitalize">{rotulo}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/*
+            AC-022 exige que o vao abra a criacao com data, hora E QUADRA
+            pre-preenchidas -- e uma grade dia x hora nao identifica a quadra
+            sozinha. Com "todas", o vao mostra o que existe mas nao cria:
+            oferecer um botao que nao sabe onde reservar seria pior do que
+            nao oferecer, que e a regra que o agenda-dia-dialog ja segue.
+          */}
+          <select
+            aria-label="Quadra"
+            value={quadraId}
+            onChange={(e) => setQuadraId(e.target.value)}
+            className="rounded-lg border border-border bg-[var(--color-surface)] p-2 text-sm"
+          >
+            <option value="">Todas as quadras</option>
+            {quadras.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.nome}
+              </option>
+            ))}
+          </select>
           <Button type="button" variant="outline" aria-label="Semana anterior" onClick={() => navegar(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
@@ -155,7 +189,11 @@ export function AgendaSemana({
                     {String(h).padStart(2, "0")}h
                   </th>
                   {dias.map((d) => {
-                    const itens = d.itens.filter((i) => horaDe(i.horaInicio) === h);
+                    const itens = d.itens.filter(
+                      (i) =>
+                        horaDe(i.horaInicio) === h &&
+                        (quadraId === "" || i.quadraNome === nomeDaQuadra),
+                    );
                     return (
                       <td
                         key={`${d.data}-${h}`}
@@ -167,8 +205,11 @@ export function AgendaSemana({
                           <button
                             type="button"
                             aria-label={`Criar reserva em ${d.data} às ${String(h).padStart(2, "0")}:00`}
-                            disabled={d.fechado || !aoAbrirVao}
-                            onClick={() => aoAbrirVao?.(d.data, h)}
+                            disabled={d.fechado || quadraId === ""}
+                            title={quadraId === "" ? "Escolha uma quadra para criar" : undefined}
+                            onClick={() =>
+                              setAcao({ tipo: "criar", data: d.data, hora: h, quadraId })
+                            }
                             className="h-10 w-full rounded transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
                           />
                         ) : (
@@ -176,7 +217,13 @@ export function AgendaSemana({
                             <button
                               key={i.id}
                               type="button"
-                              onClick={() => aoAbrirItem?.(i, d.data)}
+                              onClick={() =>
+                                setAcao(
+                                  i.origemTipo === "TURMA"
+                                    ? { tipo: "cancelar-aula", item: i, data: d.data }
+                                    : { tipo: "mover", item: i, data: d.data },
+                                )
+                              }
                               className={`mb-1 block w-full rounded px-2 py-1 text-left text-xs transition-colors hover:opacity-90 ${
                                 i.origemTipo === "TURMA"
                                   ? "bg-[var(--color-secondary-container)] text-[var(--color-on-secondary-container)]"
@@ -206,6 +253,14 @@ export function AgendaSemana({
           </table>
         </div>
       )}
+
+      {acao ? (
+        <AgendaSemanaAcoes
+          acao={acao}
+          onFechar={() => setAcao(null)}
+          onMudou={() => void carregar(inicio)}
+        />
+      ) : null}
     </div>
   );
 }

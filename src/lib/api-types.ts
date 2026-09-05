@@ -2037,6 +2037,8 @@ export interface components {
             horaFim: string;
             /** @enum {string} */
             origemTipo: "AVULSO" | "TURMA";
+            /** Format: uuid */
+            origemTurmaId: string | null;
             responsavel: string | null;
             /** @enum {string} */
             statusPagamento: "pendente_pagamento" | "pago" | "cancelado";
