@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,17 +67,28 @@ export function AgendaSemana() {
   const [quadraId, setQuadraId] = useState("");
   const [acao, setAcao] = useState<AcaoDaSemana | null>(null);
 
+  // Dois cliques rápidos em "próxima semana" deixam duas requisições no ar, e
+  // nada garante que voltem na ordem em que saíram. Sem o selo, a resposta
+  // ATRASADA sobrescreve a atual e a grade passa a mostrar a semana errada com
+  // o cabeçalho da certa — sem erro, sem spinner, sem sintoma. Só o pedido
+  // mais recente pode escrever.
+  const pedido = useRef(0);
+
   const carregar = useCallback(async (alvo: string) => {
+    const meu = ++pedido.current;
     setCarregando(true);
     setErro(null);
     try {
-      setDias(await getAgendaSemana(alvo));
+      const semana = await getAgendaSemana(alvo);
+      if (meu !== pedido.current) return;
+      setDias(semana);
     } catch (e) {
+      if (meu !== pedido.current) return;
       setErro(
         e instanceof ApiError ? e.message : "Não foi possível carregar a semana.",
       );
     } finally {
-      setCarregando(false);
+      if (meu === pedido.current) setCarregando(false);
     }
   }, []);
 
@@ -87,7 +98,6 @@ export function AgendaSemana() {
   }, [inicio, carregar]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void listCourts(1, 100)
       .then((p) => setQuadras(p.data.filter((q) => q.status === "ativa")))
       .catch(() => setQuadras([]));
@@ -256,6 +266,18 @@ export function AgendaSemana() {
 
       {acao ? (
         <AgendaSemanaAcoes
+          // `data`, `horaInicio` e `horaFim` do diálogo são estado derivado de
+          // `acao`, e inicializador de `useState` só roda na montagem. Sem uma
+          // `key` que mude junto, trocar de uma reserva para outra reusaria a
+          // instância e o formulário continuaria com os valores da ANTERIOR —
+          // move a reserva errada, para o horário errado. O overlay impede o
+          // clique, mas não prende o foco: pelo teclado dá para alcançar a
+          // grade atrás e trocar `acao` sem passar por `null`.
+          key={
+            acao.tipo === "criar"
+              ? `criar:${acao.data}:${acao.hora}:${acao.quadraId}`
+              : `${acao.tipo}:${acao.item.id}`
+          }
           acao={acao}
           onFechar={() => setAcao(null)}
           onMudou={() => void carregar(inicio)}

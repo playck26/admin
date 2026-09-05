@@ -62,7 +62,6 @@ export function AgendaSemanaAcoes({
 
   useEffect(() => {
     if (acao.tipo !== "criar") return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void listStudents(1, 100)
       .then((p) => setAlunos(p.data))
       .catch(() => setAlunos([]));
