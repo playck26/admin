@@ -56,7 +56,7 @@ replicar):
 |---|---|---|
 | `/login` | `login-form` | entrada |
 | `/dashboard` | `dashboard-summary` + `evasao-card` | 3 KPIs do período e, desde a **SPEC-015**, o cartão "alunos em risco" — a única tela do Admin que puxa para uma ação, com cada item clicável para o aluno **e** para a turma |
-| `/agenda` | `agenda-view` + `agenda-dia-dialog` | mês inteiro; clique no dia abre o detalhe operável. **SPEC-032:** cada item mostra quem criou e quem cancelou — e quando não há evento diz *"sem histórico registrado"*, nunca "criada por —". Não é caso de borda: é o estado normal de quase toda linha no dia do deploy (LIM-032a), porque as ocupações anteriores à spec nasceram sem evento |
+| `/agenda` | `agenda-view` + `agenda-dia-dialog` + **`agenda-semana`** + **`agenda-semana-acoes`** | **duas abas.** *Mês*: o mês inteiro, e clique no dia abre o detalhe operável. *Semana* (**SPEC-034**): uma grade dia × hora — o mês já mostra volume, e quem abre a semana quer ver **onde** estão os buracos; sem as horas não haveria como clicar num vão para criar nem julgar se mover faz sentido. A faixa de horas sai **dos itens**, não de constante: um clube que abre às 6h não pode ter reserva escondida fora da janela. Três ações saem da grade — criar no vão, **mover** reserva avulsa e **cancelar uma ocorrência** de turma. O filtro de quadra casa por **`quadraId`, nunca por nome**: `quadras.nome` não é único no banco, e a validação cruzada de 2026-09-05 reproduziu o efeito — escolher a quadra A mostrava reserva da B homônima. **SPEC-032:** cada item mostra quem criou e quem cancelou — e quando não há evento diz *"sem histórico registrado"*, nunca "criada por —". Não é caso de borda: é o estado normal de quase toda linha no dia do deploy (LIM-032a), porque as ocupações anteriores à spec nasceram sem evento |
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
@@ -122,6 +122,15 @@ arquivo gerado está em dia.
 **Gap conhecido:** o CI **não** valida se esse arquivo está atualizado — a
 mitigação é lembrar de rodar o comando, que é o tipo de mitigação que falha
 em silêncio. Ver Gaps.
+
+**E em 2026-09-05 o mecanismo que EXISTE mostrou o valor dele.** A SPEC-034
+acrescentou `quadraId` ao `ItemDaAgendaResponseDto`, e o `typecheck` ficou
+vermelho sozinho nas cinco fixtures de `agenda-view.test.tsx` — porque elas
+são **tipadas**, e não `unknown[]`. É exatamente a INV-059 (SPEC-021) fazendo
+o trabalho: a fixture é o lugar onde a mudança de contrato dói primeiro. O que
+continua sem gate é o outro sentido — campo novo que **ninguém consome** passa
+despercebido, e foi por isso que o `quadraId` precisou de um defeito
+reproduzido para nascer.
 
 **Reconferido em 2026-09-02** (SPEC-032/TASK-004), e o gap continua: os passos
 do `ci.yml` são `lint`, `typecheck`, `test` e `build` — `api-types:check` não
@@ -391,5 +400,5 @@ carrega otimizador para host de terceiro por causa de uma foto.
 | 1 | **`api-types.ts` pode ficar stale**: o CI não compara com o `openapi.json` do `back`, e **não tem como** — em poly-repo o checkout do frontend não vê `../Back`. Este gap estava escrito aqui e **aconteceu de novo**: em 2026-08-26 causou o DEF-012, um apagão de três telas no app do aluno. Desde então existe `pnpm run api-types:check` (local, exit 1 se stale — provado nos dois sentidos), mas **um comando que ninguém roda não é gate** | **Alta** |
 | 2 | **Sem estado global e sem cache de servidor**: cada tela refaz suas chamadas. Adequado hoje; vira problema quando duas telas precisarem do mesmo dado fresco | Média |
 | 3 | Sem tratamento de offline apesar do service worker registrado (`cliente`) | Baixa |
-| 4 | Cobertura de teste concentrada em poucos componentes | Média |
+| 4 | Cobertura de teste concentrada em poucos componentes. **A grade da semana saiu dessa lista em 2026-09-05**, e por um motivo que vale registrar: os dois defeitos de estado dela (o diálogo que movia a reserva ERRADA e a corrida de fetch) foram achados por **revisão do diff**, não por teste, e o terceiro (quadra homônima) por validação cruzada. Os três só ganharam rede DEPOIS — `agenda-semana.test.tsx`. Componente sem teste aqui não é dívida abstrata: é onde os três moraram | Média |
 | 5 | Ícones e paleta ainda derivados de inferência, sem arquivo de marca oficial | Baixa |
