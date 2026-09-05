@@ -955,6 +955,62 @@ export async function getAgendaDia(data: string): Promise<ItemDoDia[]> {
   return (await res.json()) as ItemDoDia[];
 }
 
+/** SPEC-034/CON-034.1 — os sete dias, com o detalhe de cada um. */
+export type DiaComItens = components["schemas"]["DiaComItensResponseDto"];
+
+/**
+ * SPEC-034 — a semana inteira em UMA ida.
+ *
+ * `inicio` e o primeiro dia, e quem escolhe e o cliente (D10): o servidor nao
+ * adivinha convencao de semana. A grade manda o domingo que ela mesma calcula,
+ * pelo mesmo `getUTCDay()` que o calendario do mes ja usa.
+ */
+export async function getAgendaSemana(inicio: string): Promise<DiaComItens[]> {
+  const res = await authFetch(`/agenda/semana?inicio=${inicio}`);
+  return (await res.json()) as DiaComItens[];
+}
+
+/**
+ * SPEC-034/CON-034.2 — **mover** uma reserva avulsa.
+ *
+ * Campos omitidos ficam como estao. O servidor compoe o destino a partir da
+ * linha travada, entao mandar so o que mudou e o caminho correto — e nao uma
+ * economia de bytes.
+ */
+export async function moveBooking(
+  id: string,
+  destino: {
+    data?: string;
+    horaInicio?: string;
+    horaFim?: string;
+    quadraId?: string;
+  },
+): Promise<Booking> {
+  const res = await authFetch(`/bookings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(destino),
+  });
+  return (await res.json()) as Booking;
+}
+
+/**
+ * SPEC-034/CON-034.3 — cancelar UMA ocorrencia de turma.
+ *
+ * `motivo` e obrigatorio (D7): o aluno ve a aula sumir e pergunta por que.
+ * Aula que ja comecou volta `409 PRAZO_DE_CANCELAMENTO` — para essa o caminho
+ * e a chamada, com "a aula nao aconteceu".
+ */
+export async function cancelarOcorrenciaDeTurma(
+  turmaId: string,
+  ocupacaoId: string,
+  motivo: string,
+): Promise<void> {
+  await authFetch(`/classes/${turmaId}/ocorrencias/${ocupacaoId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ motivo }),
+  });
+}
+
 /**
  * SPEC-014:TASK-000 — troca de senha. O backend revoga todas as sessoes e
  * devolve um par novo; quem chama precisa guardar o access token, senao a

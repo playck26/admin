@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgendaDiaDialog } from "@/components/agenda-dia-dialog";
+import { AgendaSemana } from "@/components/agenda-semana";
 import { ApiError, getAgendaMes, type DiaDaAgenda } from "@/lib/api-client";
 
 const NOMES_DIAS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -31,6 +32,7 @@ export function AgendaView() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
+  const [modo, setModo] = useState<"mes" | "semana">("mes");
 
   const carregar = useCallback(async (alvo: string) => {
     setCarregando(true);
@@ -66,20 +68,54 @@ export function AgendaView() {
         <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em]">
           Agenda
         </h1>
+
+        {/*
+          SPEC-034 — mês e semana convivem, e o mês continua sendo o padrão.
+          Eles respondem perguntas diferentes: o mês mostra VOLUME (é onde o
+          gestor decide em que dia olhar), a semana mostra as HORAS (é onde ele
+          opera). Trocar um pelo outro perderia metade.
+        */}
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" aria-label="Mês anterior" onClick={() => navegar(-1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="min-w-40 text-center font-medium capitalize">
-            {MES_ANO.format(new Date(`${mes}-01T00:00:00.000Z`))}
-          </span>
-          <Button type="button" variant="outline" aria-label="Próximo mês" onClick={() => navegar(1)}>
-            <ChevronRight className="size-4" />
-          </Button>
+          <div role="tablist" aria-label="Modo de visualização" className="flex gap-1">
+            <Button
+              type="button"
+              role="tab"
+              aria-selected={modo === "mes"}
+              variant={modo === "mes" ? "default" : "outline"}
+              onClick={() => setModo("mes")}
+            >
+              Mês
+            </Button>
+            <Button
+              type="button"
+              role="tab"
+              aria-selected={modo === "semana"}
+              variant={modo === "semana" ? "default" : "outline"}
+              onClick={() => setModo("semana")}
+            >
+              Semana
+            </Button>
+          </div>
+
+          {modo === "mes" ? (
+            <>
+              <Button type="button" variant="outline" aria-label="Mês anterior" onClick={() => navegar(-1)}>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="min-w-40 text-center font-medium capitalize">
+                {MES_ANO.format(new Date(`${mes}-01T00:00:00.000Z`))}
+              </span>
+              <Button type="button" variant="outline" aria-label="Próximo mês" onClick={() => navegar(1)}>
+                <ChevronRight className="size-4" />
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 
-      {erro ? (
+      {modo === "semana" ? <AgendaSemana /> : null}
+
+      {modo === "semana" ? null : erro ? (
         <p role="alert" className="text-[var(--color-error)]">
           {erro}
         </p>
