@@ -393,6 +393,43 @@ dispara o `change` do input **sem** marcar a caixa e exige `false` no fio.
 `next.config.ts`. A regra do "NÃO existem no projeto" vale aqui — não se
 carrega otimizador para host de terceiro por causa de uma foto.
 
+### O prazo para desistir, e as duas armadilhas dele (SPEC-031/REQ-001)
+
+Cartão em *Configurações*, entre o limite de turmas e o contrato — os três
+decidem até onde vai o "sozinho" do aluno: quem entra, em quantas turmas, e
+até quando dá para desistir.
+
+**Vazio é "sem prazo", e é o padrão.** Empresa que nunca configurou nada não
+passa a exigir antecedência — um número padrão qualquer seria regra inventada
+entrando em vigor sem ninguém pedir. E vazio precisa ser **alcançável de
+volta**, por isso o estado do formulário é `string` e não `number`: com número,
+"apagar" e "zero" viram a mesma coisa na hora de mandar.
+
+**A tela diz o que NÃO é sobre prazo.** Depois que a aula começa, cancelar é
+sempre recusado — mesmo com os campos vazios. É a única mudança de
+comportamento que a spec impõe a quem não pediu nada, e sem esse aviso o gestor
+descobre pela reclamação do aluno.
+
+#### Duas armadilhas achadas por auditoria adversarial, e as duas eram de dado
+
+**1. O `PUT` é substituição total, e o cartão apagava o que não conseguiu
+ler.** Com o `GET` falhado os dois campos ficavam vazios, e vazio quer dizer
+`null`: o gestor digitava um prazo, salvava, e **apagava o outro**, recebendo
+"Salvo.". O erro não foi mostrar o cartão — foi não distinguir *"vazio porque
+não configurou"* de *"vazio porque não consegui ler"*. Hoje `leituraFalhou`
+desabilita campo e botão, e "Recarregar" é a única saída.
+
+**2. `type="number"` engolia o texto inválido.** O browser sanitiza: "24h",
+"2-4" ou "-" chegam ao `onChange` como string **vazia** — que aqui significa
+"sem prazo". Colar "24h" gravava a remoção do prazo dizendo "Salvo.". Hoje é
+`type="text"` com `inputMode="numeric"`, e o parse é `/^\d+$/` e não
+`Number()`, que aceita `0x10` como 16.
+
+> **A lição não é sobre o cartão, é sobre o teste.** O arquivo de prova
+> *afirmava o defeito*: rejeitava o `GET` e assertava que o `PUT` saía
+> apagando o outro campo — verde na CI, defendendo a sobrescrita. Foi escrito
+> sobre o que o código **fazia**, não sobre o que ele **devia fazer**.
+
 ## 10. Gaps e pontos de atenção
 
 | # | Gap | Severidade |
