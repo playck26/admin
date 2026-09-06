@@ -46,8 +46,8 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
   it("empresa sem configuração abre com os dois campos vazios", async () => {
     render(<PrazosDeCancelamentoCard />);
 
-    await waitFor(() => expect(campoAula()).toHaveValue(null));
-    expect(campoReserva()).toHaveValue(null);
+    await waitFor(() => expect(campoAula()).toHaveValue(""));
+    expect(campoReserva()).toHaveValue("");
   });
 
   it("AC-001: o que o servidor devolve aparece nos campos", async () => {
@@ -57,13 +57,13 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
     });
     render(<PrazosDeCancelamentoCard />);
 
-    await waitFor(() => expect(campoAula()).toHaveValue(24));
-    expect(campoReserva()).toHaveValue(2);
+    await waitFor(() => expect(campoAula()).toHaveValue("24"));
+    expect(campoReserva()).toHaveValue("2");
   });
 
   it("AC-001: salva os dois prazos e confirma", async () => {
     render(<PrazosDeCancelamentoCard />);
-    await waitFor(() => expect(campoAula()).toHaveValue(null));
+    await waitFor(() => expect(campoAula()).toHaveValue(""));
 
     fireEvent.change(campoAula(), { target: { value: "24" } });
     fireEvent.change(campoReserva(), { target: { value: "2" } });
@@ -88,7 +88,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       prazoCancelamentoReservaHoras: 2,
     });
     render(<PrazosDeCancelamentoCard />);
-    await waitFor(() => expect(campoAula()).toHaveValue(24));
+    await waitFor(() => expect(campoAula()).toHaveValue("24"));
 
     fireEvent.change(campoAula(), { target: { value: "" } });
     fireEvent.click(salvar());
@@ -116,7 +116,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
     ["fracionário", "1.5"],
   ])("AC-002: %s não sai da tela", async (_caso, valor) => {
     render(<PrazosDeCancelamentoCard />);
-    await waitFor(() => expect(campoAula()).toHaveValue(null));
+    await waitFor(() => expect(campoAula()).toHaveValue(""));
 
     fireEvent.change(campoAula(), { target: { value: valor } });
     fireEvent.click(salvar());
@@ -132,7 +132,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
    */
   it("diz que depois do começo não dá, mesmo com os campos vazios", async () => {
     render(<PrazosDeCancelamentoCard />);
-    await waitFor(() => expect(campoAula()).toHaveValue(null));
+    await waitFor(() => expect(campoAula()).toHaveValue(""));
 
     expect(
       screen.getByText(/cancelar é sempre recusado/),
@@ -140,24 +140,137 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
   });
 
   /**
-   * Leitura que falha não pode sumir com o cartão: isso deixaria o gestor sem
-   * caminho nenhum para configurar. "Sem prazo" é o estado real de quem nunca
-   * configurou, então o formulário vazio não mente sobre nada.
+   * **Este bloco existia afirmando o defeito.** A versão anterior deste
+   * arquivo rejeitava o `GET`, digitava `4`, e ASSERTAVA que o `PUT` saía com
+   * `prazoCancelamentoReservaHoras: null` — ou seja, o teste estava verde na
+   * CI provando que o cartão apagava a configuração que não conseguiu ler.
+   *
+   * Achado por auditoria adversarial em 2026-09-05. O `PUT` é **substituição
+   * total**: manda os dois campos sempre. Com a leitura falhada os dois campos
+   * ficam vazios, e vazio quer dizer `null`.
+   *
+   * A lição não é sobre o cartão, é sobre o teste: eu escrevi uma asserção
+   * sobre o que o código FAZIA, não sobre o que ele DEVIA fazer, e a asserção
+   * passou a defender o defeito.
    */
-  it("erro ao carregar mostra o erro E mantém o formulário utilizável", async () => {
-    getConfigOperacao.mockRejectedValue(new Error("rede"));
-    render(<PrazosDeCancelamentoCard />);
+  describe("leitura que falha (achado de auditoria)", () => {
+    /**
+     * A rejeicao e montada DENTRO de cada teste, junto do `render`.
+     *
+     * No `beforeEach` ela vira rejeicao nao tratada: o Vitest roda os hooks e
+     * o corpo do teste em ticks diferentes, e a promise nasce sem ninguem
+     * escutando. O `.catch` do componente so se liga no `render`.
+     */
+    const comLeituraFalhada = () => {
+      getConfigOperacao.mockImplementation(() =>
+        Promise.reject(new Error("rede")),
+      );
+      return render(<PrazosDeCancelamentoCard />);
+    };
 
-    await screen.findByRole("alert");
-    expect(campoAula()).toBeInTheDocument();
+    it("mostra o erro e NÃO some com o cartão", async () => {
+      comLeituraFalhada();
 
-    fireEvent.change(campoAula(), { target: { value: "4" } });
-    fireEvent.click(salvar());
-    await waitFor(() =>
-      expect(definirConfigOperacao).toHaveBeenCalledWith({
-        prazoCancelamentoAulaHoras: 4,
-        prazoCancelamentoReservaHoras: null,
-      }),
+      await screen.findByRole("alert");
+      expect(campoAula()).toBeInTheDocument();
+    });
+
+    it("NÃO deixa salvar — salvar apagaria o que não foi lido", async () => {
+      comLeituraFalhada();
+      await screen.findByRole("alert");
+
+      expect(salvar()).toBeDisabled();
+
+      // E o codigo tambem recusa, nao so a tela: as duas guardas existem
+      // porque uma sozinha some no primeiro refactor.
+      fireEvent.click(salvar());
+      await waitFor(() => expect(getConfigOperacao).toHaveBeenCalled());
+      expect(definirConfigOperacao).not.toHaveBeenCalled();
+    });
+
+    it("o erro DIZ por que não dá para salvar, não só que falhou", async () => {
+      comLeituraFalhada();
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /Recarregue antes de salvar/,
+      );
+    });
+
+    it("Recarregar é a saída, e ela devolve o cartão utilizável", async () => {
+      comLeituraFalhada();
+      await screen.findByRole("alert");
+
+      getConfigOperacao.mockResolvedValue({
+        prazoCancelamentoAulaHoras: 24,
+        prazoCancelamentoReservaHoras: 4,
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Recarregar" }));
+
+      await waitFor(() => expect(campoAula()).toHaveValue("24"));
+      expect(salvar()).not.toBeDisabled();
+
+      // E agora salvar preserva o campo que ele NÃO tocou.
+      fireEvent.change(campoAula(), { target: { value: "2" } });
+      fireEvent.click(salvar());
+      await waitFor(() =>
+        expect(definirConfigOperacao).toHaveBeenCalledWith({
+          prazoCancelamentoAulaHoras: 2,
+          prazoCancelamentoReservaHoras: 4,
+        }),
+      );
+    });
+  });
+
+  /**
+   * O `input` era `type="number"`, e o browser sanitiza: texto que ele não
+   * considera número chega ao `onChange` como string **vazia** — que aqui
+   * significa "sem prazo". Colar "24h" gravava a REMOÇÃO do prazo dizendo
+   * "Salvo.". A validação local nunca via o texto.
+   */
+  describe("texto inválido chega até a validação (achado de auditoria)", () => {
+    it.each([["24h"], ["2-4"], ["-"], ["0x10"], ["1e3"], ["abc"]])(
+      "%s é recusado na tela, e não vira 'sem prazo'",
+      async (texto) => {
+        render(<PrazosDeCancelamentoCard />);
+        await waitFor(() => expect(campoAula()).toHaveValue(""));
+
+        fireEvent.change(campoAula(), { target: { value: texto } });
+        fireEvent.click(salvar());
+
+        await screen.findByRole("alert");
+        expect(definirConfigOperacao).not.toHaveBeenCalled();
+      },
     );
+
+    /**
+     * `0x10` e `1e3` merecem menção: `Number()` os aceita (16 e 1000), e a
+     * versão anterior usava `Number()`. Nenhum dos dois é o que o gestor quis
+     * dizer ao digitar.
+     */
+    it("acima do teto do INTEGER é recusado ANTES de morrer no Prisma", async () => {
+      render(<PrazosDeCancelamentoCard />);
+      await waitFor(() => expect(campoAula()).toHaveValue(""));
+
+      fireEvent.change(campoAula(), { target: { value: "9999999999" } });
+      fireEvent.click(salvar());
+
+      await screen.findByRole("alert");
+      expect(definirConfigOperacao).not.toHaveBeenCalled();
+    });
+
+    it("o maior valor que a coluna aguenta AINDA passa", async () => {
+      render(<PrazosDeCancelamentoCard />);
+      await waitFor(() => expect(campoAula()).toHaveValue(""));
+
+      fireEvent.change(campoAula(), { target: { value: "2147483647" } });
+      fireEvent.click(salvar());
+
+      await waitFor(() =>
+        expect(definirConfigOperacao).toHaveBeenCalledWith({
+          prazoCancelamentoAulaHoras: 2147483647,
+          prazoCancelamentoReservaHoras: null,
+        }),
+      );
+    });
   });
 });

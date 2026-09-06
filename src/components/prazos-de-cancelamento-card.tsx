@@ -38,8 +38,32 @@ import {
  * clube não pediu.** Sem isso, o gestor descobre pela reclamação do aluno, e
  * a explicação chega depois do problema.
  */
+/**
+ * O teto real, e ele existe no banco: a coluna é `INTEGER` (INT4). Acima
+ * disso o valor passava nas DUAS validações — a local e o `@Min(1)` do DTO,
+ * que não tem `@Max` — e morria no Prisma, virando erro genérico em vez de
+ * `400`. Nem o AC-002 nem o DTO declaravam o teto; agora um dos dois lados
+ * declara.
+ */
+const TETO = 2_147_483_647;
+
 export function PrazosDeCancelamentoCard() {
   const [carregado, setCarregado] = useState(false);
+  /**
+   * **A leitura falhou, e por isso o formulario NAO pode gravar.**
+   *
+   * Achado de auditoria adversarial, 2026-09-05, e era perda de dado real:
+   * o `PUT` deste endpoint e **substituicao total** — manda os dois campos
+   * sempre. Com a leitura falhada os dois campos ficam vazios, e vazio quer
+   * dizer `null`. O gestor digitava um prazo, salvava, e **apagava o outro**,
+   * recebendo "Salvo." como resposta.
+   *
+   * O erro anterior nao foi mostrar o cartao: foi nao distinguir *"vazio
+   * porque o clube nunca configurou"* de *"vazio porque eu nao consegui ler"*.
+   * Os dois desenham a mesma tela e significam o oposto.
+   */
+  const [leituraFalhou, setLeituraFalhou] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
   const [aula, setAula] = useState("");
   const [reserva, setReserva] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -64,31 +88,56 @@ export function PrazosDeCancelamentoCard() {
       })
       .catch((e: unknown) => {
         setErro(
-          e instanceof ApiError ? e.message : "Não foi possível carregar.",
+          e instanceof ApiError
+            ? `${e.message} Recarregue antes de salvar: sem ler o que está gravado, salvar apagaria o que você não vê.`
+            : "Não foi possível carregar. Recarregue antes de salvar: sem ler o que está gravado, salvar apagaria o que você não vê.",
         );
-        // **Carrega mesmo assim**, com os dois campos vazios. Esconder o
-        // cartão por causa de uma leitura que falhou deixaria o gestor sem
-        // caminho nenhum — e "sem prazo" é o estado real de quem nunca
-        // configurou, então o formulário vazio não mente sobre nada.
+        setLeituraFalhou(true);
+        // **Mostra o cartão mesmo assim**, mas em modo somente leitura.
+        // Esconder deixaria o gestor sem caminho nenhum; deixar salvar
+        // deixaria ele apagar o que não conseguiu ver.
         setCarregado(true);
       });
-  }, [aplicar]);
+  }, [aplicar, tentativa]);
 
   /**
-   * `null` para vazio; `NaN` para o que não é inteiro `>= 1`.
+   * Recarregar e a saida do modo somente-leitura, e a unica. Nao existe
+   * "salvar assim mesmo": o `PUT` e substituicao total, entao "assim mesmo"
+   * significa apagar.
+   */
+  function recarregar() {
+    setErro(null);
+    setLeituraFalhou(false);
+    setCarregado(false);
+    setTentativa((n) => n + 1);
+  }
+
+  /**
+   * `null` para vazio; `NaN` para o que não é inteiro entre 1 e {@link TETO}.
    *
    * O servidor recusa zero, negativo e fracionário com `400` (AC-002) — esta
-   * checagem não substitui a de lá, antecipa. Descobrir "zero não vale" por
-   * um erro de rede é pior do que ler antes de tentar.
+   * checagem não substitui a de lá, antecipa. Descobrir "zero não vale" por um
+   * erro de rede é pior do que ler antes de tentar.
+   *
+   * **`/^\d+$/` e não `Number()`.** `Number("0x10")` é 16 e `Number("1e3")` é
+   * 1000 — nenhum dos dois é o que quem digitou quis dizer, e os dois passavam
+   * na versão anterior. Achado de auditoria.
    */
   const emHoras = (v: string): number | null | typeof NaN => {
     const limpo = v.trim();
     if (limpo === "") return null;
+    if (!/^\d+$/.test(limpo)) return NaN;
     const n = Number(limpo);
-    return Number.isInteger(n) && n >= 1 ? n : NaN;
+    return n >= 1 && n <= TETO ? n : NaN;
   };
 
   async function salvar() {
+    // A guarda do achado de auditoria. Ela e redundante com o `disabled` do
+    // botao **de proposito**: o `disabled` e a tela nao oferecendo o que
+    // seria errado; esta e o codigo nao fazendo o que seria errado. Uma
+    // sozinha some no primeiro refactor.
+    if (leituraFalhou) return;
+
     setErro(null);
     setSalvo(false);
 
@@ -96,7 +145,7 @@ export function PrazosDeCancelamentoCard() {
     const r = emHoras(reserva);
     if (Number.isNaN(a) || Number.isNaN(r)) {
       setErro(
-        'O prazo começa em 1 hora, e é número inteiro. Para não exigir antecedência, deixe o campo vazio — zero seria "só até a hora de começar", que é o que já vale sempre.',
+        `O prazo é um número inteiro de horas, entre 1 e ${TETO}. Para não exigir antecedência, deixe o campo vazio — zero seria "só até a hora de começar", que é o que já vale sempre.`,
       );
       return;
     }
@@ -131,19 +180,31 @@ export function PrazosDeCancelamentoCard() {
       <label className="text-sm font-medium" htmlFor={id}>
         {rotulo}
       </label>
+      {/*
+        **`text`, não `number`, e isso é conserto de achado.** Com
+        `type="number"` o browser sanitiza: tudo que ele não considera número
+        válido chega ao `onChange` como string **vazia**. Colar "24h", digitar
+        "2-4" ou deixar só "-" virava `""` — que aqui significa "sem prazo" —
+        e o cartão gravava a remoção do prazo respondendo "Salvo.".
+
+        A validação local se dizia "antecipa o 400 do servidor" e nunca via o
+        texto inválido; ela só pegava o que o browser deixava passar como
+        número (0, -3, 1.5). `inputMode="numeric"` mantém o teclado numérico
+        no celular sem devolver a sanitização.
+      */}
       <input
         id={id}
-        type="number"
-        min={1}
-        step={1}
+        type="text"
         inputMode="numeric"
+        autoComplete="off"
         placeholder="Sem prazo"
         value={valor}
         onChange={(e) => {
           setValor(e.target.value);
           setSalvo(false);
         }}
-        className="h-11 w-40 rounded-lg border border-[var(--color-outline)] bg-[var(--color-surface)] px-3 text-[15px]"
+        disabled={leituraFalhou}
+        className="h-11 w-40 rounded-lg border border-[var(--color-outline)] bg-[var(--color-surface)] px-3 text-[15px] disabled:opacity-60"
       />
     </div>
   );
@@ -172,12 +233,21 @@ export function PrazosDeCancelamentoCard() {
             )}
             <button
               type="button"
-              disabled={salvando}
+              disabled={salvando || leituraFalhou}
               onClick={() => void salvar()}
               className="h-11 rounded-lg bg-[var(--color-primary)] px-5 text-[15px] font-bold text-[var(--color-on-primary)] disabled:opacity-60"
             >
               {salvando ? "Salvando..." : "Salvar"}
             </button>
+            {leituraFalhou && (
+              <button
+                type="button"
+                onClick={recarregar}
+                className="h-11 rounded-lg border border-[var(--color-outline)] px-5 text-[15px] font-bold"
+              >
+                Recarregar
+              </button>
+            )}
             {salvo && (
               <span
                 role="status"
