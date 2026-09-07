@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PrazosDeCancelamentoCard } from "./prazos-de-cancelamento-card";
+import {
+  PrazosDeCancelamentoCard,
+  podeGravar,
+} from "./prazos-de-cancelamento-card";
 
 /**
  * SPEC-031/REQ-001 — as provas do lado do gestor.
@@ -33,9 +36,7 @@ const SEM_PRAZO = {
 beforeEach(() => {
   vi.clearAllMocks();
   getConfigOperacao.mockResolvedValue(SEM_PRAZO);
-  definirConfigOperacao.mockImplementation((p: unknown) =>
-    Promise.resolve(p),
-  );
+  definirConfigOperacao.mockImplementation((p: unknown) => Promise.resolve(p));
 });
 
 const campoAula = () => screen.getByLabelText(/Sair da turma/);
@@ -134,9 +135,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
     render(<PrazosDeCancelamentoCard />);
     await waitFor(() => expect(campoAula()).toHaveValue(""));
 
-    expect(
-      screen.getByText(/cancelar é sempre recusado/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/cancelar é sempre recusado/)).toBeInTheDocument();
   });
 
   /**
@@ -272,5 +271,39 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
         }),
       );
     });
+  });
+});
+
+/**
+ * **DEF-VC031-03 — a regra que decide se grava, com prova direta.**
+ *
+ * O cartão dizia ter duas guardas independentes. A validação cruzada mediu:
+ * removendo só a interna, os 20 testes ficavam verdes. E ao escrever a prova
+ * apareceu o porquê — **o React não dispara o clique de um botão desabilitado**,
+ * nem removendo o atributo do DOM. A guarda interna era inalcançável pela UI.
+ *
+ * Virou **um predicado**, consultado pelo `disabled` e pelo `salvar`. Aqui ele
+ * é testado direto, que é a única forma de a regra ter prova sem depender de
+ * um caminho de tela que não existe.
+ */
+describe("podeGravar — a regra, sem passar pela tela", () => {
+  it.each([
+    [{ salvando: false, leituraFalhou: false }, true, "estado normal"],
+    [{ salvando: true, leituraFalhou: false }, false, "salvando"],
+    [{ salvando: false, leituraFalhou: true }, false, "leitura falhou"],
+    [{ salvando: true, leituraFalhou: true }, false, "os dois"],
+  ])("%o -> %s (%s)", (estado, esperado) => {
+    expect(podeGravar(estado)).toBe(esperado);
+  });
+
+  /**
+   * A linha que importa: **leitura falhada nunca grava**, em nenhuma
+   * combinação. É o DEF-VC031-01 do Admin — o `PUT` é substituição total, e
+   * gravar sem ter lido apaga o que não se viu.
+   */
+  it("leituraFalhou domina, qualquer que seja o resto", () => {
+    for (const salvando of [true, false]) {
+      expect(podeGravar({ salvando, leituraFalhou: true })).toBe(false);
+    }
   });
 });
