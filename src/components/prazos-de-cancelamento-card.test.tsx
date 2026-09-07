@@ -180,8 +180,15 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
 
       expect(salvar()).toBeDisabled();
 
-      // E o codigo tambem recusa, nao so a tela: as duas guardas existem
-      // porque uma sozinha some no primeiro refactor.
+      // **Este clique NAO prova a guarda interna, e dizer que provava foi o
+      // DEF-VC031-03.** O React nao despacha o handler de um botao cujo prop
+      // e `disabled` — nem removendo o atributo do DOM (medido). Entao o
+      // `not.toHaveBeenCalled()` abaixo passa igual com a guarda interna
+      // REMOVIDA: ele prova que o botao e inerte ao toque, que e util e e
+      // outra coisa.
+      //
+      // Quem prova a regra e o bloco `podeGravar` no fim do arquivo, sem
+      // passar pela tela — a unica forma, ja que o caminho de tela nao existe.
       fireEvent.click(salvar());
       await waitFor(() => expect(getConfigOperacao).toHaveBeenCalled());
       expect(definirConfigOperacao).not.toHaveBeenCalled();
