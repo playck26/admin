@@ -47,6 +47,32 @@ import {
  */
 const TETO = 2_147_483_647;
 
+/**
+ * **DEF-VC031-03 — uma regra, dois consumidores; não duas cópias.**
+ *
+ * O código dizia ter duas guardas independentes — o `disabled` do botão e um
+ * `if (leituraFalhou) return` dentro do `salvar` — com o argumento de que
+ * *"uma sozinha some no primeiro refactor"*.
+ *
+ * **A validação cruzada mediu e a afirmação era falsa em dois sentidos.**
+ * Removendo só a guarda interna, os 20 testes ficavam verdes: ela não tinha
+ * prova. E ao tentar escrever essa prova, apareceu o motivo — **o React não
+ * dispara o clique de um botão cujo prop é `disabled`**, nem removendo o
+ * atributo do DOM (medido). A guarda interna era **inalcançável pela UI**, e
+ * portanto inverificável por teste de tela.
+ *
+ * Duas cópias da mesma regra, uma delas impossível de testar, é pior que uma
+ * regra só — é a doutrina do próprio projeto: *regra duplicada diverge no
+ * primeiro ajuste*. Aqui vira **um predicado exportado**, que o botão e o
+ * `salvar` consultam, e que tem prova direta.
+ */
+export function podeGravar(estado: {
+  salvando: boolean;
+  leituraFalhou: boolean;
+}): boolean {
+  return !estado.salvando && !estado.leituraFalhou;
+}
+
 export function PrazosDeCancelamentoCard() {
   const [carregado, setCarregado] = useState(false);
   /**
@@ -132,11 +158,18 @@ export function PrazosDeCancelamentoCard() {
   };
 
   async function salvar() {
-    // A guarda do achado de auditoria. Ela e redundante com o `disabled` do
-    // botao **de proposito**: o `disabled` e a tela nao oferecendo o que
-    // seria errado; esta e o codigo nao fazendo o que seria errado. Uma
-    // sozinha some no primeiro refactor.
-    if (leituraFalhou) return;
+    // A mesma regra que desabilita o botão. Ver {@link podeGravar}.
+    //
+    // **Esta linha é inalcançável hoje, e fica assim mesmo — declarado.** O
+    // React não dispara o clique de um botão desabilitado, então nenhum
+    // caminho de tela chega aqui enquanto o `disabled` existir; por isso ela
+    // não tem — e não pode ter — teste de tela. É seguro contra o refactor
+    // que um dia tire o `disabled`, não uma segunda barreira em uso.
+    //
+    // A versão anterior deste comentário afirmava duas guardas independentes
+    // e "uma sozinha some no primeiro refactor". Era falso nos dois sentidos,
+    // e a validação cruzada mediu: removê-la deixava os 20 testes verdes.
+    if (!podeGravar({ salvando, leituraFalhou })) return;
 
     setErro(null);
     setSalvo(false);
@@ -233,7 +266,7 @@ export function PrazosDeCancelamentoCard() {
             )}
             <button
               type="button"
-              disabled={salvando || leituraFalhou}
+              disabled={!podeGravar({ salvando, leituraFalhou })}
               onClick={() => void salvar()}
               className="h-11 rounded-lg bg-[var(--color-primary)] px-5 text-[15px] font-bold text-[var(--color-on-primary)] disabled:opacity-60"
             >
