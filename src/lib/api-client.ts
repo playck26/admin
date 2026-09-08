@@ -111,11 +111,28 @@ export type SchoolClassDetail =
 
 export type DashboardSummary = components["schemas"]["DashboardResumoResponseDto"];
 
+// SPEC-033 — a carteira. Tipos gerados do `openapi.json` do back, nunca
+// escritos a mao: e o que faz uma mudanca de contrato virar erro de
+// compilacao em vez de tela em branco (DEF-012).
+export type ExtratoDeCredito = components["schemas"]["ExtratoDeCreditoResponseDto"];
+export type MovimentoDeCredito = components["schemas"]["MovimentoDeCreditoResponseDto"];
+export type MovimentoCriado = components["schemas"]["MovimentoCriadoResponseDto"];
+
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
     public conflictWith?: BookingConflictInfo,
+    /**
+     * SPEC-033 — o `code` do corpo, quando existe.
+     *
+     * A mensagem é para a pessoa; o `code` é para a tela decidir **onde**
+     * mostrar. Um `422` de lançamento de crédito pode ser `SENHA_INVALIDA`
+     * (erro no campo de senha) ou `SALDO_INSUFICIENTE` (erro no valor), e
+     * casar texto para distinguir os dois seria retrocesso — a mesma razão
+     * pela qual o back parou de discriminar por mensagem no D7.
+     */
+    public code?: string,
   ) {
     super(message);
   }
@@ -131,7 +148,11 @@ async function parseError(res: Response, fallback: string): Promise<ApiError> {
     body && typeof body === "object" && "conflictWith" in body
       ? (body.conflictWith as BookingConflictInfo | undefined)
       : undefined;
-  return new ApiError(res.status, message, conflictWith);
+  const code =
+    body && typeof body === "object" && "code" in body && typeof body.code === "string"
+      ? body.code
+      : undefined;
+  return new ApiError(res.status, message, conflictWith, code);
 }
 
 /**
@@ -1136,6 +1157,44 @@ export async function getFrequenciaDoAluno(
 ): Promise<FrequenciaDoAluno> {
   const res = await authFetch(`/students/${alunoId}/frequencia?dias=${dias}`);
   return (await res.json()) as FrequenciaDoAluno;
+}
+
+/**
+ * SPEC-033/TASK-007 — o extrato do aluno, na visão do ADMIN.
+ *
+ * Traz `motivo`, ao contrário da visão do aluno (AC-013): é nota interna do
+ * clube, e o admin escreve com essa expectativa.
+ */
+export async function getExtratoDeCredito(
+  alunoId: string,
+): Promise<ExtratoDeCredito> {
+  const res = await authFetch(`/students/${alunoId}/creditos`);
+  if (!res.ok) throw await parseError(res, "Não foi possível carregar a carteira.");
+  return (await res.json()) as ExtratoDeCredito;
+}
+
+/**
+ * Lança ou retira crédito. A senha vai no corpo e é reconferida no ato (D6).
+ *
+ * **Nunca guarde esta senha.** Ela não abre sessão elevada: cada lançamento
+ * pede de novo, de propósito.
+ */
+export async function lancarCredito(
+  alunoId: string,
+  corpo: {
+    tipo: "entrada" | "retirada";
+    valorCentavos: number;
+    motivo: string;
+    senha: string;
+  },
+): Promise<MovimentoCriado> {
+  const res = await authFetch(`/students/${alunoId}/creditos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(corpo),
+  });
+  if (!res.ok) throw await parseError(res, "Não foi possível registrar o lançamento.");
+  return (await res.json()) as MovimentoCriado;
 }
 
 export async function getEvasao(dias = 30): Promise<ListaDeEvasao> {

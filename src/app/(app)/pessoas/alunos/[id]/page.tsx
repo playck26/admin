@@ -1,5 +1,6 @@
 import { EditStudentForm } from "@/components/edit-student-form";
 import { FrequenciaAluno } from "@/components/frequencia-aluno";
+import { CarteiraDoAluno } from "@/components/carteira-do-aluno";
 
 export default async function EditarAlunoPage({ params }: PageProps<"/pessoas/alunos/[id]">) {
   const { id } = await params;
@@ -11,6 +12,11 @@ export default async function EditarAlunoPage({ params }: PageProps<"/pessoas/al
           tela: quem abre a ficha do aluno costuma vir de um alerta de
           evasão, e precisa do número junto do contato para agir. */}
       <FrequenciaAluno alunoId={id} />
+      {/* SPEC-033/TASK-007 — a carteira fica na ficha pelo mesmo motivo da
+          frequência: quem lança crédito está olhando para uma pessoa, não
+          para uma carteira. Ela vem por último porque é ação, e as duas de
+          cima são leitura. */}
+      <CarteiraDoAluno alunoId={id} />
     </div>
   );
 }
