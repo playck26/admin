@@ -57,7 +57,7 @@ replicar):
 | `/login` | `login-form` | entrada |
 | `/dashboard` | `dashboard-summary` + `evasao-card` | 3 KPIs do período e, desde a **SPEC-015**, o cartão "alunos em risco" — a única tela do Admin que puxa para uma ação, com cada item clicável para o aluno **e** para a turma |
 | `/agenda` | `agenda-view` + `agenda-dia-dialog` + **`agenda-semana`** + **`agenda-semana-acoes`** | **duas abas.** *Mês*: o mês inteiro, e clique no dia abre o detalhe operável. *Semana* (**SPEC-034**): uma grade dia × hora — o mês já mostra volume, e quem abre a semana quer ver **onde** estão os buracos; sem as horas não haveria como clicar num vão para criar nem julgar se mover faz sentido. A faixa de horas sai **dos itens**, não de constante: um clube que abre às 6h não pode ter reserva escondida fora da janela. Três ações saem da grade — criar no vão, **mover** reserva avulsa e **cancelar uma ocorrência** de turma. O filtro de quadra casa por **`quadraId`, nunca por nome**: `quadras.nome` não é único no banco, e a validação cruzada de 2026-09-05 reproduziu o efeito — escolher a quadra A mostrava reserva da B homônima. **SPEC-032:** cada item mostra quem criou e quem cancelou — e quando não há evento diz *"sem histórico registrado"*, nunca "criada por —". Não é caso de borda: é o estado normal de quase toda linha no dia do deploy (LIM-032a), porque as ocupações anteriores à spec nasceram sem evento |
-| `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno` | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro) |
+| `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno`, **`carteira-do-aluno`** | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro). **SPEC-033:** a **carteira** entra na mesma ficha, pelo mesmo motivo da frequência — quem lança crédito está olhando para uma pessoa, não para uma carteira. Ela é a **única tela do Admin que pede senha para agir** (D6), e pede a **cada** lançamento: não há sessão elevada, e o campo é limpo depois do envio inclusive quando dá certo. O erro vai para o campo certo pelo **`code`** da resposta, nunca por texto — `SENHA_INVALIDA` é da senha, `SALDO_INSUFICIENTE` é do valor —, e errar a senha **não apaga** o que já foi digitado |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*` | professores (cadastro sem login — ver Gaps) |
 | `/pessoas/niveis` | `levels-manager` | níveis |
 | `/quadras` (+ `novo`, `[id]`, **`catalogos`**) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section`, **`catalogo-de-quadra-manager`**, **`seletor-de-catalogo`** | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
@@ -118,6 +118,18 @@ aqui prometia campos que não chegam.
 Desde a SPEC-020/TASK-007, `Court` e as opções de catálogo vêm do
 `openapi.json`. **`pnpm run api-types:check`** diz em um comando se o
 arquivo gerado está em dia.
+
+> **O gerador expõe defeito de contrato, e isso aconteceu na SPEC-033.**
+> `@ApiProperty({ nullable: true })` **sem `type`** no back produz schema sem
+> tipo, e o `openapi-typescript` gera `Record<string, never>`: o campo compila
+> lá, aparece no `openapi.json` e fica **inutilizável aqui**. Achado tentando
+> renderizar `motivo` no extrato, e consertado **na origem** (`back#68`) — não
+> com um cast local, que esconderia exatamente o que este gerador existe para
+> revelar.
+
+**`ApiError` carrega o `code` desde a SPEC-033.** A mensagem é para a pessoa; o
+código é para a tela decidir **onde** mostrar o erro. Casar texto para isso
+seria o mesmo retrocesso que o back recusou no contrato de erro das triggers.
 
 **Gap conhecido:** o CI **não** valida se esse arquivo está atualizado — a
 mitigação é lembrar de rodar o comando, que é o tipo de mitigação que falha
