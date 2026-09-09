@@ -1028,6 +1028,22 @@ export interface paths {
         patch: operations["ClassesController_update"];
         trace?: never;
     };
+    "/api/v1/classes/{id}/ocorrencias-canceladas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClassesController_ocorrenciasCanceladas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{turmaId}/ocorrencias/{ocupacaoId}/cancel": {
         parameters: {
             query?: never;
@@ -1038,6 +1054,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ClassesController_cancelarOcorrencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{turmaId}/ocorrencias/{ocupacaoId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ClassesController_reativarOcorrencia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2110,6 +2142,13 @@ export interface components {
             /** Format: uuid */
             quadraId?: string;
         };
+        CancelamentoResponseDto: {
+            /**
+             * @description Centavos devolvidos à carteira do aluno, ou null quando não havia consumo ativo.
+             * @example 12000
+             */
+            creditoDevolvidoCentavos: number | null;
+        };
         AutorDoEventoDto: {
             /** Format: uuid */
             id: string;
@@ -2128,7 +2167,7 @@ export interface components {
              * @description O GESTO humano que provocou o evento.
              * @enum {string}
              */
-            acao: "reserva_criada" | "reserva_cancelada" | "reserva_movida" | "aula_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado" | "turma_aluno_removido";
+            acao: "reserva_criada" | "reserva_cancelada" | "reserva_movida" | "aula_cancelada" | "pagamento_confirmado" | "turma_criada" | "turma_horario_editado" | "credito_lancado" | "credito_retirado" | "turma_aluno_removido" | "turma_inativada" | "turma_reativada" | "aula_reativada";
             /** @description Nota interna, e só existe em ação administrativa que a exige. Consumo e devolução não têm motivo — o motivo deles é a própria reserva. */
             motivo: Record<string, never> | null;
             autor: components["schemas"]["AutorDoEventoDto"];
@@ -2442,6 +2481,23 @@ export interface components {
             /** @example 4 */
             alunosAlocados: number;
             alunos: components["schemas"]["AlunoDaTurmaResponseDto"][];
+        };
+        AulaCanceladaResponseDto: {
+            /**
+             * Format: uuid
+             * @description O MESMO id que `POST /classes/:turmaId/ocorrencias/:ocupacaoId/reactivate` aceita — se divergirem, o caminho quebra no último passo (mesma razão da INV-026b).
+             */
+            ocupacaoId: string;
+            /** @example 2026-09-22 */
+            data: string;
+            /** @example 18:00 */
+            horaInicio: string;
+            /** @example 19:00 */
+            horaFim: string;
+            /** @example Quadra 1 */
+            quadraNome: string;
+            /** @description `false` quando outra ocupação já tomou o horário. A tela avisa antes; quem decide é o servidor. */
+            horarioLivre: boolean;
         };
         CancelarOcorrenciaDto: {
             /** @example Quadra interditada para manutenção */
@@ -4264,11 +4320,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CancelamentoResponseDto"];
+                };
             };
         };
     };
@@ -4921,7 +4979,52 @@ export interface operations {
             };
         };
     };
+    ClassesController_ocorrenciasCanceladas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AulaCanceladaResponseDto"][];
+                };
+            };
+        };
+    };
     ClassesController_cancelarOcorrencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turmaId: string;
+                ocupacaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarOcorrenciaDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClassesController_reativarOcorrencia: {
         parameters: {
             query?: never;
             header?: never;

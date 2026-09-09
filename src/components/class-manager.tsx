@@ -6,8 +6,21 @@ import { ArrowLeft, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import {
   ApiError,
@@ -32,6 +45,7 @@ import {
   type EncontroForm,
 } from "@/components/encontros-field";
 import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
+import { AulasCanceladasDaTurma } from "@/components/aulas-canceladas-da-turma";
 
 const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
@@ -87,7 +101,13 @@ export function ClassManager({ id }: { id: string }) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    Promise.all([reload(), listCourts(1, 100), listLevels(), listTeachers(1, 100), listStudents(1, 100)])
+    Promise.all([
+      reload(),
+      listCourts(1, 100),
+      listLevels(),
+      listTeachers(1, 100),
+      listStudents(1, 100),
+    ])
       .then(([, courtsData, levelsData, teachersData, studentsData]) => {
         setCourts(courtsData.data);
         setLevels(levelsData);
@@ -95,7 +115,11 @@ export function ClassManager({ id }: { id: string }) {
         setStudents(studentsData.data);
       })
       .catch((err: unknown) => {
-        setLoadError(err instanceof ApiError ? err.message : "Não foi possível carregar a turma.");
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar a turma.",
+        );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -115,20 +139,47 @@ export function ClassManager({ id }: { id: string }) {
       });
       await reload();
     } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : "Não foi possível salvar as alterações.");
+      setEditError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar as alterações.",
+      );
     } finally {
       setEditLoading(false);
     }
   }
 
+  /**
+   * SPEC-035 — **o botão que não fazia nada passou a fazer duas coisas.**
+   *
+   * Até 2026-09-09 o back gravava o `status` e mais nada: inativar a turma
+   * deixava a quadra bloqueada para sempre, apontando para uma turma fora de
+   * operação. Agora inativar **cancela as ocupações futuras** e reativar
+   * **regenera a grade** — e é a regeneração que pode ser recusada.
+   *
+   * A recusa vem com a lista inteira de conflitos (`conflicts`), e não com o
+   * primeiro: o gestor vê o estrago todo em vez de descobrir o segundo depois
+   * de resolver o primeiro. **É o "recusar com aviso" que o item 13 do
+   * backlog pediu** — sem a contagem, a mensagem crua do servidor ("Conflito
+   * de horário com ocupação existente na quadra") não diz nem quantas.
+   */
   async function handleToggleStatus() {
     if (!turma) return;
+    const reativando = turma.status !== "ativa";
+    setEditError(null);
     setStatusLoading(true);
     try {
-      await updateClass(id, { status: turma.status === "ativa" ? "inativa" : "ativa" });
+      await updateClass(id, { status: reativando ? "ativa" : "inativa" });
       await reload();
     } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : "Não foi possível mudar o status.");
+      const conflitos = err instanceof ApiError ? (err.conflicts ?? []) : [];
+      setEditError(
+        conflitos.length > 0
+          ? `Não dá para reativar: ${conflitos.length === 1 ? "um horário da turma já foi ocupado" : `${conflitos.length} horários da turma já foram ocupados`}. Libere a quadra ou mude a recorrência antes de reativar.`
+          : err instanceof ApiError
+            ? err.message
+            : "Não foi possível mudar o status.",
+      );
     } finally {
       setStatusLoading(false);
     }
@@ -144,7 +195,11 @@ export function ClassManager({ id }: { id: string }) {
       setNovoAlunoId("");
       await reload();
     } catch (err) {
-      setAllocError(err instanceof ApiError ? err.message : "Não foi possível alocar o aluno (capacidade excedida?).");
+      setAllocError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível alocar o aluno (capacidade excedida?).",
+      );
     } finally {
       setAllocLoading(false);
     }
@@ -157,7 +212,11 @@ export function ClassManager({ id }: { id: string }) {
       await removeStudentFromClass(id, alunoId);
       await reload();
     } catch (err) {
-      setAllocError(err instanceof ApiError ? err.message : "Não foi possível remover o aluno.");
+      setAllocError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível remover o aluno.",
+      );
     } finally {
       setRemovingId(null);
     }
@@ -172,11 +231,15 @@ export function ClassManager({ id }: { id: string }) {
   }
 
   if (!turma) {
-    return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
+    return (
+      <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
+    );
   }
 
   const alocadosIds = new Set(turma.alunos.map((aluno) => aluno.alunoId));
-  const disponiveis = students.filter((student) => !alocadosIds.has(student.id));
+  const disponiveis = students.filter(
+    (student) => !alocadosIds.has(student.id),
+  );
   const cheia = turma.alunosAlocados >= turma.capacidade;
 
   return (
@@ -196,11 +259,21 @@ export function ClassManager({ id }: { id: string }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-7">
           <div className="mb-6 flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">{turma.nome}</h2>
-            <StatusBadge ativo={turma.status === "ativa"} activeLabel="Ativa" inactiveLabel="Inativa" />
+            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">
+              {turma.nome}
+            </h2>
+            <StatusBadge
+              ativo={turma.status === "ativa"}
+              activeLabel="Ativa"
+              inactiveLabel="Inativa"
+            />
           </div>
 
-          <form onSubmit={handleSave} className="flex flex-col gap-4" noValidate>
+          <form
+            onSubmit={handleSave}
+            className="flex flex-col gap-4"
+            noValidate
+          >
             <div className="flex flex-col gap-1">
               <Label htmlFor="nome">Nome</Label>
               <Input
@@ -215,7 +288,11 @@ export function ClassManager({ id }: { id: string }) {
 
             <div className="flex flex-col gap-1">
               <Label htmlFor="quadra">Quadra</Label>
-              <Select value={quadraId} onValueChange={setQuadraId} disabled={editLoading}>
+              <Select
+                value={quadraId}
+                onValueChange={setQuadraId}
+                disabled={editLoading}
+              >
                 <SelectTrigger id="quadra" className="h-10 w-full px-3">
                   <SelectValue placeholder="Selecione uma quadra" />
                 </SelectTrigger>
@@ -232,7 +309,11 @@ export function ClassManager({ id }: { id: string }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="nivel">Nível</Label>
-                <Select value={nivelId} onValueChange={setNivelId} disabled={editLoading}>
+                <Select
+                  value={nivelId}
+                  onValueChange={setNivelId}
+                  disabled={editLoading}
+                >
                   <SelectTrigger id="nivel" className="h-10 w-full px-3">
                     <SelectValue placeholder="Sem nível" />
                   </SelectTrigger>
@@ -248,7 +329,11 @@ export function ClassManager({ id }: { id: string }) {
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="professor">Professor</Label>
-                <Select value={professorId} onValueChange={setProfessorId} disabled={editLoading}>
+                <Select
+                  value={professorId}
+                  onValueChange={setProfessorId}
+                  disabled={editLoading}
+                >
                   <SelectTrigger id="professor" className="h-10 w-full px-3">
                     <SelectValue placeholder="Sem professor" />
                   </SelectTrigger>
@@ -292,7 +377,11 @@ export function ClassManager({ id }: { id: string }) {
             ) : null}
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={editLoading} className="h-10 px-6 text-[13px] font-semibold">
+              <Button
+                type="submit"
+                disabled={editLoading}
+                className="h-10 px-6 text-[13px] font-semibold"
+              >
                 {editLoading ? "Salvando..." : "Salvar alterações"}
               </Button>
             </div>
@@ -312,29 +401,56 @@ export function ClassManager({ id }: { id: string }) {
             }
           >
             <Ban className="size-4" />
-            {statusLoading ? "Aplicando..." : turma.status === "ativa" ? "Inativar turma" : "Reativar turma"}
+            {statusLoading
+              ? "Aplicando..."
+              : turma.status === "ativa"
+                ? "Inativar turma"
+                : "Reativar turma"}
           </Button>
+
+          <hr className="my-6 border-border" />
+
+          {/*
+            SPEC-035/TASK-004 — a PORTA da reativação de uma aula.
+
+            Mora aqui, e não na agenda, porque a agenda esconde o cancelado —
+            e quem investiga "por que sumiu a aula de terça" abre a turma.
+          */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
+              Aulas canceladas
+            </h3>
+            <AulasCanceladasDaTurma turmaId={id} />
+          </div>
         </div>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-5">
           <div>
             <TurmaChamadaAbas turmaId={id} />
 
-            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">Alunos alocados</h2>
+            <h2 className="text-lg font-semibold text-[var(--color-on-surface)]">
+              Alunos alocados
+            </h2>
             <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">
               {turma.alunosAlocados}/{turma.capacidade} vagas ocupadas
             </p>
           </div>
 
           {turma.alunos.length === 0 ? (
-            <p className="text-sm text-[var(--color-on-surface-variant)]">Nenhum aluno alocado ainda.</p>
+            <p className="text-sm text-[var(--color-on-surface-variant)]">
+              Nenhum aluno alocado ainda.
+            </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">Nome</TableHead>
-                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">Email</TableHead>
+                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">
+                      Nome
+                    </TableHead>
+                    <TableHead className="text-xs font-medium text-[var(--color-on-surface-variant)]">
+                      Email
+                    </TableHead>
                     <TableHead className="text-right text-xs font-medium text-[var(--color-on-surface-variant)]">
                       Ações
                     </TableHead>
@@ -343,8 +459,12 @@ export function ClassManager({ id }: { id: string }) {
                 <TableBody>
                   {turma.alunos.map((aluno) => (
                     <TableRow key={aluno.alunoId} className="border-border">
-                      <TableCell className="font-medium text-[var(--color-on-surface)]">{aluno.nome}</TableCell>
-                      <TableCell className="text-[var(--color-on-surface-variant)]">{aluno.email}</TableCell>
+                      <TableCell className="font-medium text-[var(--color-on-surface)]">
+                        {aluno.nome}
+                      </TableCell>
+                      <TableCell className="text-[var(--color-on-surface-variant)]">
+                        {aluno.email}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           type="button"
@@ -354,7 +474,9 @@ export function ClassManager({ id }: { id: string }) {
                           onClick={() => void handleRemove(aluno.alunoId)}
                           className="h-7 border-primary px-3 text-xs text-primary hover:bg-primary/5"
                         >
-                          {removingId === aluno.alunoId ? "Removendo..." : "Remover"}
+                          {removingId === aluno.alunoId
+                            ? "Removendo..."
+                            : "Remover"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -364,12 +486,25 @@ export function ClassManager({ id }: { id: string }) {
             </div>
           )}
 
-          <form onSubmit={handleAllocate} className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
-            <p className="text-sm font-semibold text-[var(--color-on-surface)]">Alocar aluno</p>
+          <form
+            onSubmit={handleAllocate}
+            className="mt-2 flex flex-col gap-3 border-t border-border pt-4"
+          >
+            <p className="text-sm font-semibold text-[var(--color-on-surface)]">
+              Alocar aluno
+            </p>
             <div className="flex gap-3">
-              <Select value={novoAlunoId} onValueChange={setNovoAlunoId} disabled={allocLoading || cheia}>
+              <Select
+                value={novoAlunoId}
+                onValueChange={setNovoAlunoId}
+                disabled={allocLoading || cheia}
+              >
                 <SelectTrigger id="novoAluno" className="h-10 flex-1 px-3">
-                  <SelectValue placeholder={cheia ? "Turma sem vagas" : "Selecione um aluno"} />
+                  <SelectValue
+                    placeholder={
+                      cheia ? "Turma sem vagas" : "Selecione um aluno"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {disponiveis.map((student) => (
