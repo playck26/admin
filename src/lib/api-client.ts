@@ -118,6 +118,11 @@ export type ExtratoDeCredito = components["schemas"]["ExtratoDeCreditoResponseDt
 export type MovimentoDeCredito = components["schemas"]["MovimentoDeCreditoResponseDto"];
 export type MovimentoCriado = components["schemas"]["MovimentoCriadoResponseDto"];
 
+// SPEC-040 — a agenda do professor, pela mesma regra: tipo gerado, nunca
+// escrito a mao.
+export type DiaDeDisponibilidade =
+  components["schemas"]["DiaDisponibilidadeResponseDto"];
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -1195,6 +1200,43 @@ export async function lancarCredito(
   });
   if (!res.ok) throw await parseError(res, "Não foi possível registrar o lançamento.");
   return (await res.json()) as MovimentoCriado;
+}
+
+/**
+ * SPEC-040/AC-007 — a semana do professor, **sempre com os sete dias**.
+ *
+ * Os dias sem linha voltam com `indisponivel: true`, calculado pelo back: a
+ * tela nao precisa saber que ausencia de registro significa alguma coisa.
+ */
+export async function getDisponibilidadeDoProfessor(
+  professorId: string,
+): Promise<DiaDeDisponibilidade[]> {
+  const res = await authFetch(`/teachers/${professorId}/disponibilidade`);
+  if (!res.ok)
+    throw await parseError(res, "Nao foi possivel carregar a disponibilidade.");
+  return (await res.json()) as DiaDeDisponibilidade[];
+}
+
+/**
+ * SPEC-040/AC-001 — substitui a semana inteira.
+ *
+ * **So os dias em que ele atende vao no corpo** (D6): dia ausente significa
+ * "nao atende", e nao existe campo de flag. Quem reenvia o que leu no `GET`
+ * filtra os `indisponivel` — a assimetria e deliberada, e esta em
+ * `API_CONTRACTS.md`.
+ */
+export async function salvarDisponibilidadeDoProfessor(
+  professorId: string,
+  dias: { diaSemana: number; horaInicio: string; horaFim: string }[],
+): Promise<DiaDeDisponibilidade[]> {
+  const res = await authFetch(`/teachers/${professorId}/disponibilidade`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dias }),
+  });
+  if (!res.ok)
+    throw await parseError(res, "Nao foi possivel salvar a disponibilidade.");
+  return (await res.json()) as DiaDeDisponibilidade[];
 }
 
 export async function getEvasao(dias = 30): Promise<ListaDeEvasao> {
