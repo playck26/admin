@@ -486,11 +486,22 @@ export async function getAvailability(quadraId: string, data: string): Promise<A
    * é do servidor, para o app do aluno e o painel não divergirem sobre o
    * que é "uma reserva".
    */
+/**
+ * SPEC-039 — `professorId` e `valor` chegaram juntos, e **só valem juntos**.
+ *
+ * Com professor, o pedido vira aula particular: o preço é o que o clube
+ * digitou, não `precoHora × horas`. Sem professor, `valor` é recusado pelo
+ * servidor com `422 VALOR_SEM_PROFESSOR` — numa reserva de quadra o preço é da
+ * quadra, e deixar a tela mandar um valor abriria um caminho que a demanda não
+ * pediu, num campo que a carteira debita.
+ */
 export async function createBooking(dto: {
   quadraId: string;
   data: string;
   slots: { horaInicio: string; horaFim: string }[];
   alunoId?: string;
+  professorId?: string;
+  valor?: number;
 }): Promise<{ reservas: Booking[] }> {
   const res = await authFetch("/bookings", { method: "POST", body: JSON.stringify(dto) });
   return (await res.json()) as { reservas: Booking[] };

@@ -2030,6 +2030,9 @@ export interface components {
              */
             horaFim?: string;
             alunoId?: string;
+            professorId?: string;
+            /** @example 120 */
+            valor?: number;
         };
         OcupacaoResponseDto: {
             /** Format: uuid */
@@ -2724,7 +2727,7 @@ export interface components {
              */
             aulas: number;
             /**
-             * @description Quantas ainda sem chamada registrada. É esta contagem que faz o calendário valer: a grade ele já conhece de cabeça; o que falta registrar, não.
+             * @description Quantas ainda sem chamada registrada. É esta contagem que faz o calendário valer: a grade ele já conhece de cabeça; o que falta registrar, não. **Aula particular nunca entra aqui** (SPEC-039/LIM-039a), mas conta em `aulas`.
              * @example 1
              */
             pendentes: number;
@@ -2735,6 +2738,8 @@ export interface components {
              * @description O MESMO id que `PUT /me/teacher/attendance/:ocupacaoId` aceita (INV-026b). Se divergirem, o caminho quebra no último passo.
              */
             ocupacaoId: string;
+            /** @enum {string} */
+            tipo: "turma" | "particular";
             /** Format: uuid */
             turmaId: string | null;
             turmaNome: string | null;
@@ -2745,10 +2750,10 @@ export interface components {
             /** @example 19:00 */
             horaFim: string;
             /**
-             * @description `futura` = ainda não começou; a chamada **não** pode ser lançada. `em_andamento` = começou e não terminou; pode lançar, e não é pendência. `pendente` = já terminou e não há linha em `chamadas`. `legada` = chamada de antes da SPEC-015, com `completude: desconhecida`. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030); **não** é pendência e não pinta o ponto vermelho. `cancelada` não aparece aqui: o filtro do calendário a exclui antes.
-             * @enum {string}
+             * @description `futura` = ainda não começou; a chamada **não** pode ser lançada. `em_andamento` = começou e não terminou; pode lançar, e não é pendência. `pendente` = já terminou e não há linha em `chamadas`. `legada` = chamada de antes da SPEC-015, com `completude: desconhecida`. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030); **não** é pendência e não pinta o ponto vermelho. `cancelada` não aparece aqui: o filtro do calendário a exclui antes. **`null` na aula PARTICULAR** (SPEC-039/LIM-039a): ela não tem chamada, e resolver um estado ali pintaria `pendente` numa aula que nunca poderá receber uma — ponto vermelho que o professor não limpa.
+             * @enum {string|null}
              */
-            chamada: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve";
+            chamada: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | null;
         };
         AlunoEmEvasaoResponseDto: {
             /** Format: uuid */

@@ -60,7 +60,7 @@ replicar):
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno`, **`carteira-do-aluno`** | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro). **SPEC-033:** a **carteira** entra na mesma ficha, pelo mesmo motivo da frequência — quem lança crédito está olhando para uma pessoa, não para uma carteira. Ela é a **única tela do Admin que pede senha para agir** (D6), e pede a **cada** lançamento: não há sessão elevada, e o campo é limpo depois do envio inclusive quando dá certo. O erro vai para o campo certo pelo **`code`** da resposta, nunca por texto — `SENHA_INVALIDA` é da senha, `SALDO_INSUFICIENTE` é do valor —, e errar a senha **não apaga** o que já foi digitado |
 | `/pessoas/professores` (+ `novo`, `[id]`) | `teachers-*`, `foto-do-professor`, **`disponibilidade-do-professor`** | professores (cadastro sem login — ver Gaps). **SPEC-040:** a **grade da semana** entra na ficha, pelo mesmo motivo da carteira do aluno — quem configura agenda está olhando para uma pessoa. Ela é a única tela do painel cujo `GET` e `PUT` têm **formas diferentes de propósito**: o `GET` devolve os sete dias (com `indisponivel` calculado nos vazios) para a tela não precisar saber que ausência significa algo; o `PUT` manda **só os dias atendidos**, porque não existe flag no modelo (D6). Desmarcar um dia o faz **sumir** do corpo, e há teste só para isso |
 | `/pessoas/niveis` | `levels-manager` | níveis |
-| `/quadras` (+ `novo`, `[id]`, **`catalogos`**) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section`, **`catalogo-de-quadra-manager`**, **`seletor-de-catalogo`** | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória |
+| `/quadras` (+ `novo`, `[id]`, **`catalogos`**) | `courts-list`, `court-manager`, `imagem-da-quadra-section`, `horario-quadra-section`, **`catalogo-de-quadra-manager`**, **`seletor-de-catalogo`** | quadras, disponibilidade, reserva, horário próprio e, desde a **SPEC-018/TASK-005**, a imagem da quadra com a confirmação obrigatória. **SPEC-039:** a mesma grade marca **aula particular** — escolher um professor no formulário é o gesto que transforma a reserva em aula e revela o campo de preço; só professores **ativos** entram no seletor, porque o servidor recusa o inativo com `422` e oferecer quem vai ser recusado é fazer o gestor descobrir por erro. **`professorId` e `valor` viajam juntos ou nenhum viaja** |
 | `/turmas` (+ `novo`, `[id]`) | `classes-list`, `class-manager`, `turma-chamada-abas` → `presencas-turma` \| `frequencia-turma` | turmas e alocação; presença e frequência são **abas uma da outra** (**SPEC-015**), porque são duas leituras do mesmo dado — "Presenças" primeiro, que é o registro; "Frequência" depois, que é a interpretação dele. **SPEC-030 deu a esta tela a primeira ação de ESCRITA** — até então era só leitura (LIM-002): o grupo **"Aulas sem chamada"** lista as ocorrências `pendente` e oferece registrar que a aula não aconteceu. Elas **não apareciam aqui**, porque a tela sempre filtrou por `chamadaFeita`; enquanto o professor está no clube isso é coerente (quem lança é ele), mas quando ele sai ninguém mais tem caminho e o dia fica vermelho para sempre no calendário dele. O texto diz de quem é a ação **antes** de oferecer a saída |
 | `/pagamentos` | `payment-config-form` | meio de pagamento e confirmação |
 | `/configuracoes` | `configuracoes-view` + `link-cadastro-card` + `limite-de-turmas-card` + `contrato-do-clube-card` | horário padrão da empresa e, desde a **DEF-003**, o link de auto-cadastro pronto para copiar (`GET /me/company`) — o `slug` existia desde a SPEC-009 e não chegava a tela nenhuma. **DEF-004:** o mesmo card liga e desliga o auto-cadastro (`PATCH /me/company`), cumprindo o REQ-006 da SPEC-009, que era lido em dois lugares e escrito em nenhum. **SPEC-023:** o `limite-de-turmas-card` entrou logo abaixo — os dois decidem até onde vai o "sozinho" do aluno, um controlando quem entra no clube e o outro em quantas turmas. Campo vazio = sem limite, que é o padrão; a tela avisa que o limite **não expulsa ninguém** (INV-023a), porque quem configura precisa saber o que NÃO vai acontecer. **SPEC-024:** o `contrato-do-clube-card` escreve e publica o contrato — e publicar exige um passo de confirmação que mostra **quantas pessoas terão que reaceitar**, com o número na frente. Botão "Publicar" sem esse aviso parece salvar rascunho, e não é: interrompe cada aluno no próximo acesso. Também avisa que **não existe despublicar** (LIM-024a) |
@@ -376,6 +376,41 @@ mudou é que ele só vale quando **nenhum item mais longo** casa.
 
 `admin-navigation.test.ts` varre o próprio menu: se alguém acrescentar outra
 rota aninhada, o teste cai **no dia em que a ambiguidade nascer**.
+
+### A reserva de mais de uma hora, e o `find` que cobrava duas vezes (2026-09-09)
+
+**O servidor agrupa horários contíguos numa reserva só** (SPEC-011/AC-001):
+escolher 19–20 e 20–21 grava **uma** ocupação `19:00–21:00`. A grade desenha
+slots de 1 hora e casava reserva com slot por **igualdade** de hora de início —
+então o slot das 20h não achava reserva nenhuma.
+
+O resultado era o pior possível numa tela de dinheiro: a reserva de 2h **paga
+com o crédito do aluno** mostrava "Pendente" e "Marcar pago" na segunda hora,
+convidando o clube a cobrar de novo o que a carteira acabou de quitar. E os
+botões eram no-op silencioso — os handlers repetiam o mesmo `find` e faziam
+`if (!booking) return`, sem mensagem.
+
+**O casamento agora é por intervalo** (`horaInicio <= hora && horaFim > hora`),
+nos três pontos. O `>` e não `>=` importa: com `>=`, o slot das 21h casaria com
+a reserva 19–21 em vez da 21–22, e o clique marcaria a reserva **errada** como
+paga. *A primeira versão do teste dizia provar isso olhando um slot livre —
+sabotado, ficava verde. Slot livre não mostra status de reserva; quem
+discrimina é o par de reservas adjacentes.*
+
+Achado pela revisão adversarial da `cliente#14`, que procurou a mesma classe de
+defeito em outras telas.
+
+### O `Select` do Radix contra o jsdom
+
+Dois muros que aparecem em **qualquer** teste que abra um `Select`, e por isso
+valem para o próximo, não só para este:
+
+- **`scrollIntoView` não existe no jsdom** e o Radix o chama: o teste morre com
+  `candidate?.scrollIntoView is not a function`, erro que não menciona nem
+  Radix nem jsdom. O stub mora em `vitest.setup.ts` — é limitação do ambiente.
+- **O rótulo da opção é pintado duas vezes** (no `select` oculto de
+  acessibilidade e na lista aberta). `findByText` morre com "found multiple
+  elements"; `findByRole("option")` é o que distingue.
 
 ### A imagem da quadra, e a caixa que não é enfeite (SPEC-018/TASK-005)
 
