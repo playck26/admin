@@ -157,9 +157,34 @@ export function CourtManager({ id }: { id: string }) {
     }
   }
 
+  /**
+   * A reserva que **cobre** este slot — por INTERVALO, não por igualdade.
+   *
+   * **O `find` era `b.horaInicio === horaInicio`, e isso era defeito.** O
+   * servidor agrupa horários contíguos numa reserva só (SPEC-011/AC-001):
+   * escolher 19–20 e 20–21 grava UMA ocupação 19:00–21:00. A grade, porém,
+   * desenha slots de 1 hora — então o slot das 20h não casava com reserva
+   * nenhuma, e `undefined` caía no ramo "pendente".
+   *
+   * O resultado era o pior possível numa tela de dinheiro: a reserva de 2h
+   * paga com o crédito do aluno mostrava **"Pendente" e "Marcar pago"** na
+   * segunda hora, convidando o clube a cobrar de novo o que a carteira acabou
+   * de quitar. E os dois botões eram no-op silencioso, porque
+   * `handleCancelSlot` e `handleMarkPaid` repetiam o mesmo `find` e
+   * devolviam sem mensagem.
+   *
+   * Achado pela revisão adversarial da `cliente#14`, que procurou a mesma
+   * classe de defeito em outras telas — e encontrou.
+   */
+  function reservaDoSlot(horaInicio: string) {
+    return bookingsDoDia.find(
+      (b) => b.horaInicio <= horaInicio && b.horaFim > horaInicio,
+    );
+  }
+
   async function handleCancelSlot(slot: AvailabilitySlot) {
     const [horaInicio] = slot.slot.split("-");
-    const booking = bookingsDoDia.find((b) => b.horaInicio === horaInicio);
+    const booking = reservaDoSlot(horaInicio);
     if (!booking) return;
 
     setCancelingId(booking.id);
@@ -177,7 +202,7 @@ export function CourtManager({ id }: { id: string }) {
   // REQ-003 (SPEC-006): admin marca reserva avulsa como paga.
   async function handleMarkPaid(slot: AvailabilitySlot) {
     const [horaInicio] = slot.slot.split("-");
-    const booking = bookingsDoDia.find((b) => b.horaInicio === horaInicio);
+    const booking = reservaDoSlot(horaInicio);
     if (!booking) return;
 
     setMarkingPaidId(booking.id);
@@ -395,7 +420,7 @@ export function CourtManager({ id }: { id: string }) {
                 }
 
                 const [horaInicioSlot] = slot.slot.split("-");
-                const booking = bookingsDoDia.find((b) => b.horaInicio === horaInicioSlot);
+                const booking = reservaDoSlot(horaInicioSlot);
                 const alunoNome = booking?.alunoId ? studentsById.get(booking.alunoId) : undefined;
                 return (
                   <div
