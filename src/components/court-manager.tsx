@@ -19,6 +19,7 @@ import {
   getCourt,
   listBookings,
   listStudents,
+  listTeachers,
   updateBookingPaymentStatus,
   updateCourt,
   type Availability,
@@ -26,11 +27,22 @@ import {
   type Booking,
   type Court,
   type Student,
+  type Teacher,
 } from "@/lib/api-client";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/**
+ * O valor do item "sem professor" no seletor.
+ *
+ * **Não pode ser `""`**: o `Select` do Radix usa string vazia para limpar a
+ * seleção e recusa um `SelectItem` com esse valor. O estado do formulário
+ * continua guardando `""` para "sem professor"; a tradução acontece nas duas
+ * pontas do seletor.
+ */
+const SEM_PROFESSOR = "__sem_professor__";
 
 export function CourtManager({ id }: { id: string }) {
   const [court, setCourt] = useState<Court | null>(null);
@@ -46,6 +58,16 @@ export function CourtManager({ id }: { id: string }) {
   const [statusLoading, setStatusLoading] = useState(false);
 
   const [students, setStudents] = useState<Student[]>([]);
+  /**
+   * SPEC-039 — a aula particular.
+   *
+   * `professorId` vazio significa **reserva de quadra**, que é o caso comum e
+   * o padrão da tela. Escolher um professor é o gesto que transforma o pedido
+   * em aula, e é ele que revela o campo de preço.
+   */
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [professorId, setProfessorId] = useState("");
+  const [valorAula, setValorAula] = useState("");
   const [data, setData] = useState(todayIso());
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [bookingsDoDia, setBookingsDoDia] = useState<Booking[]>([]);
@@ -62,8 +84,8 @@ export function CourtManager({ id }: { id: string }) {
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getCourt(id), listStudents(1, 100)])
-      .then(([courtData, studentsData]) => {
+    Promise.all([getCourt(id), listStudents(1, 100), listTeachers(1, 100)])
+      .then(([courtData, studentsData, teachersData]) => {
         setCourt(courtData);
         setNome(courtData.nome);
         // `?? ""` porque `esporte` pode vir nulo: quadra cujo texto
@@ -74,6 +96,10 @@ export function CourtManager({ id }: { id: string }) {
         setCategoriaId(courtData.categoria?.id ?? "");
         setPrecoHora(String(courtData.precoHora));
         setStudents(studentsData.data);
+        // SPEC-039: só os ATIVOS entram no seletor. O servidor recusa o
+        // inativo com `422 PROFESSOR_INATIVO`, e oferecer na lista quem vai
+        // ser recusado é fazer o gestor descobrir por erro.
+        setTeachers(teachersData.data.filter((t) => t.status === "ativo"));
       })
       .catch((err: unknown) => {
         setLoadError(err instanceof ApiError ? err.message : "Não foi possível carregar a quadra.");
@@ -146,9 +172,15 @@ export function CourtManager({ id }: { id: string }) {
           return { horaInicio, horaFim };
         }),
         alunoId,
+        // SPEC-039: os dois viajam juntos ou nenhum viaja. `undefined` e não
+        // string vazia — `""` chegaria como UUID inválido no DTO.
+        professorId: professorId || undefined,
+        valor: professorId ? Number(valorAula) : undefined,
       });
       setSlotsSelecionados([]);
       setAlunoId("");
+      setProfessorId("");
+      setValorAula("");
       await loadAvailability();
     } catch (err) {
       setBookingError(err instanceof ApiError ? err.message : "Não foi possível criar a reserva.");
@@ -515,13 +547,87 @@ export function CourtManager({ id }: { id: string }) {
                   </SelectContent>
                 </Select>
               </div>
+              {/*
+                SPEC-039 — a aula particular.
+
+                **Um seletor, e não um interruptor "é aula?".** Escolher o
+                professor já é a decisão; um passo a mais só existiria para
+                repetir a mesma informação. "Sem professor" é a primeira
+                opção porque reserva de quadra é o caso comum.
+              */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="professor">Professor (aula particular)</Label>
+                <Select
+                  value={professorId || SEM_PROFESSOR}
+                  onValueChange={(v) =>
+                    setProfessorId(v === SEM_PROFESSOR ? "" : v)
+                  }
+                  disabled={bookingLoading}
+                >
+                  <SelectTrigger id="professor" className="h-10 w-full px-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_PROFESSOR}>
+                      Sem professor — reserva de quadra
+                    </SelectItem>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/*
+                O preço só aparece com professor, e é obrigatório aí: na
+                reserva de quadra ele vem da quadra, e o servidor recusa um
+                valor sem professor (`422 VALOR_SEM_PROFESSOR`).
+              */}
+              {professorId ? (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="valor-aula">Valor da aula (R$)</Label>
+                  <Input
+                    id="valor-aula"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={valorAula}
+                    onChange={(e) => setValorAula(e.target.value)}
+                    disabled={bookingLoading}
+                    className="h-10 px-3"
+                  />
+                  <p className="text-xs text-[var(--color-on-surface-variant)]">
+                    O clube define o preço da aula. O total da quadra acima não
+                    se aplica, e o valor sai do saldo do aluno se houver.
+                  </p>
+                </div>
+              ) : null}
+
               {bookingError ? (
                 <p role="alert" className="text-sm text-[var(--color-error)]">
                   {bookingError}
                 </p>
               ) : null}
-              <Button type="submit" disabled={bookingLoading || !alunoId} className="h-10 text-[13px] font-semibold">
-                {bookingLoading ? "Reservando..." : "Confirmar reserva"}
+              <Button
+                type="submit"
+                disabled={
+                  bookingLoading ||
+                  !alunoId ||
+                  // Com professor, o preço é obrigatório: mandar sem ele
+                  // gravaria uma aula de R$ 0, que o `CHECK` aceita e ninguém
+                  // quer. `>= 0` e não `> 0` — aula de cortesia existe.
+                  (professorId !== "" &&
+                    (valorAula === "" || Number(valorAula) < 0))
+                }
+                className="h-10 text-[13px] font-semibold"
+              >
+                {bookingLoading
+                  ? "Reservando..."
+                  : professorId
+                    ? "Confirmar aula"
+                    : "Confirmar reserva"}
               </Button>
             </form>
           ) : null}

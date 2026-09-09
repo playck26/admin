@@ -34,6 +34,8 @@ const disponibilidade = vi.hoisted(() => vi.fn());
 const listarReservas = vi.hoisted(() => vi.fn());
 const marcarPago = vi.hoisted(() => vi.fn());
 const cancelar = vi.hoisted(() => vi.fn());
+const listarProfessores = vi.hoisted(() => vi.fn());
+const criarReserva = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -48,7 +50,8 @@ vi.mock("@/lib/api-client", async () => {
     listBookings: listarReservas,
     updateBookingPaymentStatus: marcarPago,
     cancelBooking: cancelar,
-    createBooking: vi.fn(),
+    listTeachers: listarProfessores,
+    createBooking: criarReserva,
     updateCourt: vi.fn(),
   };
 });
@@ -97,6 +100,15 @@ beforeEach(() => {
   listarReservas.mockResolvedValue({ data: [RESERVA_DE_DUAS_HORAS], total: 1 });
   marcarPago.mockResolvedValue(undefined);
   cancelar.mockResolvedValue(undefined);
+  criarReserva.mockResolvedValue({ reservas: [] });
+  listarProfessores.mockResolvedValue({
+    data: [
+      { id: "p-1", nome: "Joao", status: "ativo" },
+      // SPEC-039: o inativo vem da API e NAO pode chegar ao seletor.
+      { id: "p-2", nome: "Maria Inativa", status: "inativo" },
+    ],
+    total: 2,
+  });
 });
 
 async function abrirGrade() {
@@ -210,5 +222,87 @@ describe("CourtManager — a reserva de mais de uma hora", () => {
     // **`r-2`, e nao `r-1`.** Com `>=`, o clique marcaria a reserva ERRADA
     // como paga -- a que ja estava paga.
     await waitFor(() => expect(marcarPago).toHaveBeenCalledWith("r-2", "pago"));
+  });
+
+  it("SPEC-039: o seletor de professor so oferece ATIVOS", async () => {
+    await abrirGrade();
+    // Um slot livre para o formulario aparecer.
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+
+    fireEvent.click(await screen.findByLabelText(/Professor/));
+    // **`role="option"`, e não o texto.** O Radix pinta o rótulo DUAS vezes —
+    // no `select` oculto de acessibilidade e na lista aberta — e
+    // `findByText` morre com "found multiple elements".
+    expect(
+      await screen.findByRole("option", { name: "Joao" }),
+    ).toBeInTheDocument();
+    // Oferecer quem o servidor vai recusar com `422 PROFESSOR_INATIVO` é
+    // fazer o gestor descobrir por erro.
+    expect(
+      screen.queryByRole("option", { name: "Maria Inativa" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("SPEC-039: sem professor, NAO manda `valor` -- o preco e da quadra", async () => {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    fireEvent.click(screen.getByText("Confirmar reserva"));
+
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [
+      { professorId?: string; valor?: number },
+    ];
+    // **`undefined`, e nao `""` nem `0`.** O servidor recusa `valor` sem
+    // professor com `422 VALOR_SEM_PROFESSOR`, e `""` chegaria como UUID
+    // invalido no DTO.
+    expect(dto.professorId).toBeUndefined();
+    expect(dto.valor).toBeUndefined();
+  });
+
+  it("SPEC-039: o campo de preco so aparece com professor escolhido", async () => {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    expect(screen.queryByLabelText(/Valor da aula/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Professor/));
+    fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
+
+    expect(await screen.findByLabelText(/Valor da aula/)).toBeInTheDocument();
+  });
+
+  it("SPEC-039: com professor, manda os DOIS juntos", async () => {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    fireEvent.click(screen.getByLabelText(/Professor/));
+    fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
+    fireEvent.change(await screen.findByLabelText(/Valor da aula/), {
+      target: { value: "250" },
+    });
+    fireEvent.click(screen.getByText("Confirmar aula"));
+
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [
+      { professorId?: string; valor?: number },
+    ];
+    expect(dto.professorId).toBe("p-1");
+    expect(dto.valor).toBe(250);
+  });
+
+  it("SPEC-039: com professor e SEM preco, o botao fica desabilitado", async () => {
+    // Sem esta guarda a tela gravaria uma aula de R$ 0 -- que o `CHECK`
+    // aceita e ninguem quer. O servidor nao tem como recusar: zero e valor
+    // valido, e aula de cortesia existe.
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    fireEvent.click(screen.getByLabelText(/Professor/));
+    fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
+
+    expect(await screen.findByText("Confirmar aula")).toBeDisabled();
   });
 });
