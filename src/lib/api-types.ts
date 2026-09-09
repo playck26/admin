@@ -308,6 +308,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teachers/{id}/disponibilidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TeachersController_lerDisponibilidade"];
+        put: operations["TeachersController_definirDisponibilidade"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teachers/{id}": {
         parameters: {
             query?: never;
@@ -884,6 +900,38 @@ export interface paths {
         patch: operations["CourtCategoriesController_update"];
         trace?: never;
     };
+    "/api/v1/students/{id}/creditos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CreditosController_extrato"];
+        put?: never;
+        post: operations["CreditosController_lancar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/creditos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeCreditosController_minhaCarteira"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{id}/avaliacoes": {
         parameters: {
             query?: never;
@@ -1316,22 +1364,6 @@ export interface paths {
         patch: operations["PaymentStatusController_updateStatus"];
         trace?: never;
     };
-    "/api/v1/students/{id}/creditos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["CreditosController_extrato"];
-        put?: never;
-        post: operations["CreditosController_lancar"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1619,6 +1651,26 @@ export interface components {
             createdAt: string;
             /** @example Xk4p-9Qm2 */
             senhaTemporaria: string;
+        };
+        DiaDisponibilidadeDto: {
+            diaSemana: number;
+            /** @example 08:00 */
+            horaInicio: string;
+            /** @example 12:00 */
+            horaFim: string;
+        };
+        DefinirDisponibilidadeDto: {
+            dias: components["schemas"]["DiaDisponibilidadeDto"][];
+        };
+        DiaDisponibilidadeResponseDto: {
+            /** @description 0 = domingo */
+            diaSemana: number;
+            /** @description true quando o professor não atende no dia */
+            indisponivel: boolean;
+            /** @example 08:00 */
+            horaInicio: string | null;
+            /** @example 12:00 */
+            horaFim: string | null;
         };
         UpdateTeacherDto: {
             nome?: string;
@@ -2162,6 +2214,52 @@ export interface components {
              * @example 0
              */
             ordem?: number;
+        };
+        MovimentoDeCreditoResponseDto: {
+            id: string;
+            /** @enum {string} */
+            tipo: "entrada" | "retirada" | "consumo" | "devolucao";
+            /** @description Sempre positivo; o sinal vem do tipo (D3). */
+            valorCentavos: number;
+            /** @description Nota interna do clube. Presente só nos administrativos, e **omitido na visão do aluno** (AC-013). */
+            motivo: string | null;
+            ocupacaoId: string | null;
+            criadoEm: string;
+        };
+        ExtratoDeCreditoResponseDto: {
+            /** @description Derivado do ledger pela trigger (D1). Nunca escrito por serviço. */
+            saldoCentavos: number;
+            movimentos: components["schemas"]["MovimentoDeCreditoResponseDto"][];
+        };
+        LancarCreditoDto: {
+            /**
+             * @description Só os dois administrativos. `consumo` e `devolucao` nascem da reserva e do cancelamento, nunca de uma chamada humana.
+             * @enum {string}
+             */
+            tipo: "entrada" | "retirada";
+            /** @description Centavos inteiros, sempre positivos — o sinal vem do tipo (D3). "Entrada de −500" é impossível por construção. */
+            valorCentavos: number;
+            /** @description Obrigatório. É nota interna do clube — o aluno não vê (AC-013). */
+            motivo: string;
+            /** @description A senha de quem está logado, reconferida no ato (D6). Não é sessão elevada: cada lançamento pede de novo. */
+            senha: string;
+        };
+        MovimentoCriadoResponseDto: {
+            movimentoId: string;
+            saldoCentavos: number;
+        };
+        MovimentoDoAlunoResponseDto: {
+            id: string;
+            /** @enum {string} */
+            tipo: "entrada" | "retirada" | "consumo" | "devolucao";
+            /** @description Sempre positivo; o sinal vem do tipo (D3). */
+            valorCentavos: number;
+            ocupacaoId: string | null;
+            criadoEm: string;
+        };
+        ExtratoDoAlunoResponseDto: {
+            saldoCentavos: number;
+            movimentos: components["schemas"]["MovimentoDoAlunoResponseDto"][];
         };
         AvaliacaoParaOGestorDto: {
             /** @example Ana Souza */
@@ -2709,39 +2807,6 @@ export interface components {
             /** @enum {string} */
             status: "pago" | "cancelado";
         };
-        MovimentoDeCreditoResponseDto: {
-            id: string;
-            /** @enum {string} */
-            tipo: "entrada" | "retirada" | "consumo" | "devolucao";
-            /** @description Sempre positivo; o sinal vem do tipo (D3). */
-            valorCentavos: number;
-            /** @description Nota interna do clube. Presente só nos administrativos, e **omitido na visão do aluno** (AC-013). */
-            motivo: string | null;
-            ocupacaoId: string | null;
-            criadoEm: string;
-        };
-        ExtratoDeCreditoResponseDto: {
-            /** @description Derivado do ledger pela trigger (D1). Nunca escrito por serviço. */
-            saldoCentavos: number;
-            movimentos: components["schemas"]["MovimentoDeCreditoResponseDto"][];
-        };
-        LancarCreditoDto: {
-            /**
-             * @description Só os dois administrativos. `consumo` e `devolucao` nascem da reserva e do cancelamento, nunca de uma chamada humana.
-             * @enum {string}
-             */
-            tipo: "entrada" | "retirada";
-            /** @description Centavos inteiros, sempre positivos — o sinal vem do tipo (D3). "Entrada de −500" é impossível por construção. */
-            valorCentavos: number;
-            /** @description Obrigatório. É nota interna do clube — o aluno não vê (AC-013). */
-            motivo: string;
-            /** @description A senha de quem está logado, reconferida no ato (D6). Não é sessão elevada: cada lançamento pede de novo. */
-            senha: string;
-        };
-        MovimentoCriadoResponseDto: {
-            movimentoId: string;
-            saldoCentavos: number;
-        };
     };
     responses: never;
     parameters: never;
@@ -3263,6 +3328,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfessorComSenhaTemporariaResponseDto"];
+                };
+            };
+        };
+    };
+    TeachersController_lerDisponibilidade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaDisponibilidadeResponseDto"][];
+                };
+            };
+        };
+    };
+    TeachersController_definirDisponibilidade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirDisponibilidadeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaDisponibilidadeResponseDto"][];
                 };
             };
         };
@@ -4553,6 +4664,71 @@ export interface operations {
             };
         };
     };
+    CreditosController_extrato: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtratoDeCreditoResponseDto"];
+                };
+            };
+        };
+    };
+    CreditosController_lancar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LancarCreditoDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoCriadoResponseDto"];
+                };
+            };
+        };
+    };
+    MeCreditosController_minhaCarteira: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtratoDoAlunoResponseDto"];
+                };
+            };
+        };
+    };
     ClassesController_avaliacoesDaTurma: {
         parameters: {
             query?: never;
@@ -5389,52 +5565,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OcupacaoResponseDto"];
-                };
-            };
-        };
-    };
-    CreditosController_extrato: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExtratoDeCreditoResponseDto"];
-                };
-            };
-        };
-    };
-    CreditosController_lancar: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LancarCreditoDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovimentoCriadoResponseDto"];
                 };
             };
         };
