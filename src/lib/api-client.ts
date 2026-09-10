@@ -573,6 +573,8 @@ export type Matricula = components["schemas"]["MatriculaResponseDto"];
 export type CriarPlanoDto = components["schemas"]["CriarPlanoDto"];
 export type AtualizarPlanoDto = components["schemas"]["AtualizarPlanoDto"];
 export type CriarMatriculaDto = components["schemas"]["CriarMatriculaDto"];
+export type Vencimentos = components["schemas"]["VencimentosResponseDto"];
+export type Vencimento = components["schemas"]["VencimentoResponseDto"];
 
 /**
  * SPEC-038 — importar alunos por planilha.
@@ -653,6 +655,18 @@ export async function atualizarPlano(
 export async function listarMatriculas(alunoId: string): Promise<Matricula[]> {
   const res = await authFetch(`/students/${alunoId}/matriculas`);
   return (await res.json()) as Matricula[];
+}
+
+/**
+ * SPEC-045 — **a unica rota de matricula por EMPRESA.**
+ *
+ * As outras tres sao por aluno, e era essa a forma do defeito: para saber quem
+ * vence, o gestor abria ficha por ficha. `dias` vai na URL e volta ecoado, para
+ * a tela nao precisar repetir o padrao do servidor.
+ */
+export async function listarVencimentos(dias = 30): Promise<Vencimentos> {
+  const res = await authFetch(`/matriculas/vencimentos?dias=${dias}`);
+  return (await res.json()) as Vencimentos;
 }
 
 /**
