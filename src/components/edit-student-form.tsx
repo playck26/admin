@@ -18,6 +18,7 @@ import {
 } from "@/lib/api-client";
 import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
 import { Button } from "@/components/ui/button";
+import { Ban } from "lucide-react";
 
 const SEM_NIVEL = "sem-nivel";
 
@@ -33,6 +34,7 @@ export function EditStudentForm({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [senhaNova, setSenhaNova] = useState<StudentComSenha | null>(null);
   const [gerandoSenha, setGerandoSenha] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([getStudent(id), listLevels()])
@@ -47,6 +49,38 @@ export function EditStudentForm({ id }: { id: string }) {
         setLoadError(err instanceof ApiError ? err.message : "Não foi possível carregar o aluno.");
       });
   }, [id]);
+
+  /**
+   * DEF-027 — **o botão que faltava.**
+   *
+   * O Admin tem "Inativar" para turma, quadra, professor e plano. Para ALUNO
+   * não tinha nenhum — e é justamente o gesto que o back manda usar: recusar
+   * o vínculo de um aluno já aprovado responde *"use inativação (status)"*.
+   * O gestor era mandado para uma porta que a tela não abria.
+   *
+   * `err.message` inteiro na tela, e não uma frase genérica: com compromisso
+   * marcado o back responde `409 ALUNO_COM_COMPROMISSOS` **dizendo quantos
+   * são** e que cancelar devolve o crédito. Trocar isso por "não foi possível"
+   * seria o defeito do DEF-025 de novo — a tela sabendo menos que a resposta.
+   */
+  async function handleToggleStatus() {
+    if (!student) return;
+    setStatusLoading(true);
+    setError(null);
+    try {
+      const novoStatus = student.status === "ativo" ? "inativo" : "ativo";
+      const atualizado = await updateStudent(id, { status: novoStatus });
+      setStudent(atualizado);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível mudar o status.",
+      );
+    } finally {
+      setStatusLoading(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -179,6 +213,42 @@ export function EditStudentForm({ id }: { id: string }) {
             }}
           >
             {gerandoSenha ? "Gerando..." : "Gerar nova senha temporária"}
+          </Button>
+        </div>
+      </div>
+
+      {/*
+        DEF-027 — desligar um aluno que já opera. `vinculo` é outra coisa:
+        recusar cadastro é para quem ainda não foi aprovado, e o back recusa
+        aplicá-lo a quem já opera, apontando para cá.
+      */}
+      <div className="mt-8 flex flex-col gap-3 border-t border-[var(--color-outline)] pt-6">
+        <div>
+          <h3 className="text-sm font-semibold">Situação no clube</h3>
+          <p className="text-sm text-[var(--color-on-surface-variant)]">
+            {student.status === "ativo"
+              ? "Desligar encerra o acesso do aluno e o impede de ser matriculado, reservado ou alocado em turma. Reservas futuras precisam ser canceladas antes — cancelar devolve o crédito."
+              : "Este aluno está desligado: não entra no app e não pode ser matriculado, reservado nem alocado em turma."}
+          </p>
+        </div>
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={statusLoading}
+            onClick={() => void handleToggleStatus()}
+            className={
+              student.status === "ativo"
+                ? "h-11 gap-2 border-[1.5px] border-[var(--color-error)] px-6 text-[13px] font-semibold text-[var(--color-error)] hover:bg-[var(--color-error)]/5"
+                : "h-11 gap-2 border-[1.5px] border-primary px-6 text-[13px] font-semibold text-primary hover:bg-primary/5"
+            }
+          >
+            <Ban className="size-4" />
+            {statusLoading
+              ? "Aplicando..."
+              : student.status === "ativo"
+                ? "Desligar aluno"
+                : "Reativar aluno"}
           </Button>
         </div>
       </div>
