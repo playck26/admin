@@ -13,6 +13,7 @@ import {
   HorariosEditor,
 } from "@/components/horarios-editor";
 import { ContratoDoClubeCard } from "@/components/contrato-do-clube-card";
+import { PlanosCard } from "@/components/planos-card";
 import { LimiteDeTurmasCard } from "@/components/limite-de-turmas-card";
 import { LinkCadastroCard } from "@/components/link-cadastro-card";
 import { LogoDaEmpresaCard } from "@/components/logo-da-empresa-card";
@@ -69,8 +70,8 @@ export function ConfiguracoesView() {
         </h1>
         <p className="mt-1 text-[var(--color-on-surface-variant)]">
           Logo da arena, horário de funcionamento padrão, link de cadastro de
-          alunos, limite de turmas por aluno, prazo para desistir e o
-          contrato do clube.
+          alunos, limite de turmas por aluno, prazo para desistir e o contrato
+          do clube.
         </p>
       </div>
 
@@ -96,6 +97,12 @@ export function ConfiguracoesView() {
           Publicar aqui interrompe todo mundo no proximo acesso, e o cartao
           diz isso com o numero na frente antes de confirmar. */}
       <ContratoDoClubeCard />
+
+      {/* SPEC-037/TASK-005 — os planos ficam LOGO DEPOIS do contrato, e a
+          ordem é a decisão: matricular exige contrato publicado (`422
+          CONTRATO_NAO_PUBLICADO`), então quem chega aqui para criar plano vê
+          antes o que precisa existir primeiro. */}
+      <PlanosCard />
 
       {carregando ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>

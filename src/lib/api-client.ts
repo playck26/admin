@@ -544,6 +544,75 @@ export async function deleteLevel(id: string): Promise<void> {
   await authFetch(`/levels/${id}`, { method: "DELETE" });
 }
 
+/**
+ * SPEC-037 — planos e matriculas.
+ *
+ * Os tipos vem do `openapi.json`, como todo o resto: escritos a mao aqui, o
+ * `tsc` ficaria verde contra um contrato velho e a tela quebraria em runtime
+ * -- que e o DEF-012, e foi exatamente assim que a SPEC-039 deixou um defeito
+ * em producao no Cliente.
+ */
+export type Plano = components["schemas"]["PlanoResponseDto"];
+export type Matricula = components["schemas"]["MatriculaResponseDto"];
+export type CriarPlanoDto = components["schemas"]["CriarPlanoDto"];
+export type AtualizarPlanoDto = components["schemas"]["AtualizarPlanoDto"];
+export type CriarMatriculaDto = components["schemas"]["CriarMatriculaDto"];
+
+export async function listarPlanos(apenasAtivos = false): Promise<Plano[]> {
+  const res = await authFetch(
+    `/planos${apenasAtivos ? "?apenasAtivos=true" : ""}`,
+  );
+  return (await res.json()) as Plano[];
+}
+
+export async function criarPlano(dto: CriarPlanoDto): Promise<Plano> {
+  const res = await authFetch("/planos", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Plano;
+}
+
+/**
+ * **Nao ha `apagarPlano`, e a ausencia e a decisao** (INV-115). Plano
+ * contratado carrega historia; `{ ativo: false }` e a unica forma de sumir com
+ * ele, e ela nunca perde dado.
+ */
+export async function atualizarPlano(
+  id: string,
+  dto: AtualizarPlanoDto,
+): Promise<Plano> {
+  const res = await authFetch(`/planos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Plano;
+}
+
+export async function listarMatriculas(alunoId: string): Promise<Matricula[]> {
+  const res = await authFetch(`/students/${alunoId}/matriculas`);
+  return (await res.json()) as Matricula[];
+}
+
+/**
+ * `422 CONTRATO_NAO_ACEITO` quando o aluno ainda nao aceitou a versao vigente;
+ * `422 CONTRATO_NAO_PUBLICADO` quando o clube nunca publicou; `422
+ * PLANO_INATIVO` quando o plano foi desativado.
+ *
+ * As tres existem para o gestor nao receber `500`: a garantia e a FK causal do
+ * banco (INV-114), que responderia `23503`.
+ */
+export async function criarMatricula(
+  alunoId: string,
+  dto: CriarMatriculaDto,
+): Promise<Matricula> {
+  const res = await authFetch(`/students/${alunoId}/matriculas`, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Matricula;
+}
+
 export async function listCourts(
   page = 1,
   pageSize = 20,

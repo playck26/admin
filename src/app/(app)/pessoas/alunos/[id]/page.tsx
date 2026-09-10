@@ -2,6 +2,7 @@ import { EditStudentForm } from "@/components/edit-student-form";
 import { FrequenciaAluno } from "@/components/frequencia-aluno";
 import { CadastroCompletoDoAluno } from "@/components/cadastro-completo-do-aluno";
 import { CarteiraDoAluno } from "@/components/carteira-do-aluno";
+import { MatriculaDoAluno } from "@/components/matricula-do-aluno";
 
 export default async function EditarAlunoPage({
   params,
@@ -24,6 +25,10 @@ export default async function EditarAlunoPage({
           para uma carteira. Ela vem por último porque é ação, e as duas de
           cima são leitura. */}
       <CarteiraDoAluno alunoId={id} />
+      {/* SPEC-037/TASK-005 — a matrícula fica por ÚLTIMO, depois da carteira.
+          As duas são dinheiro, e a ordem é de frequência de uso: crédito se
+          lança toda semana; matrícula, uma vez por contrato. */}
+      <MatriculaDoAluno alunoId={id} />
     </div>
   );
 }
