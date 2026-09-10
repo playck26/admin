@@ -388,6 +388,22 @@ export interface paths {
         patch: operations["LevelsController_update"];
         trace?: never;
     };
+    "/api/v1/me/cadastro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeCadastroController_meuCadastro"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MeCadastroController_atualizarMeuCadastro"];
+        trace?: never;
+    };
     "/api/v1/_smoke/tenant-check/{companyId}": {
         parameters: {
             query?: never;
@@ -1580,6 +1596,21 @@ export interface components {
             porTurma: components["schemas"]["FrequenciaPorTurmaResponseDto"][];
             ocorrencias: components["schemas"]["OcorrenciaDoAlunoResponseDto"][];
         };
+        CompletudeDoCadastroDto: {
+            /**
+             * @description Fracao dos SETE campos contaveis, arredondada. O piso real e 29% -- `nome` e `email` sao NOT NULL em `usuarios`, entao todo aluno nasce com dois. Barra em zero mentiria sobre o trabalho ja feito.
+             * @example 71
+             */
+            percentual: number;
+            /**
+             * @description Os que faltam, NA ORDEM EM QUE A TELA DEVE PEDI-LOS. Vazio quando `percentual` e 100.
+             * @example [
+             *       "dataNascimento",
+             *       "emergenciaTelefone"
+             *     ]
+             */
+            faltam: string[];
+        };
         AlunoResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1593,6 +1624,19 @@ export interface components {
             nivelId: string | null;
             /** @enum {string} */
             status: "ativo" | "inativo";
+            /** @example 1990-05-10 */
+            dataNascimento: string | null;
+            /** @example Beto Souza */
+            emergenciaNome: string | null;
+            /** @example +5511988887777 */
+            emergenciaTelefone: string | null;
+            endereco: string | null;
+            /** @example Sao Paulo */
+            cidade: string | null;
+            /** @example SP */
+            uf: string | null;
+            observacoesSaude: string | null;
+            cadastro: components["schemas"]["CompletudeDoCadastroDto"];
         };
         AlunoPaginadoResponseDto: {
             data: components["schemas"]["AlunoResponseDto"][];
@@ -1616,6 +1660,19 @@ export interface components {
             nivelId: string | null;
             /** @enum {string} */
             status: "ativo" | "inativo";
+            /** @example 1990-05-10 */
+            dataNascimento: string | null;
+            /** @example Beto Souza */
+            emergenciaNome: string | null;
+            /** @example +5511988887777 */
+            emergenciaTelefone: string | null;
+            endereco: string | null;
+            /** @example Sao Paulo */
+            cidade: string | null;
+            /** @example SP */
+            uf: string | null;
+            observacoesSaude: string | null;
+            cadastro: components["schemas"]["CompletudeDoCadastroDto"];
             /** @example Xk4p-9Qm2 */
             senhaTemporaria: string;
         };
@@ -1628,6 +1685,15 @@ export interface components {
         UpdateStudentDto: {
             nome?: string;
             telefone?: string;
+            /** @example 1990-05-10 */
+            dataNascimento?: string | null;
+            emergenciaNome?: string | null;
+            emergenciaTelefone?: string | null;
+            endereco?: string | null;
+            cidade?: string | null;
+            /** @enum {string|null} */
+            uf?: "AC" | "AL" | "AP" | "AM" | "BA" | "CE" | "DF" | "ES" | "GO" | "MA" | "MT" | "MS" | "MG" | "PA" | "PB" | "PR" | "PE" | "PI" | "RJ" | "RN" | "RS" | "RO" | "RR" | "SC" | "SP" | "SE" | "TO" | null;
+            observacoesSaude?: string | null;
             nivelId?: string;
             /** @enum {string} */
             status?: "ativo" | "inativo";
@@ -1733,6 +1799,19 @@ export interface components {
         UpdateLevelDto: {
             nome?: string;
             ordem?: number;
+        };
+        CamposDoCadastroDto: {
+            nome?: string;
+            telefone?: string;
+            /** @example 1990-05-10 */
+            dataNascimento?: string | null;
+            emergenciaNome?: string | null;
+            emergenciaTelefone?: string | null;
+            endereco?: string | null;
+            cidade?: string | null;
+            /** @enum {string|null} */
+            uf?: "AC" | "AL" | "AP" | "AM" | "BA" | "CE" | "DF" | "ES" | "GO" | "MA" | "MT" | "MS" | "MG" | "PA" | "PB" | "PR" | "PE" | "PI" | "RJ" | "RN" | "RS" | "RO" | "RR" | "SC" | "SP" | "SE" | "TO" | null;
+            observacoesSaude?: string | null;
         };
         SmokeDeTenantResponseDto: {
             /** @example true */
@@ -3616,6 +3695,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NivelResponseDto"];
+                };
+            };
+        };
+    };
+    MeCadastroController_meuCadastro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlunoResponseDto"];
+                };
+            };
+        };
+    };
+    MeCadastroController_atualizarMeuCadastro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CamposDoCadastroDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlunoResponseDto"];
                 };
             };
         };
