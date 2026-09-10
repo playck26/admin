@@ -558,6 +558,51 @@ export type CriarPlanoDto = components["schemas"]["CriarPlanoDto"];
 export type AtualizarPlanoDto = components["schemas"]["AtualizarPlanoDto"];
 export type CriarMatriculaDto = components["schemas"]["CriarMatriculaDto"];
 
+/**
+ * SPEC-038 — importar alunos por planilha.
+ *
+ * **Uma rota, dois comportamentos.** `conferir: true` valida e NAO escreve;
+ * sem ele, valida e escreve -- e qualquer erro recusa o arquivo inteiro.
+ *
+ * O corpo e `multipart/form-data` com o campo `arquivo`, o mesmo de todo
+ * upload do projeto (INV-048): duas configuracoes de upload e o que aquela
+ * invariante existe para impedir.
+ */
+export type RelatorioDeImportacao =
+  components["schemas"]["RelatorioDeImportacaoDto"];
+export type ImportacaoConcluida =
+  components["schemas"]["ImportacaoConcluidaDto"];
+
+async function enviarPlanilha(
+  arquivo: File,
+  conferir: boolean,
+): Promise<Response> {
+  const corpo = new FormData();
+  corpo.append("arquivo", arquivo);
+  // **Sem `Content-Type` a mao.** O navegador precisa gerar o `boundary`, e
+  // defini-lo manualmente produz um corpo que o servidor nao consegue separar.
+  return authFetch(`/students/importar${conferir ? "?conferir=true" : ""}`, {
+    method: "POST",
+    body: corpo,
+  });
+}
+
+export async function conferirPlanilha(
+  arquivo: File,
+): Promise<RelatorioDeImportacao> {
+  const res = await enviarPlanilha(arquivo, true);
+  if (!res.ok) throw await parseError(res, "Não foi possível ler a planilha.");
+  return (await res.json()) as RelatorioDeImportacao;
+}
+
+export async function importarPlanilha(
+  arquivo: File,
+): Promise<ImportacaoConcluida> {
+  const res = await enviarPlanilha(arquivo, false);
+  if (!res.ok) throw await parseError(res, "Não foi possível importar.");
+  return (await res.json()) as ImportacaoConcluida;
+}
+
 export async function listarPlanos(apenasAtivos = false): Promise<Plano[]> {
   const res = await authFetch(
     `/planos${apenasAtivos ? "?apenasAtivos=true" : ""}`,
