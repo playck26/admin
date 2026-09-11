@@ -31,6 +31,10 @@ vi.mock("@/lib/api-client", async () => {
 const SEM_PRAZO = {
   prazoCancelamentoAulaHoras: null,
   prazoCancelamentoReservaHoras: null,
+  // SPEC-047 — o preço padrão da aula particular vive no MESMO `PUT`, porque
+  // ele é substituição total: um segundo card escrevendo o mesmo recurso
+  // apagaria o campo do primeiro.
+  precoAulaPadrao: null,
 };
 
 beforeEach(() => {
@@ -55,6 +59,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
     getConfigOperacao.mockResolvedValue({
       prazoCancelamentoAulaHoras: 24,
       prazoCancelamentoReservaHoras: 2,
+      precoAulaPadrao: null,
     });
     render(<PrazosDeCancelamentoCard />);
 
@@ -74,6 +79,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       expect(definirConfigOperacao).toHaveBeenCalledWith({
         prazoCancelamentoAulaHoras: 24,
         prazoCancelamentoReservaHoras: 2,
+        precoAulaPadrao: null,
       }),
     );
     await screen.findByText("Salvo.");
@@ -87,6 +93,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
     getConfigOperacao.mockResolvedValue({
       prazoCancelamentoAulaHoras: 24,
       prazoCancelamentoReservaHoras: 2,
+      precoAulaPadrao: null,
     });
     render(<PrazosDeCancelamentoCard />);
     await waitFor(() => expect(campoAula()).toHaveValue("24"));
@@ -98,6 +105,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       expect(definirConfigOperacao).toHaveBeenCalledWith({
         prazoCancelamentoAulaHoras: null,
         prazoCancelamentoReservaHoras: 2,
+        precoAulaPadrao: null,
       }),
     );
     const [enviado] = definirConfigOperacao.mock.calls[0] as [
@@ -209,19 +217,26 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       getConfigOperacao.mockResolvedValue({
         prazoCancelamentoAulaHoras: 24,
         prazoCancelamentoReservaHoras: 4,
+        // **SPEC-047 — e este 150 que da peso ao caso abaixo.** O `PUT` e
+        // substituicao total: se o card nao reenviasse o preco, salvar um
+        // prazo APAGARIA o padrao do clube, e o gestor descobriria pelos
+        // alunos sumindo da tela de aula particular. O `tsc` pegou o risco;
+        // este caso e quem o mantem pego.
+        precoAulaPadrao: 150,
       });
       fireEvent.click(screen.getByRole("button", { name: "Recarregar" }));
 
       await waitFor(() => expect(campoAula()).toHaveValue("24"));
       expect(salvar()).not.toBeDisabled();
 
-      // E agora salvar preserva o campo que ele NÃO tocou.
+      // E agora salvar preserva os campos que ele NAO tocou — os dois.
       fireEvent.change(campoAula(), { target: { value: "2" } });
       fireEvent.click(salvar());
       await waitFor(() =>
         expect(definirConfigOperacao).toHaveBeenCalledWith({
           prazoCancelamentoAulaHoras: 2,
           prazoCancelamentoReservaHoras: 4,
+          precoAulaPadrao: 150,
         }),
       );
     });
@@ -275,6 +290,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
         expect(definirConfigOperacao).toHaveBeenCalledWith({
           prazoCancelamentoAulaHoras: 2147483647,
           prazoCancelamentoReservaHoras: null,
+          precoAulaPadrao: null,
         }),
       );
     });
