@@ -36,6 +36,13 @@ export function AgendaDiaDialog({
 }) {
   const [itens, setItens] = useState<ItemDoDia[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * SPEC-048/AC-011 — quanto voltou para a carteira no último cancelamento.
+   *
+   * `null` é "nada a dizer", e cobre dois casos com a mesma tela: ninguém
+   * cancelou ainda, e cancelou sem haver crédito a devolver.
+   */
+  const [devolvido, setDevolvido] = useState<number | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
 
   function carregar() {
@@ -53,9 +60,19 @@ export function AgendaDiaDialog({
 
   async function agir(id: string, acao: () => Promise<unknown>) {
     setErro(null);
+    setDevolvido(null);
     setProcessando(id);
     try {
-      await acao();
+      // SPEC-048/AC-011 — **o que a ação devolveu deixa de ser jogado fora.**
+      // `agir` recebe qualquer promessa e ignorava o resultado; cancelar
+      // devolve crédito para a carteira do aluno desde a SPEC-039, e o gestor
+      // não via. O `unknown` é estreitado aqui, num lugar só.
+      const r = (await acao()) as
+        | { creditoDevolvidoCentavos?: number | null }
+        | undefined;
+      if (typeof r?.creditoDevolvidoCentavos === "number") {
+        setDevolvido(r.creditoDevolvidoCentavos);
+      }
       await carregar();
       onMudou();
     } catch (e) {
@@ -183,6 +200,17 @@ export function AgendaDiaDialog({
         {erro ? (
           <p role="alert" className="mt-4 text-sm text-[var(--color-error)]">
             {erro}
+          </p>
+        ) : null}
+
+        {/* Só quando voltou de verdade: `> 0` cobre também o zero. */}
+        {devolvido !== null && devolvido > 0 ? (
+          <p className="mt-4 text-sm font-semibold text-[var(--color-success)]">
+            {(devolvido / 100).toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })}{" "}
+            voltaram para a carteira do aluno.
           </p>
         ) : null}
       </div>

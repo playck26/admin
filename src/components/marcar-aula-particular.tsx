@@ -5,6 +5,7 @@ import {
   ApiError,
   createBooking,
   getDisponibilidadeDoProfessor,
+  getExtratoDeCredito,
   listCourts,
   listStudents,
   type Court,
@@ -65,9 +66,28 @@ const MENSAGEM: Record<string, string> = {
   PROFESSOR_INDISPONIVEL:
     "O professor já tem compromisso neste horário — inclusive aula de turma.",
   PROFESSOR_INATIVO: "Este professor está inativo e não recebe aula.",
-  SALDO_INSUFICIENTE:
-    "O aluno não tem saldo para esta aula. Lance crédito na ficha dele, ou combine o pagamento por fora.",
 };
+
+/**
+ * SPEC-048/AC-008 — **`SALDO_INSUFICIENTE` saiu daqui, e era código morto que
+ * ensinava o errado.**
+ *
+ * O mapeamento dizia *"o aluno não tem saldo para esta aula… combine o
+ * pagamento por fora"*, como se a aula tivesse falhado. **O servidor nunca
+ * devolve esse código ao gestor**: `debitarCarteira` só o lança quando quem
+ * pede é o ALUNO; para o gestor ele retorna em silêncio (PA-04) e a aula é
+ * criada **pendente de pagamento**.
+ *
+ * Ou seja: o gestor lia "falhou" sobre uma aula que existe. O certo não é uma
+ * mensagem de erro melhor — é **avisar antes**, e é o que o bloco de saldo
+ * abaixo faz.
+ */
+
+const emReais = (centavos: number) =>
+  (centavos / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 
 export function MarcarAulaParticular({ professorId }: { professorId: string }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -84,6 +104,22 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
+  /**
+   * SPEC-048/AC-006 — o saldo do aluno escolhido.
+   *
+   * **Guarda DE QUEM é o saldo, não só o número.** A primeira versão zerava o
+   * estado ao trocar de aluno, e o lint recusou: `setState` síncrono dentro de
+   * efeito dispara render em cascata. O conserto certo não era silenciar a
+   * regra — era parar de precisar zerar: com o dono junto, o saldo do aluno
+   * anterior **não casa** e simplesmente não aparece.
+   *
+   * De quebra, mata a corrida: duas buscas voltando fora de ordem não
+   * conseguem pintar o saldo errado na pessoa errada.
+   */
+  const [saldo, setSaldo] = useState<{
+    alunoId: string;
+    centavos: number;
+  } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -105,6 +141,28 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
       vivo = false;
     };
   }, [professorId]);
+
+  /**
+   * A carteira do aluno escolhido.
+   *
+   * Só busca quando há aluno, e **zera ao trocar** — sem isso o saldo do aluno
+   * anterior ficaria na tela durante a nova busca, e o gestor decidiria por um
+   * número que não é mais daquela pessoa.
+   */
+  useEffect(() => {
+    if (!alunoId) return;
+    let vivo = true;
+    getExtratoDeCredito(alunoId)
+      .then((e) => vivo && setSaldo({ alunoId, centavos: e.saldoCentavos }))
+      // Falha aqui não impede marcar: some o aviso, não a ação.
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [alunoId]);
+
+  /** Só é o saldo desta pessoa se o dono casar. */
+  const saldoCentavos = saldo?.alunoId === alunoId ? saldo.centavos : null;
 
   /**
    * A janela do professor no dia escolhido.
@@ -172,6 +230,15 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
     }
   }
 
+  /**
+   * SPEC-048/D6 — a fronteira reais↔centavos, **uma vez**.
+   *
+   * O campo é digitado em reais; a carteira é em centavos. `Math.round`
+   * porque `1.1 * 100` é `110.00000000000001` em ponto flutuante.
+   */
+  const valorCentavos = Math.round(Number(valor || 0) * 100);
+  const saldoCobre = saldoCentavos !== null && saldoCentavos >= valorCentavos;
+
   const podeEnviar =
     alunoId !== "" &&
     quadraId !== "" &&
@@ -184,7 +251,7 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
   return (
     <FormCard
       title="Marcar aula particular"
-      description="A aula entra na linha do tempo da quadra e consome o saldo do aluno, se houver."
+      description="A aula entra na linha do tempo da quadra. Escolha o aluno para ver o saldo dele e o que vai acontecer."
       className="max-w-2xl"
     >
       <form onSubmit={(e) => void enviar(e)} className="flex flex-col gap-4">
@@ -207,6 +274,41 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
             </SelectContent>
           </Select>
         </div>
+
+        {/*
+          SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
+
+          A frase do cabeçalho dizia "consome o saldo do aluno, se houver" — e
+          "se houver" é exatamente o que o gestor não sabe. Sem o número, ele
+          não distingue a aula que nasce paga da que nasce devendo.
+        */}
+        {saldoCentavos !== null ? (
+          <div className="rounded-xl bg-[var(--color-surface-variant)] px-4 py-3">
+            <p className="text-sm font-semibold">
+              Saldo do aluno: {emReais(saldoCentavos)}
+            </p>
+            {valor !== "" && Number(valor) >= 0 ? (
+              saldoCobre ? (
+                <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
+                  A aula será debitada da carteira e nasce <strong>paga</strong>.
+                  Restam {emReais(saldoCentavos - valorCentavos)}.
+                </p>
+              ) : (
+                /*
+                  AC-007/D3 — **a frase útil para o gestor não é "falhou".** A
+                  ação dele VAI dar certo; o que muda é o estado em que a aula
+                  nasce. Dizer "sem saldo" aqui repetiria o engano que o
+                  mapeamento morto ensinava.
+                */
+                <p className="mt-1 text-xs font-semibold text-[var(--color-warning)]">
+                  O saldo não cobre os {emReais(valorCentavos)}: a aula será
+                  criada <strong>pendente de pagamento</strong>, e nada será
+                  debitado.
+                </p>
+              )
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="aula-quadra">Quadra</Label>

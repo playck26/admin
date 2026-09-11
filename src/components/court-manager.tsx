@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 import {
+  getExtratoDeCredito,
   ApiError,
   cancelBooking,
   createBooking,
@@ -43,6 +44,12 @@ function todayIso(): string {
  * pontas do seletor.
  */
 const SEM_PROFESSOR = "__sem_professor__";
+
+const emReaisDoSaldo = (centavos: number) =>
+  (centavos / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 
 export function CourtManager({ id }: { id: string }) {
   const [court, setCourt] = useState<Court | null>(null);
@@ -78,6 +85,67 @@ export function CourtManager({ id }: { id: string }) {
   // depois de cada reserva e os objetos deixam de ser os mesmos.
   const [slotsSelecionados, setSlotsSelecionados] = useState<string[]>([]);
   const [alunoId, setAlunoId] = useState("");
+  /**
+   * SPEC-048/AC-006 — o saldo do aluno escolhido.
+   *
+   * **Guarda DE QUEM é o saldo, não só o número.** A primeira versão zerava o
+   * estado ao trocar de aluno, e o lint recusou: `setState` síncrono dentro de
+   * efeito dispara render em cascata. O conserto certo não era silenciar a
+   * regra — era parar de precisar zerar: com o dono junto, o saldo do aluno
+   * anterior **não casa** e simplesmente não aparece.
+   *
+   * De quebra, mata a corrida: duas buscas voltando fora de ordem não
+   * conseguem pintar o saldo errado na pessoa errada.
+   */
+  const [saldo, setSaldo] = useState<{
+    alunoId: string;
+    centavos: number;
+  } | null>(null);
+  /**
+   * Quanto voltou no último cancelamento. `null` é "nada a dizer" — e são
+   * dois casos diferentes com a mesma resposta de tela: ninguém cancelou
+   * ainda, e cancelou mas não havia crédito a devolver (reserva de turma,
+   * reserva sem aluno). Prometer devolução que não houve faz o gestor
+   * procurar um movimento que não existe.
+   */
+  const [creditoDevolvido, setCreditoDevolvido] = useState<number | null>(null);
+
+  /**
+   * A carteira do aluno escolhido. **Zera ao trocar de aluno** — sem isso o
+   * saldo do anterior ficaria na tela durante a nova busca, e o gestor
+   * decidiria por um número que já não é daquela pessoa.
+   */
+  useEffect(() => {
+    if (!alunoId) return;
+    let vivo = true;
+    getExtratoDeCredito(alunoId)
+      .then((e) => vivo && setSaldo({ alunoId, centavos: e.saldoCentavos }))
+      // Falha aqui não impede reservar: some o aviso, não a ação.
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [alunoId]);
+
+  /** Só é o saldo desta pessoa se o dono casar. */
+  const saldoCentavos = saldo?.alunoId === alunoId ? saldo.centavos : null;
+
+  /**
+   * SPEC-048/D6 — **quanto vai ser cobrado, em centavos, num lugar só.**
+   *
+   * Duas origens de preço, e a escolha é a mesma do servidor: com professor o
+   * valor é o da AULA e **substitui** o da quadra (SPEC-047/D5, que herdou da
+   * SPEC-039); sem professor é `precoHora × horas`. Repetir essa escolha em
+   * dois lugares da tela seria duas chances de discordar do que o back grava.
+   *
+   * `Math.round` na fronteira reais→centavos: `1.1 * 100` é
+   * `110.00000000000001` em ponto flutuante.
+   */
+  const cobrancaCentavos = professorId
+    ? Math.round(Number(valorAula || 0) * 100)
+    : Math.round(
+        slotsSelecionados.length * Number(court?.precoHora ?? 0) * 100,
+      );
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
@@ -221,8 +289,13 @@ export function CourtManager({ id }: { id: string }) {
 
     setCancelingId(booking.id);
     setAvailError(null);
+    setCreditoDevolvido(null);
     try {
-      await cancelBooking(booking.id);
+      // SPEC-048/AC-011 — **a resposta era descartada.** O crédito voltava
+      // para a carteira do aluno e o gestor não via; só descobriria abrindo a
+      // ficha. Cancelar é o gesto que mais move dinheiro nesta tela.
+      const { creditoDevolvidoCentavos } = await cancelBooking(booking.id);
+      setCreditoDevolvido(creditoDevolvidoCentavos);
       await loadAvailability();
     } catch (err) {
       setAvailError(err instanceof ApiError ? err.message : "Não foi possível cancelar a reserva.");
@@ -393,6 +466,21 @@ export function CourtManager({ id }: { id: string }) {
             </p>
           ) : null}
 
+          {/*
+            SPEC-048/AC-011 — **só quando houve devolução de verdade.**
+
+            O `> 0` cobre também o zero: reserva de turma e reserva sem aluno
+            devolvem `null`, e uma devolução de zero centavos não é notícia.
+            Dizer "R$ 0,00 voltou" faria o gestor procurar um movimento que não
+            existe — é a mesma regra que a tela do aluno já segue.
+          */}
+          {creditoDevolvido !== null && creditoDevolvido > 0 ? (
+            <p className="text-sm font-semibold text-[var(--color-success)]">
+              {emReaisDoSaldo(creditoDevolvido)} voltaram para a carteira do
+              aluno.
+            </p>
+          ) : null}
+
           {availability?.estado === "fechado" ? (
             /* SPEC-010/AC-008: sem este caso, dia fechado e dia lotado
                apareceriam como a mesma grade vazia. */
@@ -546,6 +634,41 @@ export function CourtManager({ id }: { id: string }) {
                     ))}
                   </SelectContent>
                 </Select>
+                {/*
+                  SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
+
+                  O texto do campo de valor dizia "sai do saldo do aluno se
+                  houver", e "se houver" é justamente o que o gestor não sabe.
+                  Sem o número ele não distingue a reserva que nasce paga da
+                  que nasce devendo — e as duas dão `201`.
+                */}
+                {saldoCentavos !== null ? (
+                  <div className="rounded-xl bg-[var(--color-surface-variant)] px-4 py-3">
+                    <p className="text-sm font-semibold">
+                      Saldo do aluno: {emReaisDoSaldo(saldoCentavos)}
+                    </p>
+                    {cobrancaCentavos > 0 ? (
+                      saldoCentavos >= cobrancaCentavos ? (
+                        <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
+                          Serão debitados {emReaisDoSaldo(cobrancaCentavos)} e a
+                          reserva nasce <strong>paga</strong>.
+                        </p>
+                      ) : (
+                        /*
+                          AC-007/D3 — o gestor NÃO recebe `SALDO_INSUFICIENTE`:
+                          para ele a reserva é criada assim mesmo, sem débito
+                          (PA-04). A frase útil é o estado em que ela nasce.
+                        */
+                        <p className="mt-1 text-xs font-semibold text-[var(--color-warning)]">
+                          O saldo não cobre os{" "}
+                          {emReaisDoSaldo(cobrancaCentavos)}: a reserva será
+                          criada <strong>pendente de pagamento</strong>, e nada
+                          será debitado.
+                        </p>
+                      )
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               {/*
                 SPEC-039 — a aula particular.

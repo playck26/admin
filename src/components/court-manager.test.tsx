@@ -36,6 +36,7 @@ const marcarPago = vi.hoisted(() => vi.fn());
 const cancelar = vi.hoisted(() => vi.fn());
 const listarProfessores = vi.hoisted(() => vi.fn());
 const criarReserva = vi.hoisted(() => vi.fn());
+const extrato = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -46,6 +47,7 @@ vi.mock("@/lib/api-client", async () => {
     ...real,
     getCourt: pegarQuadra,
     listStudents: listarAlunos,
+    getExtratoDeCredito: extrato,
     getAvailability: disponibilidade,
     listBookings: listarReservas,
     updateBookingPaymentStatus: marcarPago,
@@ -89,6 +91,8 @@ beforeEach(() => {
     data: [{ id: ALUNO, nome: "Ana", usuario: { nome: "Ana" } }],
     total: 1,
   });
+  // R$ 500,00. A quadra custa R$ 100/h — um horário cabe com folga.
+  extrato.mockResolvedValue({ saldoCentavos: 50_000, movimentos: [] });
   disponibilidade.mockResolvedValue({
     estado: "aberto",
     slots: [
@@ -99,7 +103,10 @@ beforeEach(() => {
   });
   listarReservas.mockResolvedValue({ data: [RESERVA_DE_DUAS_HORAS], total: 1 });
   marcarPago.mockResolvedValue(undefined);
-  cancelar.mockResolvedValue(undefined);
+  // **A resposta REAL da rota**, e não `undefined`: ela devolve
+  // `{ creditoDevolvidoCentavos }` desde a SPEC-039, e o cliente a descartava.
+  // Dublar com `undefined` era o teste concordando com o defeito.
+  cancelar.mockResolvedValue({ creditoDevolvidoCentavos: null });
   criarReserva.mockResolvedValue({ reservas: [] });
   listarProfessores.mockResolvedValue({
     data: [
@@ -304,5 +311,126 @@ describe("CourtManager — a reserva de mais de uma hora", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
 
     expect(await screen.findByText("Confirmar aula")).toBeDisabled();
+  });
+});
+
+/**
+ * SPEC-048/REQ-002 — o gestor vê o saldo do aluno, e o que VAI acontecer.
+ *
+ * O texto do campo de valor dizia *"sai do saldo do aluno se houver"*, e "se
+ * houver" é exatamente o que ele não sabia. A diferença importa: com saldo a
+ * reserva nasce **paga**; sem saldo ela nasce **devendo** — e as duas dão
+ * `201`, então nada na resposta o avisa.
+ */
+describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
+  it("AC-006: escolhido o aluno, mostra o saldo dele", async () => {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+
+    expect(
+      await screen.findByText(/Saldo do aluno: R\$\s*500,00/),
+    ).toBeInTheDocument();
+    // R$ 100/h x 1 horário: o saldo cobre, então a reserva nasce paga.
+    expect(await screen.findByText(/nasce/)).toHaveTextContent("paga");
+  });
+
+  it("**AC-007: sem saldo, diz 'pendente de pagamento' — não 'falhou'**", async () => {
+    extrato.mockResolvedValue({ saldoCentavos: 4_000, movimentos: [] });
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+
+    // A ação do gestor VAI dar certo (PA-04): a reserva é criada, sem débito.
+    const negrito = await screen.findByText(/pendente de pagamento/);
+    expect(negrito.closest("p")).toHaveTextContent("não cobre");
+  });
+
+  it("sem aluno escolhido, nenhum saldo aparece", async () => {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    // Sem dono, o saldo não é de ninguém — e a tela não inventa um.
+    expect(screen.queryByText(/Saldo do aluno/)).not.toBeInTheDocument();
+  });
+
+  it("**o saldo carrega DE QUEM ele é — trocar de aluno não herda o anterior**", async () => {
+    // Este caso existe porque a sabotagem me pegou: tirar o `saldo.alunoId ===
+    // alunoId` **não derrubou teste nenhum**, e era justamente o conserto que
+    // eu tinha argumentado ser o certo. Guarda sem prova é opinião.
+    listarAlunos.mockResolvedValue({
+      data: [
+        { id: ALUNO, nome: "Ana", usuario: { nome: "Ana" } },
+        { id: "a-2", nome: "Bruno", usuario: { nome: "Bruno" } },
+      ],
+      total: 2,
+    });
+    // O segundo aluno **nunca responde**: é o intervalo entre trocar e chegar,
+    // e é exatamente onde o saldo do anterior apareceria.
+    extrato.mockImplementation((id: string) =>
+      id === ALUNO
+        ? Promise.resolve({ saldoCentavos: 50_000, movimentos: [] })
+        : new Promise(() => {}),
+    );
+
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    expect(await screen.findByText(/R\$\s*500,00/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Bruno" }));
+
+    // **O saldo da Ana não pode aparecer sob o nome do Bruno.** Decidir por um
+    // número que é de outra pessoa é pior que decidir sem número.
+    await waitFor(() =>
+      expect(screen.queryByText(/R\$\s*500,00/)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("**AC-011: cancelar diz quanto voltou para a carteira do aluno**", async () => {
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: 12_000 });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    // O gestor cancelando é o gesto que mais move dinheiro nesta tela, e ele
+    // só descobriria abrindo a ficha do aluno.
+    expect(
+      await screen.findByText(/voltaram para a carteira do aluno/),
+    ).toHaveTextContent("R$ 120,00");
+  });
+
+  it("**e fica CALADO quando não houve devolução**", async () => {
+    // Reserva de turma e reserva sem aluno devolvem `null`. Prometer
+    // devolução que não houve faz o gestor procurar um movimento que não
+    // existe — a mesma regra que a tela do aluno já segue.
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: null });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    await waitFor(() => expect(cancelar).toHaveBeenCalled());
+    expect(screen.queryByText(/voltaram para a carteira/)).not.toBeInTheDocument();
+  });
+
+  it("zero também é silêncio — `> 0`, não `!= null`", async () => {
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: 0 });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    await waitFor(() => expect(cancelar).toHaveBeenCalled());
+    // "R$ 0,00 voltaram" é pior que silêncio: é uma notícia falsa sobre
+    // dinheiro.
+    expect(screen.queryByText(/voltaram para a carteira/)).not.toBeInTheDocument();
   });
 });
