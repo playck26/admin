@@ -25,6 +25,7 @@ export function EditTeacherForm({ id }: { id: string }) {
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
+  const [precoAula, setPrecoAula] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [senhaNova, setSenhaNova] = useState<TeacherComSenha | null>(null);
@@ -39,9 +40,16 @@ export function EditTeacherForm({ id }: { id: string }) {
         setNome(data.nome);
         setTelefone(data.telefone ?? "");
         setEmail(data.email ?? "");
+        // `""` quando não há preço — e é o que faz o campo vazio significar
+        // "usa o padrão do clube" no submit abaixo.
+        setPrecoAula(data.precoAula == null ? "" : String(data.precoAula));
       })
       .catch((err: unknown) => {
-        setLoadError(err instanceof ApiError ? err.message : "Não foi possível carregar o professor.");
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar o professor.",
+        );
       });
   }, [id]);
 
@@ -54,11 +62,20 @@ export function EditTeacherForm({ id }: { id: string }) {
         nome,
         telefone: telefone || undefined,
         email: email || undefined,
+        // **Campo vazio vira `null`, nunca `undefined`.** `null` APAGA e volta
+        // a herdar o padrão do clube; `undefined` não mexe. São duas intenções
+        // diferentes, e mandar a errada faria "apaguei o preço" virar "o preço
+        // continua lá" — a mesma lição dos sete campos da SPEC-036.
+        precoAula: precoAula.trim() === "" ? null : Number(precoAula),
       });
       setTeacher(updated);
       router.push("/pessoas/professores");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível salvar as alterações.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar as alterações.",
+      );
     } finally {
       setLoading(false);
     }
@@ -73,7 +90,11 @@ export function EditTeacherForm({ id }: { id: string }) {
       const updated = await updateTeacher(id, { status: novoStatus });
       setTeacher(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível mudar o status.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível mudar o status.",
+      );
     } finally {
       setStatusLoading(false);
     }
@@ -88,7 +109,9 @@ export function EditTeacherForm({ id }: { id: string }) {
   }
 
   if (!teacher) {
-    return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
+    return (
+      <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
+    );
   }
 
   // A senha existe em texto claro só nesta resposta: a tela para aqui até
@@ -117,7 +140,9 @@ export function EditTeacherForm({ id }: { id: string }) {
       setSenhaNova(await gerarAcessoProfessor(id));
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Não foi possível gerar o acesso.",
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível gerar o acesso.",
       );
     } finally {
       setGerandoAcesso(false);
@@ -176,6 +201,36 @@ export function EditTeacherForm({ id }: { id: string }) {
           />
         </div>
 
+        {/*
+          SPEC-047 — o preço da aula particular DESTE professor.
+
+          **Vazio não é grátis: é "usa o padrão do clube".** A frase abaixo diz
+          isso porque, sem ela, o gestor deixaria em branco achando que o
+          professor não dá aula particular — e ele daria, pelo padrão.
+
+          E se não houver padrão nenhum, o professor simplesmente não aparece
+          para o aluno. A ausência é a configuração.
+        */}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="precoAula">Preço da aula particular (R$)</Label>
+          <Input
+            id="precoAula"
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            placeholder="usa o padrão do clube"
+            value={precoAula}
+            onChange={(e) => setPrecoAula(e.target.value)}
+            disabled={loading}
+            className="h-11 px-4"
+          />
+          <p className="text-xs text-[var(--color-on-surface-variant)]">
+            Em branco, vale o padrão do clube (Configurações). Sem preço aqui
+            nem lá, este professor não aparece para o aluno marcar aula.
+          </p>
+        </div>
+
         {error ? (
           <p role="alert" className="text-sm text-[var(--color-error)]">
             {error}
@@ -230,7 +285,11 @@ export function EditTeacherForm({ id }: { id: string }) {
         }
       >
         <Ban className="size-4" />
-        {statusLoading ? "Aplicando..." : teacher.status === "ativo" ? "Inativar professor" : "Reativar professor"}
+        {statusLoading
+          ? "Aplicando..."
+          : teacher.status === "ativo"
+            ? "Inativar professor"
+            : "Reativar professor"}
       </Button>
     </FormCard>
   );

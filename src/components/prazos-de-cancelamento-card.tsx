@@ -92,6 +92,7 @@ export function PrazosDeCancelamentoCard() {
   const [tentativa, setTentativa] = useState(0);
   const [aula, setAula] = useState("");
   const [reserva, setReserva] = useState("");
+  const [precoAula, setPrecoAula] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
@@ -104,6 +105,7 @@ export function PrazosDeCancelamentoCard() {
     const paraCampo = (n: number | null) => (n === null ? "" : String(n));
     setAula(paraCampo(c.prazoCancelamentoAulaHoras));
     setReserva(paraCampo(c.prazoCancelamentoReservaHoras));
+    setPrecoAula(paraCampo(c.precoAulaPadrao));
   }, []);
 
   useEffect(() => {
@@ -189,6 +191,15 @@ export function PrazosDeCancelamentoCard() {
         await definirConfigOperacao({
           prazoCancelamentoAulaHoras: a as number | null,
           prazoCancelamentoReservaHoras: r as number | null,
+          // **O `PUT` é substituição TOTAL, e o `tsc` pegou isto antes de
+          // virar perda de dado:** sem mandar o preço aqui, salvar os prazos
+          // APAGARIA o padrão do clube — e o gestor descobriria pelos alunos
+          // sumindo da tela de aula particular.
+          //
+          // É por isso que o campo do preço mora neste mesmo card: um segundo
+          // card com o mesmo `PUT` seria dois lugares que precisam lembrar um
+          // do outro, e o primeiro a esquecer apaga o do outro.
+          precoAulaPadrao: precoAula.trim() === "" ? null : Number(precoAula),
         }),
       );
       setSalvo(true);
@@ -263,6 +274,20 @@ export function PrazosDeCancelamentoCard() {
               "Cancelar reserva (horas)",
               reserva,
               setReserva,
+            )}
+            {/*
+              SPEC-047 — o preço padrão da aula particular mora AQUI, e não num
+              card próprio, porque o `PUT` da configuração é substituição
+              total: dois cards escrevendo o mesmo recurso seriam dois lugares
+              que precisam lembrar um do outro, e o primeiro a esquecer apaga o
+              do outro. **O `tsc` pegou exatamente isso** ao tornar o campo
+              obrigatório no tipo.
+            */}
+            {campo(
+              "preco-aula-padrao",
+              "Aula particular (R$)",
+              precoAula,
+              setPrecoAula,
             )}
             <button
               type="button"
