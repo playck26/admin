@@ -6,6 +6,7 @@ import { ArrowLeft, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -200,7 +201,9 @@ export function ClassManager({ id }: { id: string }) {
   }
 
   const alocadosIds = new Set(turma.alunos.map((aluno) => aluno.alunoId));
-  const disponiveis = students.filter((student) => !alocadosIds.has(student.id));
+  // SPEC-049 — `disponiveis` saiu: quem recorta "ja alocado" agora e o
+  // `SeletorDeAluno`, pelo `excluir`, sobre o RESULTADO DA BUSCA. Filtrar aqui
+  // so alcancaria os 100 que vinham antes.
   const cheia = turma.alunosAlocados >= turma.capacidade;
 
   return (
@@ -406,18 +409,22 @@ export function ClassManager({ id }: { id: string }) {
           <form onSubmit={handleAllocate} className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
             <p className="text-sm font-semibold text-[var(--color-on-surface)]">Alocar aluno</p>
             <div className="flex gap-3">
-              <Select value={novoAlunoId} onValueChange={setNovoAlunoId} disabled={allocLoading || cheia}>
-                <SelectTrigger id="novoAluno" className="h-10 flex-1 px-3">
-                  <SelectValue placeholder={cheia ? "Turma sem vagas" : "Selecione um aluno"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {disponiveis.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/*
+                SPEC-049/REQ-002 — busca no servidor, com `excluir` para não
+                oferecer quem já está na turma. O recorte de "já alocado" é no
+                cliente de propósito: é uma lista do tamanho da turma. **O que
+                não podia ser no cliente era a BUSCA.**
+              */}
+              <div className="flex-1">
+                <SeletorDeAluno
+                  id="novoAluno"
+                  label={cheia ? "Turma sem vagas" : "Aluno"}
+                  valor={novoAlunoId}
+                  onEscolher={setNovoAlunoId}
+                  disabled={allocLoading || cheia}
+                  excluir={[...alocadosIds]}
+                />
+              </div>
               <Button
                 type="submit"
                 disabled={allocLoading || !novoAlunoId || cheia}

@@ -10,13 +10,13 @@ import {
   listStudents,
   type Court,
   type DiaDeDisponibilidade,
-  type Student,
 } from "@/lib/api-client";
 import { DIAS_SEMANA } from "@/lib/dias-semana";
 import { Button } from "@/components/ui/button";
 import { FormCard } from "@/components/form-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import {
   Select,
   SelectContent,
@@ -90,7 +90,6 @@ const emReais = (centavos: number) =>
   });
 
 export function MarcarAulaParticular({ professorId }: { professorId: string }) {
-  const [students, setStudents] = useState<Student[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
   const [semana, setSemana] = useState<DiaDeDisponibilidade[] | null>(null);
 
@@ -128,9 +127,8 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
       listCourts(1, 100),
       getDisponibilidadeDoProfessor(professorId),
     ])
-      .then(([a, q, d]) => {
+      .then(([, q, d]) => {
         if (!vivo) return;
-        setStudents(a.data);
         // Quadra inativa não recebe aula nova — a mesma regra que a reserva já
         // segue, e oferecer aqui seria oferecer o que o servidor recusa.
         setCourts(q.data.filter((c) => c.status === "ativa"));
@@ -255,25 +253,17 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
       className="max-w-2xl"
     >
       <form onSubmit={(e) => void enviar(e)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="aula-aluno">Aluno</Label>
-          <Select
-            value={alunoId}
-            onValueChange={setAlunoId}
-            disabled={enviando}
-          >
-            <SelectTrigger id="aula-aluno" className="h-10 w-full px-3">
-              <SelectValue placeholder="Selecione um aluno" />
-            </SelectTrigger>
-            <SelectContent>
-              {students.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/*
+          SPEC-049/REQ-002 — **o seletor busca no servidor.** Era
+          `listStudents(1, 100)` enchendo um `Select`, e o `pageSize` para em
+          `@Max(100)`: com 101 alunos, o aluno 101 não existia para o gestor.
+        */}
+        <SeletorDeAluno
+          id="aula-aluno"
+          valor={alunoId}
+          onEscolher={setAlunoId}
+          disabled={enviando}
+        />
 
         {/*
           SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
