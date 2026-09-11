@@ -19,7 +19,8 @@ export type UpdateCourtDto = components["schemas"]["UpdateCourtDto"];
 export type CreateBookingDto = components["schemas"]["CreateBookingDto"];
 export type CreateClassDto = components["schemas"]["CreateClassDto"];
 export type UpdateClassDto = components["schemas"]["UpdateClassDto"];
-export type UpdatePaymentConfigDto = components["schemas"]["UpdatePaymentConfigDto"];
+export type UpdatePaymentConfigDto =
+  components["schemas"]["UpdatePaymentConfigDto"];
 
 export type LoginResult = components["schemas"]["LoginResponseDto"];
 
@@ -73,7 +74,8 @@ export type OpcaoEmbutidaNaQuadra =
   components["schemas"]["OpcaoDeCatalogoResponseDto"];
 export type Court = components["schemas"]["QuadraResponseDto"];
 
-export type AvailabilitySlot = components["schemas"]["SlotDeDisponibilidadeResponseDto"];
+export type AvailabilitySlot =
+  components["schemas"]["SlotDeDisponibilidadeResponseDto"];
 
 export type Availability = components["schemas"]["DisponibilidadeResponseDto"];
 
@@ -87,7 +89,8 @@ export interface BookingConflictInfo {
   origemTipo: string;
 }
 
-export type PaymentConfig = components["schemas"]["ConfiguracaoDePagamentoResponseDto"];
+export type PaymentConfig =
+  components["schemas"]["ConfiguracaoDePagamentoResponseDto"];
 
 /**
  * SPEC-019/REQ-006 (AC-016) — **estes tipos eram escritos à mão, e diziam
@@ -101,22 +104,33 @@ export type PaymentConfig = components["schemas"]["ConfiguracaoDePagamentoRespon
  * está amarrado ao retorno de `toResponse`. A corrente inteira acende
  * vermelho antes de chegar a um usuário (SPEC-021/INV-058, INV-059).
  */
-export type EncontroDaTurma =
-  components["schemas"]["TurmaEncontroResponseDto"];
+export type EncontroDaTurma = components["schemas"]["TurmaEncontroResponseDto"];
 export type SchoolClass = components["schemas"]["TurmaResponseDto"];
 export type SchoolClassStudent =
   components["schemas"]["AlunoDaTurmaResponseDto"];
+/**
+ * SPEC-035 — uma aula cancelada que ainda dá para trazer de volta.
+ *
+ * Vem do `openapi.json` como todo o resto: tipo escrito à mão aqui é o
+ * DEF-012, que deixa o typecheck verde e a tela quebrada.
+ */
+export type AulaCancelada = components["schemas"]["AulaCanceladaResponseDto"];
+
 export type SchoolClassDetail =
   components["schemas"]["TurmaDetalheResponseDto"];
 
-export type DashboardSummary = components["schemas"]["DashboardResumoResponseDto"];
+export type DashboardSummary =
+  components["schemas"]["DashboardResumoResponseDto"];
 
 // SPEC-033 — a carteira. Tipos gerados do `openapi.json` do back, nunca
 // escritos a mao: e o que faz uma mudanca de contrato virar erro de
 // compilacao em vez de tela em branco (DEF-012).
-export type ExtratoDeCredito = components["schemas"]["ExtratoDeCreditoResponseDto"];
-export type MovimentoDeCredito = components["schemas"]["MovimentoDeCreditoResponseDto"];
-export type MovimentoCriado = components["schemas"]["MovimentoCriadoResponseDto"];
+export type ExtratoDeCredito =
+  components["schemas"]["ExtratoDeCreditoResponseDto"];
+export type MovimentoDeCredito =
+  components["schemas"]["MovimentoDeCreditoResponseDto"];
+export type MovimentoCriado =
+  components["schemas"]["MovimentoCriadoResponseDto"];
 
 // SPEC-040 — a agenda do professor, pela mesma regra: tipo gerado, nunca
 // escrito a mao.
@@ -138,6 +152,16 @@ export class ApiError extends Error {
      * pela qual o back parou de discriminar por mensagem no D7.
      */
     public code?: string,
+    /**
+     * SPEC-035 — a lista de conflitos do `409` de reativação de turma.
+     *
+     * **Plural, e diferente do `conflictWith` singular acima.** O singular
+     * vem de mover ou reativar UMA ocupação; este vem de regenerar a grade
+     * inteira, onde `registerClassOccupancy` devolve **todos** os conflitos
+     * de propósito — o gestor vê o estrago inteiro em vez de descobrir o
+     * segundo depois de resolver o primeiro.
+     */
+    public conflicts?: BookingConflictInfo[],
   ) {
     super(message);
   }
@@ -146,7 +170,10 @@ export class ApiError extends Error {
 async function parseError(res: Response, fallback: string): Promise<ApiError> {
   const body: unknown = await res.json().catch(() => null);
   const message =
-    body && typeof body === "object" && "message" in body && typeof body.message === "string"
+    body &&
+    typeof body === "object" &&
+    "message" in body &&
+    typeof body.message === "string"
       ? body.message
       : fallback;
   const conflictWith =
@@ -154,10 +181,20 @@ async function parseError(res: Response, fallback: string): Promise<ApiError> {
       ? (body.conflictWith as BookingConflictInfo | undefined)
       : undefined;
   const code =
-    body && typeof body === "object" && "code" in body && typeof body.code === "string"
+    body &&
+    typeof body === "object" &&
+    "code" in body &&
+    typeof body.code === "string"
       ? body.code
       : undefined;
-  return new ApiError(res.status, message, conflictWith, code);
+  const conflicts =
+    body &&
+    typeof body === "object" &&
+    "conflicts" in body &&
+    Array.isArray(body.conflicts)
+      ? (body.conflicts as BookingConflictInfo[])
+      : undefined;
+  return new ApiError(res.status, message, conflictWith, code, conflicts);
 }
 
 /**
@@ -203,7 +240,10 @@ async function renovarSessao(): Promise<boolean> {
 
 function encerrarSessao(): void {
   clearAccessToken();
-  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+  if (
+    typeof window !== "undefined" &&
+    !window.location.pathname.startsWith("/login")
+  ) {
     // Navegação dura de propósito, em vez de `router.push`: este módulo não
     // é componente (não há hook disponível) e, mais importante, sessão
     // perdida deve descartar todo o estado em memória — cache de listas,
@@ -252,7 +292,10 @@ async function requisicaoAutenticada(
   });
 }
 
-async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function authFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
   let res = await requisicaoAutenticada(path, init);
 
   // 401 aqui quase sempre é access token vencido, não credencial errada:
@@ -267,8 +310,14 @@ async function authFetch(path: string, init: RequestInit = {}): Promise<Response
   // SPEC-014:TASK-000 / INV-008 — o servidor barra tudo enquanto a senha for
   // temporaria. Sem este desvio a pessoa veria erro seco em cada tela em vez
   // da unica tela que resolve o problema dela.
-  if (res.status === 403 && (await temCodigo(res.clone(), "SENHA_TEMPORARIA"))) {
-    if (typeof window !== "undefined" && window.location.pathname !== "/primeiro-acesso") {
+  if (
+    res.status === 403 &&
+    (await temCodigo(res.clone(), "SENHA_TEMPORARIA"))
+  ) {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/primeiro-acesso"
+    ) {
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/primeiro-acesso";
     }
@@ -277,7 +326,26 @@ async function authFetch(path: string, init: RequestInit = {}): Promise<Response
 
   if (res.status === 403 && (await temCodigo(res.clone(), "CONTA_INATIVA"))) {
     encerrarSessao();
-    throw await parseError(res, "Esta conta está inativa. Procure o administrador.");
+    throw await parseError(
+      res,
+      "Esta conta está inativa. Procure o administrador.",
+    );
+  }
+
+  // DEF-028 — o clube inteiro suspenso. Mesmo desvio da conta inativa, e
+  // **precisa vir antes do bloco de 403 genérico logo abaixo**: aquele tenta
+  // renovar a sessão, e a renovação de uma empresa suspensa responde `401` e
+  // derruba as demais sessões. Sem este desvio a pessoa cairia no login sem
+  // uma palavra sobre o motivo — um logout mudo no meio do trabalho.
+  //
+  // Mensagem separada de propósito: a conta dela está em ordem, e "procure o
+  // administrador" mandaria o gestor procurar a si mesmo.
+  if (res.status === 403 && (await temCodigo(res.clone(), "EMPRESA_INATIVA"))) {
+    encerrarSessao();
+    throw await parseError(
+      res,
+      "O acesso deste clube está suspenso. Fale com o suporte da plataforma.",
+    );
   }
 
   // DEF-008 (2026-08-24) — 403 puro, sem código conhecido, quase sempre é
@@ -338,13 +406,21 @@ export async function login(dto: LoginDto): Promise<LoginResult> {
   return (await res.json()) as LoginResult;
 }
 
-export async function listStudents(page = 1, pageSize = 20): Promise<Paginated<Student>> {
+export async function listStudents(
+  page = 1,
+  pageSize = 20,
+): Promise<Paginated<Student>> {
   const res = await authFetch(`/students?page=${page}&pageSize=${pageSize}`);
   return (await res.json()) as Paginated<Student>;
 }
 
-export async function createStudent(dto: CreateStudentDto): Promise<StudentComSenha> {
-  const res = await authFetch("/students", { method: "POST", body: JSON.stringify(dto) });
+export async function createStudent(
+  dto: CreateStudentDto,
+): Promise<StudentComSenha> {
+  const res = await authFetch("/students", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as StudentComSenha;
 }
 
@@ -398,18 +474,30 @@ export async function getStudent(id: string): Promise<Student> {
   return (await res.json()) as Student;
 }
 
-export async function updateStudent(id: string, dto: UpdateStudentDto): Promise<Student> {
-  const res = await authFetch(`/students/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+export async function updateStudent(
+  id: string,
+  dto: UpdateStudentDto,
+): Promise<Student> {
+  const res = await authFetch(`/students/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Student;
 }
 
-export async function listTeachers(page = 1, pageSize = 20): Promise<Paginated<Teacher>> {
+export async function listTeachers(
+  page = 1,
+  pageSize = 20,
+): Promise<Paginated<Teacher>> {
   const res = await authFetch(`/teachers?page=${page}&pageSize=${pageSize}`);
   return (await res.json()) as Paginated<Teacher>;
 }
 
 export async function createTeacher(dto: CreateTeacherDto): Promise<Teacher> {
-  const res = await authFetch("/teachers", { method: "POST", body: JSON.stringify(dto) });
+  const res = await authFetch("/teachers", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Teacher;
 }
 
@@ -426,13 +514,21 @@ export type TeacherComSenha =
  * texto claro **uma única vez**, nesta resposta; nenhuma outra rota a
  * devolve. Por isso quem chama tem de mostrá-la antes de navegar.
  */
-export async function gerarAcessoProfessor(id: string): Promise<TeacherComSenha> {
+export async function gerarAcessoProfessor(
+  id: string,
+): Promise<TeacherComSenha> {
   const res = await authFetch(`/teachers/${id}/acesso`, { method: "POST" });
   return (await res.json()) as TeacherComSenha;
 }
 
-export async function updateTeacher(id: string, dto: UpdateTeacherDto): Promise<Teacher> {
-  const res = await authFetch(`/teachers/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+export async function updateTeacher(
+  id: string,
+  dto: UpdateTeacherDto,
+): Promise<Teacher> {
+  const res = await authFetch(`/teachers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Teacher;
 }
 
@@ -442,12 +538,21 @@ export async function listLevels(): Promise<Level[]> {
 }
 
 export async function createLevel(dto: CreateLevelDto): Promise<Level> {
-  const res = await authFetch("/levels", { method: "POST", body: JSON.stringify(dto) });
+  const res = await authFetch("/levels", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Level;
 }
 
-export async function updateLevel(id: string, dto: UpdateLevelDto): Promise<Level> {
-  const res = await authFetch(`/levels/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+export async function updateLevel(
+  id: string,
+  dto: UpdateLevelDto,
+): Promise<Level> {
+  const res = await authFetch(`/levels/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Level;
 }
 
@@ -455,13 +560,147 @@ export async function deleteLevel(id: string): Promise<void> {
   await authFetch(`/levels/${id}`, { method: "DELETE" });
 }
 
-export async function listCourts(page = 1, pageSize = 20): Promise<Paginated<Court>> {
+/**
+ * SPEC-037 — planos e matriculas.
+ *
+ * Os tipos vem do `openapi.json`, como todo o resto: escritos a mao aqui, o
+ * `tsc` ficaria verde contra um contrato velho e a tela quebraria em runtime
+ * -- que e o DEF-012, e foi exatamente assim que a SPEC-039 deixou um defeito
+ * em producao no Cliente.
+ */
+export type Plano = components["schemas"]["PlanoResponseDto"];
+export type Matricula = components["schemas"]["MatriculaResponseDto"];
+export type CriarPlanoDto = components["schemas"]["CriarPlanoDto"];
+export type AtualizarPlanoDto = components["schemas"]["AtualizarPlanoDto"];
+export type CriarMatriculaDto = components["schemas"]["CriarMatriculaDto"];
+export type Vencimentos = components["schemas"]["VencimentosResponseDto"];
+export type Vencimento = components["schemas"]["VencimentoResponseDto"];
+
+/**
+ * SPEC-038 — importar alunos por planilha.
+ *
+ * **Uma rota, dois comportamentos.** `conferir: true` valida e NAO escreve;
+ * sem ele, valida e escreve -- e qualquer erro recusa o arquivo inteiro.
+ *
+ * O corpo e `multipart/form-data` com o campo `arquivo`, o mesmo de todo
+ * upload do projeto (INV-048): duas configuracoes de upload e o que aquela
+ * invariante existe para impedir.
+ */
+export type RelatorioDeImportacao =
+  components["schemas"]["RelatorioDeImportacaoDto"];
+export type ImportacaoConcluida =
+  components["schemas"]["ImportacaoConcluidaDto"];
+
+async function enviarPlanilha(
+  arquivo: File,
+  conferir: boolean,
+): Promise<Response> {
+  const corpo = new FormData();
+  corpo.append("arquivo", arquivo);
+  // **Sem `Content-Type` a mao.** O navegador precisa gerar o `boundary`, e
+  // defini-lo manualmente produz um corpo que o servidor nao consegue separar.
+  return authFetch(`/students/importar${conferir ? "?conferir=true" : ""}`, {
+    method: "POST",
+    body: corpo,
+  });
+}
+
+export async function conferirPlanilha(
+  arquivo: File,
+): Promise<RelatorioDeImportacao> {
+  const res = await enviarPlanilha(arquivo, true);
+  if (!res.ok) throw await parseError(res, "Não foi possível ler a planilha.");
+  return (await res.json()) as RelatorioDeImportacao;
+}
+
+export async function importarPlanilha(
+  arquivo: File,
+): Promise<ImportacaoConcluida> {
+  const res = await enviarPlanilha(arquivo, false);
+  if (!res.ok) throw await parseError(res, "Não foi possível importar.");
+  return (await res.json()) as ImportacaoConcluida;
+}
+
+export async function listarPlanos(apenasAtivos = false): Promise<Plano[]> {
+  const res = await authFetch(
+    `/planos${apenasAtivos ? "?apenasAtivos=true" : ""}`,
+  );
+  return (await res.json()) as Plano[];
+}
+
+export async function criarPlano(dto: CriarPlanoDto): Promise<Plano> {
+  const res = await authFetch("/planos", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Plano;
+}
+
+/**
+ * **Nao ha `apagarPlano`, e a ausencia e a decisao** (INV-115). Plano
+ * contratado carrega historia; `{ ativo: false }` e a unica forma de sumir com
+ * ele, e ela nunca perde dado.
+ */
+export async function atualizarPlano(
+  id: string,
+  dto: AtualizarPlanoDto,
+): Promise<Plano> {
+  const res = await authFetch(`/planos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Plano;
+}
+
+export async function listarMatriculas(alunoId: string): Promise<Matricula[]> {
+  const res = await authFetch(`/students/${alunoId}/matriculas`);
+  return (await res.json()) as Matricula[];
+}
+
+/**
+ * SPEC-045 — **a unica rota de matricula por EMPRESA.**
+ *
+ * As outras tres sao por aluno, e era essa a forma do defeito: para saber quem
+ * vence, o gestor abria ficha por ficha. `dias` vai na URL e volta ecoado, para
+ * a tela nao precisar repetir o padrao do servidor.
+ */
+export async function listarVencimentos(dias = 30): Promise<Vencimentos> {
+  const res = await authFetch(`/matriculas/vencimentos?dias=${dias}`);
+  return (await res.json()) as Vencimentos;
+}
+
+/**
+ * `422 CONTRATO_NAO_ACEITO` quando o aluno ainda nao aceitou a versao vigente;
+ * `422 CONTRATO_NAO_PUBLICADO` quando o clube nunca publicou; `422
+ * PLANO_INATIVO` quando o plano foi desativado.
+ *
+ * As tres existem para o gestor nao receber `500`: a garantia e a FK causal do
+ * banco (INV-114), que responderia `23503`.
+ */
+export async function criarMatricula(
+  alunoId: string,
+  dto: CriarMatriculaDto,
+): Promise<Matricula> {
+  const res = await authFetch(`/students/${alunoId}/matriculas`, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Matricula;
+}
+
+export async function listCourts(
+  page = 1,
+  pageSize = 20,
+): Promise<Paginated<Court>> {
   const res = await authFetch(`/courts?page=${page}&pageSize=${pageSize}`);
   return (await res.json()) as Paginated<Court>;
 }
 
 export async function createCourt(dto: CreateCourtDto): Promise<Court> {
-  const res = await authFetch("/courts", { method: "POST", body: JSON.stringify(dto) });
+  const res = await authFetch("/courts", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Court;
 }
 
@@ -470,22 +709,31 @@ export async function getCourt(id: string): Promise<Court> {
   return (await res.json()) as Court;
 }
 
-export async function updateCourt(id: string, dto: UpdateCourtDto): Promise<Court> {
-  const res = await authFetch(`/courts/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+export async function updateCourt(
+  id: string,
+  dto: UpdateCourtDto,
+): Promise<Court> {
+  const res = await authFetch(`/courts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as Court;
 }
 
-export async function getAvailability(quadraId: string, data: string): Promise<Availability> {
+export async function getAvailability(
+  quadraId: string,
+  data: string,
+): Promise<Availability> {
   const res = await authFetch(`/courts/${quadraId}/availability?data=${data}`);
   return (await res.json()) as Availability;
 }
 
 /**
-   * SPEC-011 — um pedido pode gerar mais de uma reserva: slots contíguos
-   * viram um bloco, separados viram reservas independentes. O agrupamento
-   * é do servidor, para o app do aluno e o painel não divergirem sobre o
-   * que é "uma reserva".
-   */
+ * SPEC-011 — um pedido pode gerar mais de uma reserva: slots contíguos
+ * viram um bloco, separados viram reservas independentes. O agrupamento
+ * é do servidor, para o app do aluno e o painel não divergirem sobre o
+ * que é "uma reserva".
+ */
 /**
  * SPEC-039 — `professorId` e `valor` chegaram juntos, e **só valem juntos**.
  *
@@ -503,11 +751,16 @@ export async function createBooking(dto: {
   professorId?: string;
   valor?: number;
 }): Promise<{ reservas: Booking[] }> {
-  const res = await authFetch("/bookings", { method: "POST", body: JSON.stringify(dto) });
+  const res = await authFetch("/bookings", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as { reservas: Booking[] };
 }
 
-export async function listBookings(filters: { data?: string; status?: string } = {}): Promise<Paginated<Booking>> {
+export async function listBookings(
+  filters: { data?: string; status?: string } = {},
+): Promise<Paginated<Booking>> {
   const params = new URLSearchParams();
   if (filters.data) params.set("data", filters.data);
   if (filters.status) params.set("status", filters.status);
@@ -534,13 +787,19 @@ export async function listBookingEvents(
   return (await res.json()) as EventoDeOcupacao[];
 }
 
-export async function listClasses(page = 1, pageSize = 20): Promise<Paginated<SchoolClass>> {
+export async function listClasses(
+  page = 1,
+  pageSize = 20,
+): Promise<Paginated<SchoolClass>> {
   const res = await authFetch(`/classes?page=${page}&pageSize=${pageSize}`);
   return (await res.json()) as Paginated<SchoolClass>;
 }
 
 export async function createClass(dto: CreateClassDto): Promise<SchoolClass> {
-  const res = await authFetch("/classes", { method: "POST", body: JSON.stringify(dto) });
+  const res = await authFetch("/classes", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as SchoolClass;
 }
 
@@ -549,20 +808,38 @@ export async function getClass(id: string): Promise<SchoolClassDetail> {
   return (await res.json()) as SchoolClassDetail;
 }
 
-export async function updateClass(id: string, dto: UpdateClassDto): Promise<SchoolClass> {
-  const res = await authFetch(`/classes/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
+export async function updateClass(
+  id: string,
+  dto: UpdateClassDto,
+): Promise<SchoolClass> {
+  const res = await authFetch(`/classes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as SchoolClass;
 }
 
-export async function allocateStudentInClass(classId: string, alunoId: string): Promise<void> {
-  await authFetch(`/classes/${classId}/students/${alunoId}`, { method: "POST" });
+export async function allocateStudentInClass(
+  classId: string,
+  alunoId: string,
+): Promise<void> {
+  await authFetch(`/classes/${classId}/students/${alunoId}`, {
+    method: "POST",
+  });
 }
 
-export async function removeStudentFromClass(classId: string, alunoId: string): Promise<void> {
-  await authFetch(`/classes/${classId}/students/${alunoId}`, { method: "DELETE" });
+export async function removeStudentFromClass(
+  classId: string,
+  alunoId: string,
+): Promise<void> {
+  await authFetch(`/classes/${classId}/students/${alunoId}`, {
+    method: "DELETE",
+  });
 }
 
-export async function getDashboardSummary(periodo?: string): Promise<DashboardSummary> {
+export async function getDashboardSummary(
+  periodo?: string,
+): Promise<DashboardSummary> {
   const params = periodo ? `?periodo=${periodo}` : "";
   const res = await authFetch(`/dashboard/summary${params}`);
   return (await res.json()) as DashboardSummary;
@@ -573,8 +850,13 @@ export async function getPaymentConfig(): Promise<PaymentConfig> {
   return (await res.json()) as PaymentConfig;
 }
 
-export async function updatePaymentConfig(dto: UpdatePaymentConfigDto): Promise<PaymentConfig> {
-  const res = await authFetch("/payment-config", { method: "PUT", body: JSON.stringify(dto) });
+export async function updatePaymentConfig(
+  dto: UpdatePaymentConfigDto,
+): Promise<PaymentConfig> {
+  const res = await authFetch("/payment-config", {
+    method: "PUT",
+    body: JSON.stringify(dto),
+  });
   return (await res.json()) as PaymentConfig;
 }
 
@@ -595,15 +877,18 @@ export async function updateBookingPaymentStatus(
 
 export type DiaHorario = components["schemas"]["DiaDeHorarioResponseDto"];
 
-export type OcupacaoAfetada = components["schemas"]["OcupacaoAfetadaResponseDto"];
+export type OcupacaoAfetada =
+  components["schemas"]["OcupacaoAfetadaResponseDto"];
 
 /**
  * SPEC-010/REQ-006 — reduzir o horário não cancela nada; devolve o que
  * ficou fora para o gerente decidir.
  */
-export type ResultadoHorarios = components["schemas"]["ResultadoDeHorariosResponseDto"];
+export type ResultadoHorarios =
+  components["schemas"]["ResultadoDeHorariosResponseDto"];
 
-export type HorariosEmpresa = components["schemas"]["ConfiguracaoDeHorariosResponseDto"];
+export type HorariosEmpresa =
+  components["schemas"]["ConfiguracaoDeHorariosResponseDto"];
 
 /**
  * DEF-003 — identidade da própria empresa, para o gestor divulgar o link de
@@ -687,7 +972,8 @@ export async function removerLogo(companyId: string): Promise<LogoResolvida> {
 }
 
 /** SPEC-018/TASK-004 — o que o `PUT`/`DELETE` da foto devolve. */
-export type FotoDeProfessorResolvida = components["schemas"]["FotoDeProfessorResponseDto"];
+export type FotoDeProfessorResolvida =
+  components["schemas"]["FotoDeProfessorResponseDto"];
 
 /**
  * SPEC-018/TASK-004 — sobe a foto do professor pela ficha.
@@ -796,7 +1082,8 @@ export async function removerOpcaoDeCatalogo(
 }
 
 /** SPEC-018/TASK-005 — o que o `PUT`/`DELETE` da imagem devolve. */
-export type ImagemDeQuadraResolvida = components["schemas"]["ImagemDaQuadraResponseDto"];
+export type ImagemDeQuadraResolvida =
+  components["schemas"]["ImagemDaQuadraResponseDto"];
 
 /**
  * SPEC-018/TASK-005 — sobe a imagem da quadra.
@@ -915,7 +1202,9 @@ export async function getAlcanceDoContrato(): Promise<{ pessoas: number }> {
  * errado exige publicar de novo com o texto certo, e todo mundo reaceita
  * duas vezes. Apagar uma versao destruiria o registro de quem aceitou o que.
  */
-export async function publicarContrato(texto: string): Promise<ContratoDaEmpresa> {
+export async function publicarContrato(
+  texto: string,
+): Promise<ContratoDaEmpresa> {
   const res = await authFetch("/me/company/contrato", {
     method: "PUT",
     body: JSON.stringify({ texto }),
@@ -942,8 +1231,7 @@ export async function definirLimiteDeTurmas(
  * que um opcional convida a escrever transformaria "sem prazo" em "prazo
  * zero", que é o oposto.
  */
-export type ConfigOperacao =
-  components["schemas"]["ConfigOperacaoResponseDto"];
+export type ConfigOperacao = components["schemas"]["ConfigOperacaoResponseDto"];
 
 export async function getConfigOperacao(): Promise<ConfigOperacao> {
   const res = await authFetch("/company-settings/operacao");
@@ -976,7 +1264,8 @@ export async function definirHorariosEmpresa(
 }
 
 /** `origem` diz se a quadra tem horário próprio ou reflete o padrão. */
-export type HorariosQuadra = components["schemas"]["HorariosDaQuadraResponseDto"];
+export type HorariosQuadra =
+  components["schemas"]["HorariosDaQuadraResponseDto"];
 
 export async function getHorariosQuadra(id: string): Promise<HorariosQuadra> {
   const res = await authFetch(`/courts/${id}/horarios`);
@@ -1076,6 +1365,39 @@ export async function cancelarOcorrenciaDeTurma(
 }
 
 /**
+ * SPEC-035/REQ-003 — desfazer o cancelamento de UMA ocorrencia.
+ *
+ * `409 HORARIO_OCUPADO` quando alguem tomou o lugar enquanto a aula estava
+ * cancelada, e o corpo traz `conflictWith` dizendo QUEM tomou. `409
+ * PRAZO_DE_CANCELAMENTO` para aula que ja comecou — para essa, o caminho e a
+ * chamada, com "a aula nao aconteceu".
+ */
+export async function reativarOcorrenciaDeTurma(
+  turmaId: string,
+  ocupacaoId: string,
+  motivo: string,
+): Promise<void> {
+  await authFetch(`/classes/${turmaId}/ocorrencias/${ocupacaoId}/reactivate`, {
+    method: "POST",
+    body: JSON.stringify({ motivo }),
+  });
+}
+
+/**
+ * SPEC-035/TASK-004 — as aulas canceladas desta turma que ainda dao para
+ * reativar.
+ *
+ * **So o futuro.** A agenda esconde o cancelado, entao esta e a unica porta
+ * para a rota de reativacao — sem ela, `reactivate` seria rota sem tela.
+ */
+export async function listarAulasCanceladas(
+  turmaId: string,
+): Promise<AulaCancelada[]> {
+  const res = await authFetch(`/classes/${turmaId}/ocorrencias-canceladas`);
+  return (await res.json()) as AulaCancelada[];
+}
+
+/**
  * SPEC-014:TASK-000 — troca de senha. O backend revoga todas as sessoes e
  * devolve um par novo; quem chama precisa guardar o access token, senao a
  * pessoa cai no login logo depois de trocar.
@@ -1097,7 +1419,8 @@ export async function trocarSenha(dto: {
  * se o professor sair do clube, uma chamada errada dele não tem quem
  * conserte. Se doer no uso real, vira spec, não remendo.
  */
-export type OcorrenciaPresenca = components["schemas"]["OcorrenciaNoHistoricoResponseDto"];
+export type OcorrenciaPresenca =
+  components["schemas"]["OcorrenciaNoHistoricoResponseDto"];
 
 export async function listPresencasDaTurma(
   turmaId: string,
@@ -1149,11 +1472,14 @@ export async function registrarNaoHouveAula(
  */
 export type CoberturaFrequencia = components["schemas"]["CoberturaResponseDto"];
 
-export type LinhaFrequencia = components["schemas"]["AlunoNaFrequenciaDaTurmaResponseDto"];
+export type LinhaFrequencia =
+  components["schemas"]["AlunoNaFrequenciaDaTurmaResponseDto"];
 
-export type FrequenciaDaTurma = components["schemas"]["FrequenciaDaTurmaResponseDto"];
+export type FrequenciaDaTurma =
+  components["schemas"]["FrequenciaDaTurmaResponseDto"];
 
-export type FrequenciaDoAluno = components["schemas"]["FrequenciaDoAlunoResponseDto"];
+export type FrequenciaDoAluno =
+  components["schemas"]["FrequenciaDoAlunoResponseDto"];
 
 export type ItemEvasao = components["schemas"]["AlunoEmEvasaoResponseDto"];
 
@@ -1185,7 +1511,8 @@ export async function getExtratoDeCredito(
   alunoId: string,
 ): Promise<ExtratoDeCredito> {
   const res = await authFetch(`/students/${alunoId}/creditos`);
-  if (!res.ok) throw await parseError(res, "Não foi possível carregar a carteira.");
+  if (!res.ok)
+    throw await parseError(res, "Não foi possível carregar a carteira.");
   return (await res.json()) as ExtratoDeCredito;
 }
 
@@ -1209,7 +1536,8 @@ export async function lancarCredito(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(corpo),
   });
-  if (!res.ok) throw await parseError(res, "Não foi possível registrar o lançamento.");
+  if (!res.ok)
+    throw await parseError(res, "Não foi possível registrar o lançamento.");
   return (await res.json()) as MovimentoCriado;
 }
 

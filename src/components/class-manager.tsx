@@ -32,6 +32,7 @@ import {
   type EncontroForm,
 } from "@/components/encontros-field";
 import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
+import { AulasCanceladasDaTurma } from "@/components/aulas-canceladas-da-turma";
 
 const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
@@ -121,14 +122,37 @@ export function ClassManager({ id }: { id: string }) {
     }
   }
 
+  /**
+   * SPEC-035 — **o botão que não fazia nada passou a fazer duas coisas.**
+   *
+   * Até 2026-09-09 o back gravava o `status` e mais nada: inativar a turma
+   * deixava a quadra bloqueada para sempre, apontando para uma turma fora de
+   * operação. Agora inativar **cancela as ocupações futuras** e reativar
+   * **regenera a grade** — e é a regeneração que pode ser recusada.
+   *
+   * A recusa vem com a lista inteira de conflitos (`conflicts`), e não com o
+   * primeiro: o gestor vê o estrago todo em vez de descobrir o segundo depois
+   * de resolver o primeiro. **É o "recusar com aviso" que o item 13 do
+   * backlog pediu** — sem a contagem, a mensagem crua do servidor não diz nem
+   * quantas.
+   */
   async function handleToggleStatus() {
     if (!turma) return;
+    const reativando = turma.status !== "ativa";
+    setEditError(null);
     setStatusLoading(true);
     try {
-      await updateClass(id, { status: turma.status === "ativa" ? "inativa" : "ativa" });
+      await updateClass(id, { status: reativando ? "ativa" : "inativa" });
       await reload();
     } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : "Não foi possível mudar o status.");
+      const conflitos = err instanceof ApiError ? (err.conflicts ?? []) : [];
+      setEditError(
+        conflitos.length > 0
+          ? `Não dá para reativar: ${conflitos.length === 1 ? "um horário da turma já foi ocupado" : `${conflitos.length} horários da turma já foram ocupados`}. Libere a quadra ou mude a recorrência antes de reativar.`
+          : err instanceof ApiError
+            ? err.message
+            : "Não foi possível mudar o status.",
+      );
     } finally {
       setStatusLoading(false);
     }
@@ -314,6 +338,21 @@ export function ClassManager({ id }: { id: string }) {
             <Ban className="size-4" />
             {statusLoading ? "Aplicando..." : turma.status === "ativa" ? "Inativar turma" : "Reativar turma"}
           </Button>
+
+          <hr className="my-6 border-border" />
+
+          {/*
+            SPEC-035/TASK-004 — a PORTA da reativação de uma aula.
+
+            Mora aqui, e não na agenda, porque a agenda esconde o cancelado —
+            e quem investiga "por que sumiu a aula de terça" abre a turma.
+          */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
+              Aulas canceladas
+            </h3>
+            <AulasCanceladasDaTurma turmaId={id} />
+          </div>
         </div>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] p-6 shadow-[var(--shadow-low)] lg:col-span-5">
