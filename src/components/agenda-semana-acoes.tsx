@@ -227,9 +227,20 @@ export function AgendaSemanaAcoes({
                 </select>
               </label>
             ) : (
+              /*
+                SPEC-048/AC-012 — **a metade que faltava: o saldo.**
+
+                A frase já dizia que o valor é congelado, e disso decorre que
+                a carteira não é tocada — mas *decorrer* não é *dizer*. Mover
+                para uma quadra mais cara não cobra a diferença, e quem lê
+                "o preço fica congelado" não conclui sozinho que ninguém vai
+                debitar nada (LIM-048b).
+              */
               <p className="text-xs text-[var(--color-on-surface-variant)]">
                 Mover não muda o aluno nem o valor — o preço fica congelado como
-                foi criado. Reserva que já começou não se move.
+                foi criado, e <strong>nada é debitado nem devolvido</strong>,
+                mesmo mudando para uma quadra mais cara. Reserva que já começou
+                não se move.
               </p>
             )}
           </div>
