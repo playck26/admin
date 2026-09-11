@@ -63,6 +63,9 @@ beforeEach(() => {
   listarAlunos.mockResolvedValue({
     data: [{ id: "a-1", nome: "Ana" }],
     total: 1,
+    page: 1,
+    pageSize: 20,
+    totalPages: 1,
   });
   listarQuadras.mockResolvedValue({
     data: [
@@ -82,8 +85,14 @@ beforeEach(() => {
 /** Preenche tudo menos a data, que cada caso escolhe. */
 async function preencher(data: string) {
   render(<MarcarAulaParticular professorId={PROF} />);
-  fireEvent.click(await screen.findByLabelText("Aluno"));
-  fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+  // **SPEC-049 — o seletor deixou de ser uma lista fechada.** Ele busca no
+  // servidor conforme se digita, com 300 ms de espera; por isso o `findBy`
+  // aqui, que aguarda, em vez de um `getBy` imediato.
+  const seletor = await screen.findByLabelText("Aluno");
+  const opcao = (await screen.findByRole("option", {
+    name: "Ana",
+  })) as HTMLOptionElement;
+  fireEvent.change(seletor, { target: { value: opcao.value } });
   fireEvent.click(screen.getByLabelText("Quadra"));
   fireEvent.click(await screen.findByRole("option", { name: "Quadra 1" }));
   fireEvent.change(screen.getByLabelText("Data"), { target: { value: data } });

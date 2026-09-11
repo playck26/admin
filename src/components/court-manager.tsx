@@ -10,6 +10,7 @@ import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import { StatusBadge } from "@/components/status-badge";
 import {
   getExtratoDeCredito,
@@ -621,19 +622,18 @@ export function CourtManager({ id }: { id: string }) {
                 ) : null}
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="aluno">Aluno</Label>
-                <Select value={alunoId} onValueChange={setAlunoId} disabled={bookingLoading}>
-                  <SelectTrigger id="aluno" className="h-10 w-full px-3">
-                    <SelectValue placeholder="Selecione um aluno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/*
+                  SPEC-049/REQ-002 — busca no servidor. O `listStudents(1, 100)`
+                  abaixo CONTINUA, mas só para resolver o NOME das reservas do
+                  dia (`studentsById`) — ver LIM-049e: a reserva não traz
+                  `alunoNome`, então o aluno 101 aparece sem nome no slot.
+                */}
+                <SeletorDeAluno
+                  id="aluno"
+                  valor={alunoId}
+                  onEscolher={setAlunoId}
+                  disabled={bookingLoading}
+                />
                 {/*
                   SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
 

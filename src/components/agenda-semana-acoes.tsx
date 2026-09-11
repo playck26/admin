@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ApiError,
   cancelarOcorrenciaDeTurma,
   createBooking,
-  listStudents,
   moveBooking,
   type ItemDoDia,
-  type Student,
 } from "@/lib/api-client";
 
 function proximaHora(h: number) {
@@ -46,7 +45,6 @@ export function AgendaSemanaAcoes({
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [alunos, setAlunos] = useState<Student[]>([]);
   const [alunoId, setAlunoId] = useState("");
   const [motivo, setMotivo] = useState("");
 
@@ -60,12 +58,12 @@ export function AgendaSemanaAcoes({
     acao.tipo === "criar" ? proximaHora(acao.hora) : acao.item.horaFim,
   );
 
-  useEffect(() => {
-    if (acao.tipo !== "criar") return;
-    void listStudents(1, 100)
-      .then((p) => setAlunos(p.data))
-      .catch(() => setAlunos([]));
-  }, [acao.tipo]);
+  /*
+    SPEC-049 — **o carregamento de 100 alunos saiu daqui.** Quem busca agora é o
+    `SeletorDeAluno`, no servidor, conforme se digita. Manter a chamada seria
+    uma ida à rede para alimentar uma lista que ninguém mais lê — e era ela que
+    terminava no centésimo aluno.
+  */
 
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -210,22 +208,14 @@ export function AgendaSemanaAcoes({
             </div>
 
             {acao.tipo === "criar" ? (
-              <label className="flex flex-col gap-1 text-sm">
-                Aluno
-                <select
-                  required
-                  value={alunoId}
-                  onChange={(e) => setAlunoId(e.target.value)}
-                  className="rounded-lg border border-border bg-[var(--color-surface)] p-2"
-                >
-                  <option value="">Selecione…</option>
-                  {alunos.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              /* SPEC-049/REQ-002 — busca no servidor: `listStudents(1, 100)`
+                 terminava no centésimo aluno, sem aviso. */
+              <SeletorDeAluno
+                id="acao-aluno"
+                valor={alunoId}
+                onEscolher={setAlunoId}
+                obrigatorio
+              />
             ) : (
               /*
                 SPEC-048/AC-012 — **a metade que faltava: o saldo.**

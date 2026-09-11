@@ -128,6 +128,22 @@ async function abrirGrade() {
   await waitFor(() => expect(listarReservas).toHaveBeenCalled());
 }
 
+/**
+ * SPEC-049 — **o seletor de aluno deixou de ser uma lista fechada.**
+ *
+ * Era `listStudents(1, 100)` enchendo um `Select` do Radix; agora e o
+ * `SeletorDeAluno`, que busca no servidor conforme se digita (com 300 ms de
+ * espera). Por isso `findBy` aqui, que aguarda, e um `change` no `<select>`
+ * nativo em vez de dois cliques.
+ */
+async function escolherAluno(nome = "Ana") {
+  const select = await screen.findByLabelText("Aluno");
+  const opcao = (await screen.findByRole("option", {
+    name: nome,
+  })) as HTMLOptionElement;
+  fireEvent.change(select, { target: { value: opcao.value } });
+}
+
 describe("CourtManager — a reserva de mais de uma hora", () => {
   it("a SEGUNDA hora de uma reserva paga NAO aparece como pendente", async () => {
     await abrirGrade();
@@ -253,8 +269,7 @@ describe("CourtManager — a reserva de mais de uma hora", () => {
   it("SPEC-039: sem professor, NAO manda `valor` -- o preco e da quadra", async () => {
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
     fireEvent.click(screen.getByText("Confirmar reserva"));
 
     await waitFor(() => expect(criarReserva).toHaveBeenCalled());
@@ -282,8 +297,7 @@ describe("CourtManager — a reserva de mais de uma hora", () => {
   it("SPEC-039: com professor, manda os DOIS juntos", async () => {
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
     fireEvent.click(screen.getByLabelText(/Professor/));
     fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
     fireEvent.change(await screen.findByLabelText(/Valor da aula/), {
@@ -305,8 +319,7 @@ describe("CourtManager — a reserva de mais de uma hora", () => {
     // valido, e aula de cortesia existe.
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
     fireEvent.click(screen.getByLabelText(/Professor/));
     fireEvent.click(await screen.findByRole("option", { name: "Joao" }));
 
@@ -326,8 +339,7 @@ describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
   it("AC-006: escolhido o aluno, mostra o saldo dele", async () => {
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
 
     expect(
       await screen.findByText(/Saldo do aluno: R\$\s*500,00/),
@@ -340,8 +352,7 @@ describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
     extrato.mockResolvedValue({ saldoCentavos: 4_000, movimentos: [] });
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
 
     // A ação do gestor VAI dar certo (PA-04): a reserva é criada, sem débito.
     const negrito = await screen.findByText(/pendente de pagamento/);
@@ -376,12 +387,10 @@ describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
 
     await abrirGrade();
     fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+    await escolherAluno("Ana");
     expect(await screen.findByText(/R\$\s*500,00/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Aluno"));
-    fireEvent.click(await screen.findByRole("option", { name: "Bruno" }));
+    await escolherAluno("Bruno");
 
     // **O saldo da Ana não pode aparecer sob o nome do Bruno.** Decidir por um
     // número que é de outra pessoa é pior que decidir sem número.
