@@ -21,6 +21,7 @@ const listarAlunos = vi.hoisted(() => vi.fn());
 const listarQuadras = vi.hoisted(() => vi.fn());
 const pegarDisponibilidade = vi.hoisted(() => vi.fn());
 const criarReserva = vi.hoisted(() => vi.fn());
+const extrato = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -33,6 +34,7 @@ vi.mock("@/lib/api-client", async () => {
     listCourts: listarQuadras,
     getDisponibilidadeDoProfessor: pegarDisponibilidade,
     createBooking: criarReserva,
+    getExtratoDeCredito: extrato,
   };
 });
 
@@ -73,6 +75,8 @@ beforeEach(() => {
   });
   pegarDisponibilidade.mockResolvedValue(semana());
   criarReserva.mockResolvedValue({ reservas: [{ id: "r-1" }] });
+  // R$ 500,00 na carteira do aluno. Quem testa o caso sem saldo sobrescreve.
+  extrato.mockResolvedValue({ saldoCentavos: 50_000, movimentos: [] });
 });
 
 /** Preenche tudo menos a data, que cada caso escolhe. */
@@ -184,5 +188,54 @@ describe("MarcarAulaParticular", () => {
     expect(
       await screen.findByText(/já tem compromisso neste horário/),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
+ *
+ * O cabeçalho dizia *"consome o saldo do aluno, se houver"*, e "se houver" é
+ * exatamente o que o gestor não sabia. Pior: a tela mapeava
+ * `SALDO_INSUFICIENTE` para *"combine o pagamento por fora"*, como se a aula
+ * tivesse falhado — e **o servidor nunca devolve esse código ao gestor**.
+ */
+describe("SPEC-048 — o saldo do aluno, na tela do gestor", () => {
+  it("AC-006: escolhido o aluno, mostra o saldo dele", async () => {
+    await preencher(QUINTA);
+    expect(
+      await screen.findByText(/Saldo do aluno: R\$\s*500,00/),
+    ).toBeInTheDocument();
+  });
+
+  it("com saldo, diz que a aula nasce PAGA e quanto resta", async () => {
+    await preencher(QUINTA);
+    fireEvent.change(screen.getByLabelText("Valor da aula (R$)"), {
+      target: { value: "250" },
+    });
+    expect(await screen.findByText(/nasce/)).toHaveTextContent("paga");
+    expect(screen.getByText(/Restam R\$\s*250,00/)).toBeInTheDocument();
+  });
+
+  it("**AC-007: sem saldo, a frase é 'pendente de pagamento' — não 'falhou'**", async () => {
+    extrato.mockResolvedValue({ saldoCentavos: 4_000, movimentos: [] });
+    await preencher(QUINTA);
+    fireEvent.change(screen.getByLabelText("Valor da aula (R$)"), {
+      target: { value: "250" },
+    });
+
+    // **A ação do gestor VAI dar certo** (PA-04): a aula é criada, sem débito.
+    // Dizer "sem saldo, combine por fora" faria o gestor achar que não passou.
+    // `findByText` casa o `<strong>`, que só tem o trecho em negrito — a
+    // frase inteira está no parágrafo em volta.
+    const negrito = await screen.findByText(/pendente de pagamento/);
+    expect(negrito.closest("p")).toHaveTextContent("não cobre");
+    expect(screen.queryByText(/combine o pagamento por fora/i)).toBeNull();
+  });
+
+  it("a carteira indisponível não impede marcar", async () => {
+    extrato.mockRejectedValue(new Error("rede"));
+    await preencher(QUINTA);
+    expect(screen.queryByText(/Saldo do aluno/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Valor da aula (R$)")).toBeInTheDocument();
   });
 });

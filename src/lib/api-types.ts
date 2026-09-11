@@ -1028,6 +1028,22 @@ export interface paths {
         patch: operations["CourtCategoriesController_update"];
         trace?: never;
     };
+    "/api/v1/me/professores/{id}/horarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeHorariosDeAulaController_listar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/students/{id}/creditos": {
         parameters: {
             query?: never;
@@ -2689,6 +2705,30 @@ export interface components {
              */
             ordem?: number;
         };
+        JanelaDoProfessorDto: {
+            /** @example 08:00 */
+            horaInicio: string;
+            /** @example 12:00 */
+            horaFim: string;
+        };
+        HorarioDeAulaDto: {
+            /** @example 09:00 */
+            horaInicio: string;
+            /** @example 10:00 */
+            horaFim: string;
+            quadraId: string;
+            /** @example Quadra 1 */
+            quadraNome: string;
+        };
+        HorariosDeAulaResponseDto: {
+            /** @example 2026-09-15 */
+            data: string;
+            atende: boolean;
+            janela: components["schemas"]["JanelaDoProfessorDto"] | null;
+            /** @example 150 */
+            precoAula: number;
+            slots: components["schemas"]["HorarioDeAulaDto"][];
+        };
         MovimentoDeCreditoResponseDto: {
             id: string;
             /** @enum {string} */
@@ -3395,6 +3435,33 @@ export interface components {
         UpdatePaymentStatusDto: {
             /** @enum {string} */
             status: "pago" | "cancelado";
+        };
+        OcupacaoComDevolucaoResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            quadraId: string;
+            /** @example 2026-09-01 */
+            data: string;
+            /** @example 18:00 */
+            horaInicio: string;
+            /** @example 19:00 */
+            horaFim: string;
+            /** @enum {string} */
+            origemTipo: "AVULSO" | "TURMA";
+            /** Format: uuid */
+            alunoId: string | null;
+            /** @enum {string} */
+            statusPagamento: "pendente_pagamento" | "pago" | "cancelado";
+            /** @example 120 */
+            valor: number | null;
+            /**
+             * @description Centavos devolvidos à carteira do aluno neste cancelamento, ou null quando não havia consumo ativo (e sempre null ao marcar como pago).
+             * @example 12000
+             */
+            creditoDevolvidoCentavos: number | null;
         };
     };
     responses: never;
@@ -5499,6 +5566,29 @@ export interface operations {
             };
         };
     };
+    MeHorariosDeAulaController_listar: {
+        parameters: {
+            query: {
+                data: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorariosDeAulaResponseDto"];
+                };
+            };
+        };
+    };
     CreditosController_extrato: {
         parameters: {
             query?: never;
@@ -6545,7 +6635,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OcupacaoResponseDto"];
+                    "application/json": components["schemas"]["OcupacaoComDevolucaoResponseDto"];
                 };
             };
         };
