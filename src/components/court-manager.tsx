@@ -101,6 +101,14 @@ export function CourtManager({ id }: { id: string }) {
     alunoId: string;
     centavos: number;
   } | null>(null);
+  /**
+   * Quanto voltou no último cancelamento. `null` é "nada a dizer" — e são
+   * dois casos diferentes com a mesma resposta de tela: ninguém cancelou
+   * ainda, e cancelou mas não havia crédito a devolver (reserva de turma,
+   * reserva sem aluno). Prometer devolução que não houve faz o gestor
+   * procurar um movimento que não existe.
+   */
+  const [creditoDevolvido, setCreditoDevolvido] = useState<number | null>(null);
 
   /**
    * A carteira do aluno escolhido. **Zera ao trocar de aluno** — sem isso o
@@ -281,8 +289,13 @@ export function CourtManager({ id }: { id: string }) {
 
     setCancelingId(booking.id);
     setAvailError(null);
+    setCreditoDevolvido(null);
     try {
-      await cancelBooking(booking.id);
+      // SPEC-048/AC-011 — **a resposta era descartada.** O crédito voltava
+      // para a carteira do aluno e o gestor não via; só descobriria abrindo a
+      // ficha. Cancelar é o gesto que mais move dinheiro nesta tela.
+      const { creditoDevolvidoCentavos } = await cancelBooking(booking.id);
+      setCreditoDevolvido(creditoDevolvidoCentavos);
       await loadAvailability();
     } catch (err) {
       setAvailError(err instanceof ApiError ? err.message : "Não foi possível cancelar a reserva.");
@@ -450,6 +463,21 @@ export function CourtManager({ id }: { id: string }) {
           {availError ? (
             <p role="alert" className="text-sm text-[var(--color-error)]">
               {availError}
+            </p>
+          ) : null}
+
+          {/*
+            SPEC-048/AC-011 — **só quando houve devolução de verdade.**
+
+            O `> 0` cobre também o zero: reserva de turma e reserva sem aluno
+            devolvem `null`, e uma devolução de zero centavos não é notícia.
+            Dizer "R$ 0,00 voltou" faria o gestor procurar um movimento que não
+            existe — é a mesma regra que a tela do aluno já segue.
+          */}
+          {creditoDevolvido !== null && creditoDevolvido > 0 ? (
+            <p className="text-sm font-semibold text-[var(--color-success)]">
+              {emReaisDoSaldo(creditoDevolvido)} voltaram para a carteira do
+              aluno.
             </p>
           ) : null}
 

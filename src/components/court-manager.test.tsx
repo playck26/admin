@@ -103,7 +103,10 @@ beforeEach(() => {
   });
   listarReservas.mockResolvedValue({ data: [RESERVA_DE_DUAS_HORAS], total: 1 });
   marcarPago.mockResolvedValue(undefined);
-  cancelar.mockResolvedValue(undefined);
+  // **A resposta REAL da rota**, e não `undefined`: ela devolve
+  // `{ creditoDevolvidoCentavos }` desde a SPEC-039, e o cliente a descartava.
+  // Dublar com `undefined` era o teste concordando com o defeito.
+  cancelar.mockResolvedValue({ creditoDevolvidoCentavos: null });
   criarReserva.mockResolvedValue({ reservas: [] });
   listarProfessores.mockResolvedValue({
     data: [
@@ -385,5 +388,49 @@ describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
     await waitFor(() =>
       expect(screen.queryByText(/R\$\s*500,00/)).not.toBeInTheDocument(),
     );
+  });
+
+  it("**AC-011: cancelar diz quanto voltou para a carteira do aluno**", async () => {
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: 12_000 });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    // O gestor cancelando é o gesto que mais move dinheiro nesta tela, e ele
+    // só descobriria abrindo a ficha do aluno.
+    expect(
+      await screen.findByText(/voltaram para a carteira do aluno/),
+    ).toHaveTextContent("R$ 120,00");
+  });
+
+  it("**e fica CALADO quando não houve devolução**", async () => {
+    // Reserva de turma e reserva sem aluno devolvem `null`. Prometer
+    // devolução que não houve faz o gestor procurar um movimento que não
+    // existe — a mesma regra que a tela do aluno já segue.
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: null });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    await waitFor(() => expect(cancelar).toHaveBeenCalled());
+    expect(screen.queryByText(/voltaram para a carteira/)).not.toBeInTheDocument();
+  });
+
+  it("zero também é silêncio — `> 0`, não `!= null`", async () => {
+    cancelar.mockResolvedValue({ creditoDevolvidoCentavos: 0 });
+    await abrirGrade();
+    // `findAllByText` e o ULTIMO: o botao aparece uma vez por slot ocupado,
+    // e e assim que o caso do "cancelar pela segunda hora" ja faz.
+    const botoes = await screen.findAllByText("Cancelar");
+    fireEvent.click(botoes[botoes.length - 1]);
+
+    await waitFor(() => expect(cancelar).toHaveBeenCalled());
+    // "R$ 0,00 voltaram" é pior que silêncio: é uma notícia falsa sobre
+    // dinheiro.
+    expect(screen.queryByText(/voltaram para a carteira/)).not.toBeInTheDocument();
   });
 });

@@ -769,8 +769,23 @@ export async function listBookings(
   return (await res.json()) as Paginated<Booking>;
 }
 
-export async function cancelBooking(id: string): Promise<void> {
-  await authFetch(`/bookings/${id}/cancel`, { method: "POST" });
+/**
+ * SPEC-048/REQ-003 — **a resposta deixa de ser descartada.**
+ *
+ * A rota devolve `{ creditoDevolvidoCentavos }` desde a SPEC-039, justamente
+ * para a tela poder dizer quanto voltou — e este cliente era `Promise<void>`:
+ * `await` sem ler o corpo. **O dinheiro voltava para a carteira do aluno e o
+ * gestor não via.**
+ *
+ * `null` distingue *"não havia o que devolver"* de `0`: reserva de turma e
+ * reserva sem aluno não devolvem nada, e prometer crédito que não voltou faz a
+ * pessoa conferir o saldo e não encontrar.
+ */
+export async function cancelBooking(
+  id: string,
+): Promise<{ creditoDevolvidoCentavos: number | null }> {
+  const res = await authFetch(`/bookings/${id}/cancel`, { method: "POST" });
+  return (await res.json()) as { creditoDevolvidoCentavos: number | null };
 }
 
 /**
@@ -860,15 +875,24 @@ export async function updatePaymentConfig(
   return (await res.json()) as PaymentConfig;
 }
 
+/**
+ * SPEC-048/TASK-001 — a resposta ganhou `creditoDevolvidoCentavos`.
+ *
+ * O Admin só chama com `"pago"` hoje, e aí o campo é sempre `null` (marcar
+ * como pago não é cancelamento). Ele entra no tipo porque **o contrato o
+ * traz**, e tipo que mente sobre o contrato é como a próxima tela erra.
+ */
 export async function updateBookingPaymentStatus(
   id: string,
   status: "pago" | "cancelado",
-): Promise<Booking> {
+): Promise<Booking & { creditoDevolvidoCentavos: number | null }> {
   const res = await authFetch(`/bookings/${id}/payment-status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
-  return (await res.json()) as Booking;
+  return (await res.json()) as Booking & {
+    creditoDevolvidoCentavos: number | null;
+  };
 }
 
 // =====================================================================
