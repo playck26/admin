@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { EvasaoCard } from "@/components/evasao-card";
-import Link from "next/link";
-import { Users, Armchair, ArrowUpRight, CalendarDays } from "lucide-react";
+import { Users, Armchair, CalendarDays } from "lucide-react";
 import { TennisCourtIcon } from "@/components/icons/tennis-court-icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,15 +11,6 @@ import { ApiError, getDashboardSummary, type DashboardSummary } from "@/lib/api-
 function mesAtualIso(): string {
   return new Date().toISOString().slice(0, 7);
 }
-
-const NAV_LINKS = [
-  { href: "/pessoas/alunos", label: "Alunos" },
-  { href: "/pessoas/professores", label: "Professores" },
-  { href: "/pessoas/niveis", label: "Níveis" },
-  { href: "/quadras", label: "Quadras" },
-  { href: "/turmas", label: "Turmas" },
-  { href: "/pagamentos", label: "Pagamento" },
-];
 
 export function DashboardSummaryView() {
   const [periodo, setPeriodo] = useState(mesAtualIso());
@@ -92,20 +82,13 @@ export function DashboardSummaryView() {
         </div>
       )}
 
-      {/* SPEC-015/TASK-004 — o cartão fica ACIMA do acesso rápido e abaixo
-          dos KPIs: os números do topo dizem como o negócio está; este diz
-          quem precisa de você hoje, que é a única coisa da tela que pede
-          ação. Enterrá-lo no fim faria o alerta existir sem ser visto. */}
-      <EvasaoCard />
+      {/* SPEC-015/TASK-004 — o cartão fica logo abaixo dos KPIs: os números
+          do topo dizem como o negócio está; este diz quem precisa de você
+          hoje, que é a única coisa da tela que pede ação.
 
-      <div className="flex items-center justify-between border-t border-border pt-6"><h2 className="text-lg font-extrabold">Acesso rápido</h2><span className="text-xs font-bold text-[var(--color-on-surface-variant)]">Operação diária</span></div>
-      <nav className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className="flex items-center justify-between rounded-lg bg-white p-4 text-sm font-bold shadow-[var(--shadow-low)] ring-1 ring-border transition-all hover:-translate-y-0.5 hover:ring-[var(--color-primary)]">
-            {link.label}<ArrowUpRight className="size-4 text-[var(--color-primary-strong)]" />
-          </Link>
-        ))}
-      </nav>
+          SPEC-052/D7 — o "Acesso rápido" que vinha depois dele saiu: repetia
+          o menu lateral item por item. Ver `dashboard-summary.test.tsx`. */}
+      <EvasaoCard />
     </div>
   );
 }
