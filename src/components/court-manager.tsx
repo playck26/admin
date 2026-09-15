@@ -692,7 +692,7 @@ export function CourtManager({ id }: { id: string }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={SEM_PROFESSOR}>
-                      Sem professor — reserva de quadra
+                      Sem professor
                     </SelectItem>
                     {teachers.map((teacher) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
