@@ -1,11 +1,12 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
 **Fonte: análise direta do código.** Data: **2026-09-15** (era 2026-09-14).
-**Conferido por comando nesta data:** 40 arquivos de teste, 349 casos, **67
+**Conferido por comando nesta data:** 41 arquivos de teste, 381 casos, **67
 componentes** (`vitest run --pool=threads`; `.tsx` de `src/components`, sem
 subpastas e sem os `.test.tsx`). *A SPEC-054 soma sete arquivos de teste e cinco
 componentes — `adicionais-manager`, `tipos-de-adicional-manager`,
-`nomes-de-tipo-card`, `seletor-de-adicionais` e `itens-da-reserva`. A linha de
+`nomes-de-tipo-card`, `seletor-de-adicionais` e `itens-da-reserva`; mais um de
+teste (`scripts/netlify-ignore.test.mjs`, 32 casos) com a regra de deploy. A linha de
 2026-09-14 dizia 33/315/62. A de 2026-09-11 dizia 27/238/58 e já estava atrás do código — a SPEC-050 registrou
 30/306. A SPEC-052 soma um arquivo de teste e nenhum componente (31/308/61); a
 SPEC-053 soma dois arquivos de teste e um componente (`reservas-hub`).* Registro de
@@ -206,6 +207,18 @@ novo aparece e ninguém o consome.
 Web responsivo, português do Brasil, tema claro. Sem offline (o service
 worker do `cliente` registra, mas não há estratégia de cache de dados).
 Deploy: Netlify (plano Personal desde 2026-08-22, ADR-014).
+
+**Build pulado quando o commit não muda o site (2026-09-15).** Cada deploy de
+produção custa **15 créditos**, qualquer que seja o tamanho do commit; entre 8 e
+15/09, 26 merges nos três frontends gastaram ~351 dos 500. O `netlify.toml` chama
+`scripts/netlify-ignore.mjs`, que **cancela o build (exit 0) só se todo arquivo
+mudado** for documentação fora de `public/`, teste, `src/lib/api-types.ts` (só
+tipos), CI, lint ou a própria regra. Sem os dois commits, com o mesmo commit
+(*Trigger deploy* manual) ou com o `git diff` falhando, **constrói**. Aplicado ao
+histórico real da semana, pula exatamente os 6 deploys que não mudavam o site e
+constrói os outros 20. **O arquivo é idêntico nos três frontends**, sem gate de
+sincronia (ADR-001). Mudou o `netlify.toml` ou uma variável no painel? *Trigger
+deploy*.
 
 ## 8. Regras de camada (com gate)
 
