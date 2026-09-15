@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Tags } from "lucide-react";
+import { ArrowUpRight, Layers, PackagePlus, Tags } from "lucide-react";
 import { TennisCourtIcon } from "@/components/icons/tennis-court-icon";
+import { NomesDeTipoCard } from "@/components/nomes-de-tipo-card";
 import { listCourts } from "@/lib/api-client";
 
 /**
@@ -12,7 +13,9 @@ import { listCourts } from "@/lib/api-client";
  * "Quadras" e "Esportes e pisos" eram itens soltos do menu. Para o usuário,
  * Reservas passa a ser a área, e quadra, um tipo de reserva (ADR-021). As rotas
  * de quadra **não mudam** — nomeiam o recurso físico (categoria C da D1) —, e
- * os cartões levam a elas. A SPEC-054 acrescenta aqui Adicionais e Tipos.
+ * os cartões levam a elas. A SPEC-054 acrescenta aqui Adicionais e Tipos de
+ * adicional (catálogo livre do clube, D12) e o cartão dos nomes que o aluno lê
+ * para os dois tipos fixos (D1).
  *
  * *Consequência aceita e declarada na spec:* quem ia direto a "Quadras" dá um
  * clique a mais.
@@ -59,6 +62,20 @@ export function ReservasHub() {
       Icon: Tags,
       detalhe: null,
     },
+    {
+      href: "/reservas/adicionais",
+      titulo: "Adicionais",
+      texto: "O que o aluno pode alugar junto com a reserva, com preço e estoque.",
+      Icon: PackagePlus,
+      detalhe: null,
+    },
+    {
+      href: "/reservas/tipos",
+      titulo: "Tipos de adicional",
+      texto: "Como os adicionais se agrupam: raquetes, bolas, toalhas.",
+      Icon: Layers,
+      detalhe: null,
+    },
   ];
 
   return (
@@ -100,6 +117,8 @@ export function ReservasHub() {
           </Link>
         ))}
       </div>
+
+      <NomesDeTipoCard />
     </div>
   );
 }

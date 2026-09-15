@@ -73,6 +73,7 @@ describe("AgendaView (SPEC-012)", () => {
         valor: 150,
         criadaPor: null,
         canceladaPor: null,
+        adicionais: [],
       },
     ]);
 
@@ -103,6 +104,7 @@ describe("AgendaView (SPEC-012)", () => {
         valor: 150,
         criadaPor: null,
         canceladaPor: null,
+        adicionais: [],
       },
     ]);
 
@@ -130,6 +132,7 @@ describe("AgendaView (SPEC-012)", () => {
         valor: 150,
         criadaPor: "Maria",
         canceladaPor: "Gabriel",
+        adicionais: [],
       },
     ]);
 
@@ -159,6 +162,7 @@ describe("AgendaView (SPEC-012)", () => {
         // em producao no dia do deploy, nao um caso de borda.
         criadaPor: null,
         canceladaPor: null,
+        adicionais: [],
       },
     ]);
 
@@ -187,6 +191,7 @@ describe("AgendaView (SPEC-012)", () => {
         valor: 150,
         criadaPor: null,
         canceladaPor: null,
+        adicionais: [],
       },
     ]);
 
