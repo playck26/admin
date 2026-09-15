@@ -781,6 +781,11 @@ export async function createBooking(dto: {
   alunoId?: string;
   professorId?: string;
   valor?: number;
+  /**
+   * SPEC-054/D7 — **omitido quando não há adicional**, nunca `[]`: o `back`
+   * anterior à SPEC-054 recusa o campo, até vazio, com `400` pela `whitelist`.
+   */
+  adicionais?: { adicionalId: string; quantidade: number }[];
 }): Promise<{ reservas: Booking[] }> {
   const res = await authFetch("/bookings", {
     method: "POST",
@@ -1636,4 +1641,137 @@ export async function salvarDisponibilidadeDoProfessor(
 export async function getEvasao(dias = 30): Promise<ListaDeEvasao> {
   const res = await authFetch(`/dashboard/evasao?dias=${dias}`);
   return (await res.json()) as ListaDeEvasao;
+}
+
+/**
+ * SPEC-054 — os adicionais da reserva: o catálogo, os nomes de tipo e o estoque.
+ *
+ * Os tipos vêm do `openapi.json` (D14), como o resto: escritos à mão, o `tsc`
+ * ficaria verde contra um contrato velho (DEF-012).
+ */
+export type TipoDeAdicional = components["schemas"]["TipoDeAdicionalResponseDto"];
+export type Adicional = components["schemas"]["AdicionalResponseDto"];
+export type AdicionalEditado =
+  components["schemas"]["AdicionalEditadoResponseDto"];
+export type HorarioAcimaDoEstoque =
+  components["schemas"]["HorarioAcimaDoEstoqueDto"];
+export type AdicionalDisponivel =
+  components["schemas"]["AdicionalDisponivelResponseDto"];
+export type AdicionalDaReserva = components["schemas"]["AdicionalDaReservaDto"];
+export type ConfigOperacaoComNomes =
+  components["schemas"]["ConfigOperacaoComNomesResponseDto"];
+
+export async function listarTiposDeAdicional(): Promise<TipoDeAdicional[]> {
+  const res = await authFetch("/tipos-de-adicional");
+  return (await res.json()) as TipoDeAdicional[];
+}
+
+export async function criarTipoDeAdicional(dto: {
+  nome: string;
+  ordem?: number;
+}): Promise<TipoDeAdicional> {
+  const res = await authFetch("/tipos-de-adicional", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as TipoDeAdicional;
+}
+
+export async function editarTipoDeAdicional(
+  id: string,
+  dto: { nome?: string; ordem?: number },
+): Promise<TipoDeAdicional> {
+  const res = await authFetch(`/tipos-de-adicional/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as TipoDeAdicional;
+}
+
+export async function apagarTipoDeAdicional(id: string): Promise<void> {
+  await authFetch(`/tipos-de-adicional/${id}`, { method: "DELETE" });
+}
+
+export async function listarAdicionais(): Promise<Adicional[]> {
+  const res = await authFetch("/adicionais");
+  return (await res.json()) as Adicional[];
+}
+
+export async function criarAdicional(dto: {
+  tipoId: string;
+  nome: string;
+  preco: number;
+  estoque: number;
+}): Promise<Adicional> {
+  const res = await authFetch("/adicionais", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as Adicional;
+}
+
+/**
+ * D13 — a resposta traz `horariosAcimaDoEstoque`: baixar o estoque abaixo do
+ * já reservado é permitido, e a tela precisa mostrar o que ficou acima.
+ */
+export async function editarAdicional(
+  id: string,
+  dto: {
+    tipoId?: string;
+    nome?: string;
+    preco?: number;
+    estoque?: number;
+    ativo?: boolean;
+  },
+): Promise<AdicionalEditado> {
+  const res = await authFetch(`/adicionais/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
+  return (await res.json()) as AdicionalEditado;
+}
+
+/**
+ * Os adicionais ativos e o quanto cabe no pedido (o menor saldo entre os blocos).
+ *
+ * **`404` vira lista vazia**, e não erro: é o `back` anterior à SPEC-054 durante o
+ * rollout, e para a tela é o mesmo que "o clube não tem adicional" — o passo some.
+ */
+export async function adicionaisDisponiveis(
+  data: string,
+  slots: readonly string[],
+): Promise<AdicionalDisponivel[]> {
+  const params = new URLSearchParams({ data, slots: [...slots].sort().join(",") });
+  try {
+    const res = await authFetch(`/adicionais/disponiveis?${params.toString()}`);
+    return (await res.json()) as AdicionalDisponivel[];
+  } catch (erro) {
+    if (erro instanceof ApiError && erro.status === 404) return [];
+    throw erro;
+  }
+}
+
+export async function lerNomesDeTipo(): Promise<{
+  nomeTipoQuadra: string;
+  nomeTipoAula: string;
+}> {
+  const res = await authFetch("/company-settings/operacao");
+  const c = (await res.json()) as Partial<ConfigOperacaoComNomes>;
+  // O `back` anterior não manda os nomes: os padrões, como o servidor resolveria.
+  return {
+    nomeTipoQuadra: c.nomeTipoQuadra ?? "Quadra",
+    nomeTipoAula: c.nomeTipoAula ?? "Aula particular",
+  };
+}
+
+/** Os dois campos vão SEMPRE; `null` volta ao nome padrão. */
+export async function definirNomesDeTipo(nomes: {
+  nomeTipoQuadra: string | null;
+  nomeTipoAula: string | null;
+}): Promise<ConfigOperacaoComNomes> {
+  const res = await authFetch("/company-settings/nomes-de-tipo", {
+    method: "PUT",
+    body: JSON.stringify(nomes),
+  });
+  return (await res.json()) as ConfigOperacaoComNomes;
 }

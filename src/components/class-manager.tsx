@@ -16,14 +16,12 @@ import {
   getClass,
   listCourts,
   listLevels,
-  listStudents,
   listTeachers,
   removeStudentFromClass,
   updateClass,
   type Court,
   type Level,
   type SchoolClassDetail,
-  type Student,
   type Teacher,
 } from "@/lib/api-client";
 import {
@@ -43,7 +41,6 @@ export function ClassManager({ id }: { id: string }) {
   const [courts, setCourts] = useState<Court[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
@@ -88,13 +85,14 @@ export function ClassManager({ id }: { id: string }) {
   }
 
   useEffect(() => {
+    // SPEC-049 — sem `listStudents(1, 100)`: o aluno se escolhe pelo
+    // `SeletorDeAluno`, que busca no servidor. A lista daqui não era mais lida.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    Promise.all([reload(), listCourts(1, 100), listLevels(), listTeachers(1, 100), listStudents(1, 100)])
-      .then(([, courtsData, levelsData, teachersData, studentsData]) => {
+    Promise.all([reload(), listCourts(1, 100), listLevels(), listTeachers(1, 100)])
+      .then(([, courtsData, levelsData, teachersData]) => {
         setCourts(courtsData.data);
         setLevels(levelsData);
         setTeachers(teachersData.data);
-        setStudents(studentsData.data);
       })
       .catch((err: unknown) => {
         setLoadError(err instanceof ApiError ? err.message : "Não foi possível carregar a turma.");

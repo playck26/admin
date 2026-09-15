@@ -22,6 +22,7 @@ const listarQuadras = vi.hoisted(() => vi.fn());
 const pegarDisponibilidade = vi.hoisted(() => vi.fn());
 const criarReserva = vi.hoisted(() => vi.fn());
 const extrato = vi.hoisted(() => vi.fn());
+const disponiveis = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -35,6 +36,7 @@ vi.mock("@/lib/api-client", async () => {
     getDisponibilidadeDoProfessor: pegarDisponibilidade,
     createBooking: criarReserva,
     getExtratoDeCredito: extrato,
+    adicionaisDisponiveis: disponiveis,
   };
 });
 
@@ -80,6 +82,8 @@ beforeEach(() => {
   criarReserva.mockResolvedValue({ reservas: [{ id: "r-1" }] });
   // R$ 500,00 na carteira do aluno. Quem testa o caso sem saldo sobrescreve.
   extrato.mockResolvedValue({ saldoCentavos: 50_000, movimentos: [] });
+  // SPEC-054: clube sem adicional ativo é o caso dos testes anteriores.
+  disponiveis.mockResolvedValue([]);
 });
 
 /** Preenche tudo menos a data, que cada caso escolhe. */
@@ -246,5 +250,89 @@ describe("SPEC-048 — o saldo do aluno, na tela do gestor", () => {
     await preencher(QUINTA);
     expect(screen.queryByText(/Saldo do aluno/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Valor da aula (R$)")).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-054/D12 e AC-013 — **adicional na aula particular do gestor.**
+ *
+ * O valor final é o digitado + os adicionais; cortesia na aula não é cortesia
+ * da raquete. O saldo anunciado tem de usar o mesmo total que o servidor vai
+ * debitar.
+ */
+describe("SPEC-054 — adicionais na aula particular", () => {
+  const RAQUETE = {
+    id: "ad-1",
+    tipoId: "t-1",
+    tipoNome: "Raquetes",
+    nome: "Raquete",
+    preco: 15,
+    disponivel: 3,
+  };
+
+  async function aulaDas9(valor: string) {
+    await preencher(QUINTA);
+    fireEvent.click(screen.getByLabelText("Início"));
+    fireEvent.click(await screen.findByRole("option", { name: "09:00" }));
+    fireEvent.click(screen.getByLabelText("Fim"));
+    fireEvent.click(await screen.findByRole("option", { name: "10:00" }));
+    fireEvent.change(screen.getByLabelText(/Valor da aula/), {
+      target: { value: valor },
+    });
+  }
+
+  it("pede a disponibilidade só com o horário escolhido, e para ele", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await preencher(QUINTA);
+    expect(disponiveis).not.toHaveBeenCalled();
+    await aulaDas9("250");
+    await waitFor(() =>
+      expect(disponiveis).toHaveBeenCalledWith(QUINTA, ["09:00-10:00"]),
+    );
+  });
+
+  it("AC-013: 2 raquetes somam ao valor digitado — no saldo anunciado e no pedido", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await aulaDas9("250");
+    const mais = await screen.findByRole("button", { name: "Mais Raquete" });
+    fireEvent.click(mais);
+    fireEvent.click(mais);
+
+    // R$ 500 − (R$ 250 + 2 × R$ 15).
+    expect(await screen.findByText(/Restam R\$\s*220,00/)).toBeInTheDocument();
+    expect(screen.getByText(/Total: R\$\s*280,00/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Marcar aula"));
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [
+      { valor: number; adicionais?: unknown },
+    ];
+    // O `valor` enviado continua sendo o da AULA: quem soma é o servidor (D6).
+    expect(dto.valor).toBe(250);
+    expect(dto.adicionais).toEqual([{ adicionalId: "ad-1", quantidade: 2 }]);
+  });
+
+  it("sem escolha, o pedido não leva o campo", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await aulaDas9("250");
+    await screen.findByRole("button", { name: "Mais Raquete" });
+    fireEvent.click(screen.getByText("Marcar aula"));
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [Record<string, unknown>];
+    expect("adicionais" in dto).toBe(false);
+  });
+
+  it("LIM-054j: `409 ESTOQUE_ESGOTADO` mostra a mensagem do servidor e relê", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    criarReserva.mockRejectedValue(
+      new ApiError(409, "Raquete esgotou neste horário.", undefined, "ESTOQUE_ESGOTADO"),
+    );
+    await aulaDas9("250");
+    fireEvent.click(await screen.findByRole("button", { name: "Mais Raquete" }));
+    const antes = disponiveis.mock.calls.length;
+    fireEvent.click(screen.getByText("Marcar aula"));
+
+    expect(await screen.findByText("Raquete esgotou neste horário.")).toBeInTheDocument();
+    await waitFor(() => expect(disponiveis.mock.calls.length).toBeGreaterThan(antes));
   });
 });

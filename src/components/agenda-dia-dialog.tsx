@@ -1,5 +1,7 @@
 "use client";
 
+import { ItensDaReserva } from "@/components/itens-da-reserva";
+import { LinhaDoTempoDaReserva } from "@/components/linha-do-tempo-da-reserva";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -136,6 +138,8 @@ export function AgendaDiaDialog({
                       ? ` · ${item.statusPagamento === "pago" ? "pago" : "pendente"}`
                       : ""}
                   </p>
+                  {/* SPEC-054/D12 — o que foi alugado junto com a reserva. */}
+                  <ItensDaReserva adicionais={item.adicionais} />
                   {/*
                     SPEC-032/AC-009 — quem fez, e quem desfez.
 
@@ -156,6 +160,19 @@ export function AgendaDiaDialog({
                           .filter(Boolean)
                           .join(" · ")}
                   </p>
+                  {/*
+                    SPEC-032/TASK-004 — **o aprofundamento.**
+
+                    O resumo acima vem junto do detalhe do dia e cobre o caso
+                    comum. A linha do tempo inteira carrega **sob demanda**:
+                    esta lista traz dezenas de reservas, e uma ida à rede por
+                    linha seria pagar N requisições para mostrar uma.
+
+                    A rota existia desde a SPEC-032 e `listBookingEvents`
+                    estava no `api-client.ts` **sem um único chamador** —
+                    trabalho entregue que ninguém alcançava.
+                  */}
+                  <LinhaDoTempoDaReserva id={item.id} />
                 </div>
 
                 {/*

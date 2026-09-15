@@ -6,6 +6,12 @@ import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HorarioQuadraSection } from "@/components/horario-quadra-section";
 import { ImagemDaQuadraSection } from "@/components/imagem-da-quadra-section";
+import { ItensDaReserva } from "@/components/itens-da-reserva";
+import {
+  SeletorDeAdicionais,
+  contarBlocos,
+  type ItemEscolhido,
+} from "@/components/seletor-de-adicionais";
 import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,11 +148,28 @@ export function CourtManager({ id }: { id: string }) {
    * `Math.round` na fronteira reais→centavos: `1.1 * 100` é
    * `110.00000000000001` em ponto flutuante.
    */
-  const cobrancaCentavos = professorId
-    ? Math.round(Number(valorAula || 0) * 100)
-    : Math.round(
-        slotsSelecionados.length * Number(court?.precoHora ?? 0) * 100,
-      );
+  /**
+   * SPEC-054/D6 — os adicionais escolhidos e quanto somam **numa** reserva.
+   *
+   * O adicional vale para cada reserva do pedido, e o pedido vira uma reserva
+   * por bloco de horários seguidos — daí o `contarBlocos`, a mesma regra do
+   * servidor. Com professor, o valor-base é o da aula e o adicional soma a ele
+   * (AC-013): cortesia na aula não é cortesia da raquete.
+   */
+  const [adicionais, setAdicionais] = useState<ItemEscolhido[]>([]);
+  const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
+  /** Trocada depois de um `409 ESTOQUE_ESGOTADO`, para o seletor reler. */
+  const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
+  const adicionaisDoPedidoCentavos = Math.round(
+    contarBlocos(slotsSelecionados) * somaDosAdicionais * 100,
+  );
+
+  const cobrancaCentavos =
+    (professorId
+      ? Math.round(Number(valorAula || 0) * 100)
+      : Math.round(
+          slotsSelecionados.length * Number(court?.precoHora ?? 0) * 100,
+        )) + adicionaisDoPedidoCentavos;
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
@@ -245,14 +268,22 @@ export function CourtManager({ id }: { id: string }) {
         // string vazia — `""` chegaria como UUID inválido no DTO.
         professorId: professorId || undefined,
         valor: professorId ? Number(valorAula) : undefined,
+        ...(adicionais.length > 0 ? { adicionais } : {}),
       });
       setSlotsSelecionados([]);
       setAlunoId("");
       setProfessorId("");
       setValorAula("");
+      setAdicionais([]);
+      setSomaDosAdicionais(0);
       await loadAvailability();
     } catch (err) {
       setBookingError(err instanceof ApiError ? err.message : "Não foi possível criar a reserva.");
+      // LIM-054j: a disponibilidade da tela não reserva. Quem perdeu a corrida
+      // vê o que sobrou, e o seletor recorta a escolha ao novo `disponivel`.
+      if (err instanceof ApiError && err.code === "ESTOQUE_ESGOTADO") {
+        setChaveDosAdicionais((c) => c + 1);
+      }
     } finally {
       setBookingLoading(false);
     }
@@ -557,6 +588,7 @@ export function CourtManager({ id }: { id: string }) {
                     <span className="truncate text-sm font-medium text-[var(--color-on-surface)]">
                       {alunoNome ?? "Aluno"}
                     </span>
+                    <ItensDaReserva adicionais={booking?.adicionais} />
                     {booking?.statusPagamento === "pago" ? (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs font-medium text-primary">
@@ -612,12 +644,19 @@ export function CourtManager({ id }: { id: string }) {
                   valor na hora — descobrir depois de confirmar significaria
                   corrigir por WhatsApp.
                 */}
+                {/*
+                  SPEC-054: com adicional, o total inclui os adicionais de
+                  cada reserva do pedido. É o total da quadra — com professor,
+                  o valor da aula é digitado abaixo e o débito anunciado já
+                  soma os dois.
+                */}
                 {court ? (
-                  <span className="text-sm font-semibold">
-                    {new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(slotsSelecionados.length * Number(court.precoHora))}
+                  <span data-testid="total-do-pedido" className="text-sm font-semibold">
+                    {emReaisDoSaldo(
+                      Math.round(
+                        slotsSelecionados.length * Number(court.precoHora) * 100,
+                      ) + adicionaisDoPedidoCentavos,
+                    )}
                   </span>
                 ) : null}
               </div>
@@ -692,7 +731,7 @@ export function CourtManager({ id }: { id: string }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={SEM_PROFESSOR}>
-                      Sem professor — reserva de quadra
+                      Sem professor
                     </SelectItem>
                     {teachers.map((teacher) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
@@ -727,6 +766,17 @@ export function CourtManager({ id }: { id: string }) {
                   </p>
                 </div>
               ) : null}
+
+              <SeletorDeAdicionais
+                data={data}
+                slots={slotsSelecionados}
+                chave={chaveDosAdicionais}
+                desabilitado={bookingLoading}
+                onChange={(itens, soma) => {
+                  setAdicionais(itens);
+                  setSomaDosAdicionais(soma);
+                }}
+              />
 
               {bookingError ? (
                 <p role="alert" className="text-sm text-[var(--color-error)]">
