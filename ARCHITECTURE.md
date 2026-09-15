@@ -1,7 +1,7 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
 **Fonte: análise direta do código.** Data: **2026-09-15** (era 2026-09-14).
-**Conferido por comando nesta data:** 43 arquivos de teste, 397 casos, **68
+**Conferido por comando nesta data:** 43 arquivos de teste, 400 casos, **68
 componentes** (`vitest run --pool=threads`; `.tsx` de `src/components`, sem
 subpastas e sem os `.test.tsx`). *A SPEC-049 soma dois arquivos de teste e um
 componente (`seletor-de-aluno`). A SPEC-054 soma sete arquivos de teste e cinco
@@ -488,11 +488,12 @@ protege o banco, e a resposta para "preciso de mais de 100" é buscar.
 - **`cadastros-pendentes`** mostra o `total` do servidor e pagina. O card
   dizia `(100)` com 340 na fila, e os mais antigos — quem esperou mais —
   sumiam.
-- **O que ficou com lista de 100, e por quê:** o `court-manager` ainda carrega
-  `listStudents(1, 100)` só para escrever o nome do aluno no horário reservado,
-  porque a reserva não traz o nome (LIM-049e). Com 101+ alunos, a reserva do
-  aluno 101 aparece sem nome. Professores e quadras também seguem com teto de
-  100 (LIM-049d).
+- **O que ficou com lista de 100, e por quê:** professores e quadras
+  (LIM-049d) — um clube não tem 100 de nenhum dos dois. **Aluno não tem mais
+  lista em tela nenhuma:** o `court-manager` carregava `listStudents(1, 100)` só
+  para escrever o nome no horário reservado, e o aluno 101 aparecia como
+  "Aluno" (LIM-049e). **A SPEC-055 fechou isso** — a reserva traz `alunoNome` do
+  servidor, e a chamada saiu (teste que exige nenhuma página de 100).
 - **Integrada sobre a SPEC-054 em 2026-09-15:** as duas mexeram nos mesmos três
   formulários. O conflito da agenda semanal foi resolvido juntando os dois
   lados, e um caso de teste garante que ela continua buscando no servidor. Duas

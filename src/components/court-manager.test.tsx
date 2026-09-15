@@ -78,6 +78,8 @@ const RESERVA_DE_DUAS_HORAS = {
   horaFim: "21:00",
   statusPagamento: "pago",
   alunoId: ALUNO,
+  // SPEC-055 — o nome vem do servidor, na própria reserva.
+  alunoNome: "Ana",
   origemTipo: "AVULSO",
 };
 
@@ -570,5 +572,38 @@ describe("SPEC-054 — adicionais na reserva do gestor", () => {
     await abrirGrade();
     // As duas horas são da mesma reserva: o item aparece nas duas.
     expect(await screen.findAllByText("2× Raquete")).toHaveLength(2);
+  });
+});
+
+/**
+ * SPEC-055 — **o nome do aluno vem na reserva, e a tela para de montá-lo por
+ * lista.** Era `listStudents(1, 100)` → mapa `alunoId → nome`; com 101+ alunos a
+ * reserva do aluno 101 aparecia como "Aluno" (LIM-049e).
+ */
+describe("SPEC-055 — o nome do aluno na reserva", () => {
+  it("AC-009: mostra o nome que o servidor mandou, mesmo de quem não está na lista", async () => {
+    // O aluno 101: não vem em `listStudents`, e antes caía no genérico.
+    listarReservas.mockResolvedValue({
+      data: [{ ...RESERVA_DE_DUAS_HORAS, alunoId: "a-101", alunoNome: "Carla Mendes" }],
+      total: 1,
+    });
+    await abrirGrade();
+    // As duas horas da mesma reserva.
+    expect(await screen.findAllByText("Carla Mendes")).toHaveLength(2);
+  });
+
+  it("AC-010: a tela não carrega mais a lista de 100 alunos", async () => {
+    await abrirGrade();
+    await screen.findAllByText("Ana");
+    expect(listarAlunos.mock.calls.some((chamada) => chamada[1] === 100)).toBe(false);
+  });
+
+  it("AC-011: reserva sem nome continua mostrando \"Aluno\"", async () => {
+    listarReservas.mockResolvedValue({
+      data: [{ ...RESERVA_DE_DUAS_HORAS, alunoNome: null }],
+      total: 1,
+    });
+    await abrirGrade();
+    expect(await screen.findAllByText("Aluno")).toHaveLength(2);
   });
 });
