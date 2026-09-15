@@ -119,3 +119,21 @@ describe("AgendaSemanaAcoes — SPEC-054/D12", () => {
     expect(disponiveis).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * SPEC-049/REQ-002 — **a nova reserva da semana busca o aluno no servidor.**
+ *
+ * Este é o lugar em que a 049 e a 054 se cruzaram (conflito de merge resolvido
+ * juntando os dois lados). O caso garante que a resolução manteve a busca — e
+ * não voltou ao `listStudents(1, 100)` que parava no centésimo aluno.
+ */
+describe("AgendaSemanaAcoes — SPEC-049: o aluno se busca no servidor", () => {
+  it("digitar no campo pede `busca` ao servidor, e nunca uma página de 100", async () => {
+    render(<AgendaSemanaAcoes acao={CRIAR} onFechar={vi.fn()} onMudou={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("Buscar aluno pelo nome"), {
+      target: { value: "jo" },
+    });
+    await waitFor(() => expect(listarAlunos).toHaveBeenCalledWith(1, 20, "jo"));
+    expect(listarAlunos.mock.calls.some((c) => c[1] === 100)).toBe(false);
+  });
+});

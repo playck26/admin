@@ -406,11 +406,27 @@ export async function login(dto: LoginDto): Promise<LoginResult> {
   return (await res.json()) as LoginResult;
 }
 
+/**
+ * SPEC-049/REQ-001 — ganhou `busca`.
+ *
+ * **O `pageSize` para em 100 no servidor** (`@Max(100)`), e continua parando:
+ * quem tem mais de 100 alunos busca, não pede mil. Sem o parâmetro, os
+ * seletores do Admin terminavam no centésimo aluno, sem aviso.
+ */
 export async function listStudents(
   page = 1,
   pageSize = 20,
+  busca?: string,
 ): Promise<Paginated<Student>> {
-  const res = await authFetch(`/students?page=${page}&pageSize=${pageSize}`);
+  const q = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  // Só vai quando há o que buscar: mandar `busca=` vazio seria pedir ao
+  // servidor que ignore, e o servidor já ignora — mas a URL ficaria mentindo
+  // sobre o que foi pedido, e é por URL que se investiga um caso.
+  if (busca && busca.trim() !== "") q.set("busca", busca.trim());
+  const res = await authFetch(`/students?${q.toString()}`);
   return (await res.json()) as Paginated<Student>;
 }
 
@@ -454,8 +470,23 @@ export async function criarConvite(dto: {
 }
 
 /** SPEC-009/REQ-008 — fila de aprovação e decisão sobre um cadastro. */
-export async function listStudentsPendentes(): Promise<Paginated<Student>> {
-  const res = await authFetch(`/students?vinculo=pendente&pageSize=100`);
+/**
+ * SPEC-049/REQ-003 — **a fila de aprovação passa a paginar.**
+ *
+ * Era `pageSize=100` fixo, e o card mostrava `pendentes.length` como se fosse o
+ * total. Com 340 esperando, ele dizia **"(100)"** — número errado apresentado
+ * como fato — e a ordem `createdAt: 'desc'` fazia sumir justamente **os mais
+ * antigos**, quem esperou mais.
+ *
+ * O servidor sempre devolveu `total` na mesma resposta. O card ignorava.
+ */
+export async function listStudentsPendentes(
+  page = 1,
+  pageSize = 20,
+): Promise<Paginated<Student>> {
+  const res = await authFetch(
+    `/students?vinculo=pendente&page=${page}&pageSize=${pageSize}`,
+  );
   return (await res.json()) as Paginated<Student>;
 }
 

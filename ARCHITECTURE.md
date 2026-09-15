@@ -1,9 +1,10 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
 **Fonte: análise direta do código.** Data: **2026-09-15** (era 2026-09-14).
-**Conferido por comando nesta data:** 41 arquivos de teste, 381 casos, **67
+**Conferido por comando nesta data:** 43 arquivos de teste, 400 casos, **68
 componentes** (`vitest run --pool=threads`; `.tsx` de `src/components`, sem
-subpastas e sem os `.test.tsx`). *A SPEC-054 soma sete arquivos de teste e cinco
+subpastas e sem os `.test.tsx`). *A SPEC-049 soma dois arquivos de teste e um
+componente (`seletor-de-aluno`). A SPEC-054 soma sete arquivos de teste e cinco
 componentes — `adicionais-manager`, `tipos-de-adicional-manager`,
 `nomes-de-tipo-card`, `seletor-de-adicionais` e `itens-da-reserva`; mais um de
 teste (`scripts/netlify-ignore.test.mjs`, 32 casos) com a regra de deploy. A linha de
@@ -472,6 +473,32 @@ discrimina é o par de reservas adjacentes.*
 
 Achado pela revisão adversarial da `cliente#14`, que procurou a mesma classe de
 defeito em outras telas.
+
+### O aluno se busca no servidor, e a fila de aprovação diz o total (SPEC-049)
+
+`pageSize` para em **`@Max(100)`** no servidor, e fica assim (D5): o teto
+protege o banco, e a resposta para "preciso de mais de 100" é buscar.
+
+- **`seletor-de-aluno`** substitui a lista de 100 em `court-manager`,
+  `agenda-semana-acoes`, `class-manager` e `marcar-aula-particular`. Ele pede
+  `GET /students?busca=` 300 ms depois da última tecla e descarta resposta
+  atrasada. **O escolhido é guardado, não derivado da lista:** digitar outra
+  busca não apaga a escolha (AC-007). A busca não ignora acento (LIM-049a), e
+  a tela ensina o contorno.
+- **`cadastros-pendentes`** mostra o `total` do servidor e pagina. O card
+  dizia `(100)` com 340 na fila, e os mais antigos — quem esperou mais —
+  sumiam.
+- **O que ficou com lista de 100, e por quê:** professores e quadras
+  (LIM-049d) — um clube não tem 100 de nenhum dos dois. **Aluno não tem mais
+  lista em tela nenhuma:** o `court-manager` carregava `listStudents(1, 100)` só
+  para escrever o nome no horário reservado, e o aluno 101 aparecia como
+  "Aluno" (LIM-049e). **A SPEC-055 fechou isso** — a reserva traz `alunoNome` do
+  servidor, e a chamada saiu (teste que exige nenhuma página de 100).
+- **Integrada sobre a SPEC-054 em 2026-09-15:** as duas mexeram nos mesmos três
+  formulários. O conflito da agenda semanal foi resolvido juntando os dois
+  lados, e um caso de teste garante que ela continua buscando no servidor. Duas
+  cargas de 100 alunos que ninguém mais lia saíram (`marcar-aula-particular` e
+  `class-manager`).
 
 ### O seletor de adicionais, nos três lugares que criam reserva (SPEC-054/D12)
 

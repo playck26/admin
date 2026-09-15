@@ -16,6 +16,7 @@ import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import { StatusBadge } from "@/components/status-badge";
 import {
   getExtratoDeCredito,
@@ -25,7 +26,6 @@ import {
   getAvailability,
   getCourt,
   listBookings,
-  listStudents,
   listTeachers,
   updateBookingPaymentStatus,
   updateCourt,
@@ -33,7 +33,6 @@ import {
   type AvailabilitySlot,
   type Booking,
   type Court,
-  type Student,
   type Teacher,
 } from "@/lib/api-client";
 
@@ -70,7 +69,6 @@ export function CourtManager({ id }: { id: string }) {
   const [editError, setEditError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const [students, setStudents] = useState<Student[]>([]);
   /**
    * SPEC-039 — a aula particular.
    *
@@ -175,8 +173,10 @@ export function CourtManager({ id }: { id: string }) {
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getCourt(id), listStudents(1, 100), listTeachers(1, 100)])
-      .then(([courtData, studentsData, teachersData]) => {
+    // SPEC-055 — sem `listStudents(1, 100)`: o nome do aluno vem na própria
+    // reserva (`alunoNome`), e o aluno se escolhe pelo `SeletorDeAluno`.
+    Promise.all([getCourt(id), listTeachers(1, 100)])
+      .then(([courtData, teachersData]) => {
         setCourt(courtData);
         setNome(courtData.nome);
         // `?? ""` porque `esporte` pode vir nulo: quadra cujo texto
@@ -186,7 +186,6 @@ export function CourtManager({ id }: { id: string }) {
         setEsporteId(courtData.esporte?.id ?? "");
         setCategoriaId(courtData.categoria?.id ?? "");
         setPrecoHora(String(courtData.precoHora));
-        setStudents(studentsData.data);
         // SPEC-039: só os ATIVOS entram no seletor. O servidor recusa o
         // inativo com `422 PROFESSOR_INATIVO`, e oferecer na lista quem vai
         // ser recusado é fazer o gestor descobrir por erro.
@@ -364,11 +363,6 @@ export function CourtManager({ id }: { id: string }) {
   if (!court) {
     return <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>;
   }
-
-  // REQ-006 (SPEC-008): resolve o nome do aluno no slot "ocupado_avulso"
-  // contra a lista de students já carregada — dado que já existe, só não
-  // estava exposto na UI.
-  const studentsById = new Map(students.map((student) => [student.id, student.nome]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -572,7 +566,10 @@ export function CourtManager({ id }: { id: string }) {
 
                 const [horaInicioSlot] = slot.slot.split("-");
                 const booking = reservaDoSlot(horaInicioSlot);
-                const alunoNome = booking?.alunoId ? studentsById.get(booking.alunoId) : undefined;
+                // SPEC-055 — o nome vem do servidor, na reserva. Era resolvido
+                // contra `listStudents(1, 100)`, e o aluno 101 aparecia como
+                // "Aluno" (LIM-049e). `null` é a reserva sem aluno.
+                const alunoNome = booking?.alunoNome;
                 return (
                   <div
                     key={slot.slot}
@@ -660,19 +657,17 @@ export function CourtManager({ id }: { id: string }) {
                 ) : null}
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="aluno">Aluno</Label>
-                <Select value={alunoId} onValueChange={setAlunoId} disabled={bookingLoading}>
-                  <SelectTrigger id="aluno" className="h-10 w-full px-3">
-                    <SelectValue placeholder="Selecione um aluno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/*
+                  SPEC-049/REQ-002 — busca no servidor. Desde a SPEC-055 a
+                  tela não carrega lista nenhuma de alunos: o nome das reservas
+                  do dia vem em `alunoNome`.
+                */}
+                <SeletorDeAluno
+                  id="aluno"
+                  valor={alunoId}
+                  onEscolher={setAlunoId}
+                  disabled={bookingLoading}
+                />
                 {/*
                   SPEC-048/REQ-002 — **o saldo do aluno, e o que VAI acontecer.**
 
