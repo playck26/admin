@@ -87,7 +87,7 @@ export function LinkCadastroCard() {
       </div>
       <p className="mt-1 max-w-xl text-sm text-[var(--color-on-surface-variant)]">
         Envie este link para quem quiser criar conta. Quem se cadastra por
-        ele entra como <strong>pendente</strong> e só passa a reservar quadra
+        ele entra como <strong>pendente</strong> e só passa a fazer reservas
         ou entrar em turma depois que você aprovar.
       </p>
 

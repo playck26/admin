@@ -71,7 +71,7 @@ export function CadastrosPendentes({ onDecidir }: { onDecidir: () => void }) {
         </h2>
         <p className="text-sm text-[var(--color-on-surface-variant)]">
           Pessoas que se cadastraram pelo link público. Até aprovar, elas não
-          reservam quadra nem entram em turma.
+          fazem reservas nem entram em turma.
         </p>
       </div>
 

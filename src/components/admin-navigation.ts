@@ -3,23 +3,39 @@ import {
   BarChart3,
   CalendarDays,
   LayoutDashboard,
-  Tags,
   Users,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { TennisCourtIcon } from "@/components/icons/tennis-court-icon";
 import { TennisBallIcon } from "@/components/icons/tennis-ball-icon";
 
-export const ADMIN_NAV_ITEMS = [
+type ItemDeNavegacao = {
+  href: string;
+  label: string;
+  icon: LucideIcon | typeof TennisCourtIcon;
+  /**
+   * SPEC-053/D6 — rotas que também acendem o item, além do `href` e seus
+   * subcaminhos. Existe para "Reservas" acender nas páginas de quadra, que não
+   * mudaram de endereço (categoria C da SPEC-053).
+   */
+  tambemEm?: readonly string[];
+};
+
+export const ADMIN_NAV_ITEMS: readonly ItemDeNavegacao[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/pessoas/alunos", label: "Alunos", icon: Users },
   { href: "/pessoas/professores", label: "Professores", icon: TennisBallIcon },
   { href: "/pessoas/niveis", label: "Níveis", icon: BarChart3 },
-  { href: "/quadras", label: "Quadras", icon: TennisCourtIcon },
-  // SPEC-020 — logo abaixo de Quadras: e de la que se chega, e quem vem
-  // cadastrar uma quadra e nao acha o esporte precisa do caminho curto.
-  { href: "/quadras/catalogos", label: "Esportes e pisos", icon: Tags },
+  // SPEC-053/D6 — "Quadras" e "Esportes e pisos" viraram UM item. A página
+  // `/reservas` agrupa os dois como cartões; as rotas de quadra continuam.
+  {
+    href: "/reservas",
+    label: "Reservas",
+    icon: TennisCourtIcon,
+    tambemEm: ["/quadras"],
+  },
   { href: "/turmas", label: "Turmas", icon: Armchair },
   { href: "/pagamentos", label: "Pagamentos", icon: Wallet },
 ] as const;
@@ -38,15 +54,30 @@ export const ADMIN_NAV_ITEMS = [
  *
  * A comparação de prefixo usa a barra (`${href}/`) de propósito:
  * `/quadrasx` não é sub-rota de `/quadras`.
+ *
+ * **SPEC-053/D6:** um item pode acender também em outras rotas (`tambemEm`).
+ * A especificidade passou a ser o **prefixo mais longo que casa**, entre o
+ * `href` e os `tambemEm` de cada item — e continua valendo que só um acende.
  */
 export function adminItemIsActive(pathname: string, href: string): boolean {
   const casa = (alvo: string) =>
     pathname === alvo || pathname.startsWith(`${alvo}/`);
 
-  if (!casa(href)) return false;
+  /** Comprimento do prefixo mais longo do item que casa com a rota; `-1` se nenhum. */
+  const melhorCasamento = (item: Pick<ItemDeNavegacao, "href" | "tambemEm">) =>
+    Math.max(
+      -1,
+      ...[item.href, ...(item.tambemEm ?? [])]
+        .filter(casa)
+        .map((alvo) => alvo.length),
+    );
 
-  // Existe item MAIS longo que também casa? Então o aceso é o outro.
+  const item = ADMIN_NAV_ITEMS.find((i) => i.href === href) ?? { href };
+  const meu = melhorCasamento(item);
+  if (meu < 0) return false;
+
+  // Existe item cujo casamento é MAIS longo? Então o aceso é o outro.
   return !ADMIN_NAV_ITEMS.some(
-    (outro) => outro.href.length > href.length && casa(outro.href),
+    (outro) => outro.href !== href && melhorCasamento(outro) > meu,
   );
 }
