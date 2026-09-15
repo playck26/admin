@@ -1,5 +1,6 @@
 "use client";
 
+import { ItensDaReserva } from "@/components/itens-da-reserva";
 import { LinhaDoTempoDaReserva } from "@/components/linha-do-tempo-da-reserva";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
@@ -137,6 +138,8 @@ export function AgendaDiaDialog({
                       ? ` · ${item.statusPagamento === "pago" ? "pago" : "pendente"}`
                       : ""}
                   </p>
+                  {/* SPEC-054/D12 — o que foi alugado junto com a reserva. */}
+                  <ItensDaReserva adicionais={item.adicionais} />
                   {/*
                     SPEC-032/AC-009 — quem fez, e quem desfez.
 

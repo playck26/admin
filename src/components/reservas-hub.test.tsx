@@ -12,11 +12,12 @@ import { ReservasHub } from "./reservas-hub";
  */
 
 const listCourts = vi.hoisted(() => vi.fn());
+const lerNomesDeTipo = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
     await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
-  return { ...real, listCourts };
+  return { ...real, listCourts, lerNomesDeTipo };
 });
 
 function quadra(id: string, status: Court["status"]): Court {
@@ -35,6 +36,11 @@ function quadra(id: string, status: Court["status"]): Court {
 
 beforeEach(() => {
   listCourts.mockReset();
+  lerNomesDeTipo.mockReset();
+  lerNomesDeTipo.mockResolvedValue({
+    nomeTipoQuadra: "Quadra",
+    nomeTipoAula: "Aula particular",
+  });
 });
 
 describe("ReservasHub — SPEC-053/AC-013", () => {
@@ -74,5 +80,28 @@ describe("ReservasHub — SPEC-053/AC-013", () => {
       "href",
       "/quadras",
     );
+  });
+});
+
+describe("ReservasHub — SPEC-054/D12: os adicionais entram na página Reservas", () => {
+  it("cartões Adicionais e Tipos de adicional, cada um levando à sua tela", async () => {
+    listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
+
+    render(<ReservasHub />);
+
+    expect(
+      await screen.findByRole("link", { name: /^Adicionais/ }),
+    ).toHaveAttribute("href", "/reservas/adicionais");
+    expect(
+      screen.getByRole("link", { name: /Tipos de adicional/ }),
+    ).toHaveAttribute("href", "/reservas/tipos");
+  });
+
+  it("o cartão Nomes para o cliente fica na própria página", async () => {
+    listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
+
+    render(<ReservasHub />);
+
+    expect(await screen.findByLabelText("Nome para Quadra")).toBeInTheDocument();
   });
 });

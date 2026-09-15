@@ -4,6 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  SeletorDeAdicionais,
+  type ItemEscolhido,
+} from "@/components/seletor-de-adicionais";
+import {
   ApiError,
   cancelarOcorrenciaDeTurma,
   createBooking,
@@ -49,6 +53,13 @@ export function AgendaSemanaAcoes({
   const [alunos, setAlunos] = useState<Student[]>([]);
   const [alunoId, setAlunoId] = useState("");
   const [motivo, setMotivo] = useState("");
+  /**
+   * SPEC-054/D12 — os adicionais da nova reserva. A célula é um bloco só, então
+   * a soma de uma reserva é a do pedido.
+   */
+  const [adicionais, setAdicionais] = useState<ItemEscolhido[]>([]);
+  const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
+  const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
 
   const [data, setData] = useState(acao.tipo === "criar" ? acao.data : acao.data);
   const [horaInicio, setHoraInicio] = useState(
@@ -78,6 +89,7 @@ export function AgendaSemanaAcoes({
           data,
           slots: [{ horaInicio, horaFim }],
           alunoId,
+          ...(adicionais.length > 0 ? { adicionais } : {}),
         });
       } else if (acao.tipo === "mover") {
         // **Só o que mudou.** O servidor compõe o destino a partir da linha
@@ -106,6 +118,10 @@ export function AgendaSemanaAcoes({
       onFechar();
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível concluir.");
+      // LIM-054j: a disponibilidade da tela não reserva — relê o que sobrou.
+      if (e instanceof ApiError && e.code === "ESTOQUE_ESGOTADO") {
+        setChaveDosAdicionais((c) => c + 1);
+      }
     } finally {
       setEnviando(false);
     }
@@ -226,7 +242,42 @@ export function AgendaSemanaAcoes({
                   ))}
                 </select>
               </label>
-            ) : (
+            ) : null}
+
+            {/*
+              SPEC-054 — só com um horário que faz sentido: `fim <= início`
+              seria recusado na leitura da disponibilidade antes do envio.
+            */}
+            {acao.tipo === "criar" && horaInicio && horaFim > horaInicio ? (
+              <>
+                <SeletorDeAdicionais
+                  data={data}
+                  slots={[`${horaInicio}-${horaFim}`]}
+                  chave={chaveDosAdicionais}
+                  desabilitado={enviando}
+                  onChange={(itens, soma) => {
+                    setAdicionais(itens);
+                    setSomaDosAdicionais(soma);
+                  }}
+                />
+                {/*
+                  A grade não carrega o preço da quadra: a frase diz o que os
+                  adicionais acrescentam, e não um total que a tela não sabe.
+                */}
+                {somaDosAdicionais > 0 ? (
+                  <p className="text-sm font-semibold">
+                    Adicionais: +{" "}
+                    {somaDosAdicionais.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}{" "}
+                    além do preço da quadra
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+
+            {acao.tipo === "criar" ? null : (
               /*
                 SPEC-048/AC-012 — **a metade que faltava: o saldo.**
 

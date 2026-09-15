@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api-client";
 import { CourtManager } from "./court-manager";
 
 /**
@@ -37,6 +38,7 @@ const cancelar = vi.hoisted(() => vi.fn());
 const listarProfessores = vi.hoisted(() => vi.fn());
 const criarReserva = vi.hoisted(() => vi.fn());
 const extrato = vi.hoisted(() => vi.fn());
+const disponiveis = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -55,6 +57,7 @@ vi.mock("@/lib/api-client", async () => {
     listTeachers: listarProfessores,
     createBooking: criarReserva,
     updateCourt: vi.fn(),
+    adicionaisDisponiveis: disponiveis,
   };
 });
 
@@ -116,6 +119,8 @@ beforeEach(() => {
     ],
     total: 2,
   });
+  // SPEC-054: clube sem adicional ativo é o caso de todos os testes antigos.
+  disponiveis.mockResolvedValue([]);
 });
 
 async function abrirGrade() {
@@ -432,5 +437,128 @@ describe("SPEC-048 — o saldo do aluno na reserva do gestor", () => {
     // "R$ 0,00 voltaram" é pior que silêncio: é uma notícia falsa sobre
     // dinheiro.
     expect(screen.queryByText(/voltaram para a carteira/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-054/D12 — **o seletor de adicionais na reserva do gestor**, e os itens
+ * na reserva feita.
+ *
+ * O adicional vale para CADA reserva do pedido (D6): horários seguidos são uma
+ * reserva, separados são duas. O total na tela e o débito anunciado têm de
+ * dizer o mesmo que o servidor vai gravar.
+ */
+describe("SPEC-054 — adicionais na reserva do gestor", () => {
+  const RAQUETE = {
+    id: "ad-1",
+    tipoId: "t-1",
+    tipoNome: "Raquetes",
+    nome: "Raquete",
+    preco: 15,
+    disponivel: 3,
+  };
+
+  async function escolherAnaNas21h() {
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /21:00/ }));
+    fireEvent.click(screen.getByLabelText("Aluno"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ana" }));
+  }
+
+  it("escolher 2 raquetes soma ao total e ao débito anunciado, e manda os itens", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await escolherAnaNas21h();
+
+    const mais = await screen.findByRole("button", { name: "Mais Raquete" });
+    fireEvent.click(mais);
+    fireEvent.click(mais);
+
+    // R$ 100 da hora + 2 × R$ 15.
+    expect(await screen.findByText(/Serão debitados/)).toHaveTextContent("R$ 130,00");
+    expect(screen.getByTestId("total-do-pedido")).toHaveTextContent("R$ 130,00");
+
+    fireEvent.click(screen.getByText("Confirmar reserva"));
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [{ adicionais?: unknown }];
+    expect(dto.adicionais).toEqual([{ adicionalId: "ad-1", quantidade: 2 }]);
+  });
+
+  it("a disponibilidade é pedida para a data e os horários escolhidos", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await escolherAnaNas21h();
+    await waitFor(() =>
+      expect(disponiveis).toHaveBeenCalledWith(expect.any(String), ["21:00-22:00"]),
+    );
+  });
+
+  it("D6: dois horários SEPARADOS são duas reservas — o adicional conta duas vezes", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    disponibilidade.mockResolvedValue({
+      estado: "aberto",
+      slots: [
+        { slot: "17:00-18:00", status: "livre" },
+        { slot: "19:00-20:00", status: "ocupado_avulso" },
+        { slot: "20:00-21:00", status: "ocupado_avulso" },
+        { slot: "21:00-22:00", status: "livre" },
+      ],
+    });
+    await abrirGrade();
+    fireEvent.click(await screen.findByRole("button", { name: /17:00/ }));
+    fireEvent.click(screen.getByRole("button", { name: /21:00/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mais Raquete" }));
+
+    // 2 horas × R$ 100 + 2 reservas × 1 raquete × R$ 15.
+    expect(await screen.findByTestId("total-do-pedido")).toHaveTextContent("R$ 230,00");
+  });
+
+  it("sem adicional escolhido, o pedido NÃO leva o campo — o corpo de antes da SPEC-054", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    await escolherAnaNas21h();
+    await screen.findByRole("button", { name: "Mais Raquete" });
+    fireEvent.click(screen.getByText("Confirmar reserva"));
+
+    await waitFor(() => expect(criarReserva).toHaveBeenCalled());
+    const [dto] = criarReserva.mock.calls[0] as [Record<string, unknown>];
+    // A impressão digital do pedido (D9) só é idêntica à antiga sem o campo.
+    expect("adicionais" in dto).toBe(false);
+  });
+
+  it("clube sem adicional ativo: o seletor não aparece", async () => {
+    await escolherAnaNas21h();
+    await waitFor(() => expect(disponiveis).toHaveBeenCalled());
+    expect(screen.queryByText("Adicionais")).not.toBeInTheDocument();
+  });
+
+  it("LIM-054j: `409 ESTOQUE_ESGOTADO` mostra a mensagem e RELÊ a disponibilidade", async () => {
+    disponiveis.mockResolvedValue([RAQUETE]);
+    criarReserva.mockRejectedValue(
+      new ApiError(409, "Raquete esgotou neste horário.", undefined, "ESTOQUE_ESGOTADO"),
+    );
+    await escolherAnaNas21h();
+    fireEvent.click(await screen.findByRole("button", { name: "Mais Raquete" }));
+    const chamadasAntes = disponiveis.mock.calls.length;
+    fireEvent.click(screen.getByText("Confirmar reserva"));
+
+    expect(await screen.findByText("Raquete esgotou neste horário.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(disponiveis.mock.calls.length).toBeGreaterThan(chamadasAntes),
+    );
+  });
+
+  it("a reserva feita mostra os itens no horário reservado", async () => {
+    listarReservas.mockResolvedValue({
+      data: [
+        {
+          ...RESERVA_DE_DUAS_HORAS,
+          adicionais: [
+            { adicionalId: "ad-1", nome: "Raquete", quantidade: 2, valorUnitario: 15 },
+          ],
+        },
+      ],
+      total: 1,
+    });
+    await abrirGrade();
+    // As duas horas são da mesma reserva: o item aparece nas duas.
+    expect(await screen.findAllByText("2× Raquete")).toHaveLength(2);
   });
 });

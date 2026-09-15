@@ -15,6 +15,10 @@ import {
 import { DIAS_SEMANA } from "@/lib/dias-semana";
 import { Button } from "@/components/ui/button";
 import { FormCard } from "@/components/form-card";
+import {
+  SeletorDeAdicionais,
+  type ItemEscolhido,
+} from "@/components/seletor-de-adicionais";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -100,6 +104,13 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [valor, setValor] = useState("");
+  /**
+   * SPEC-054/D12 — os adicionais da aula. Somam ao valor digitado (AC-013); o
+   * `valor` enviado continua sendo o da aula, e quem soma é o servidor (D6).
+   */
+  const [adicionais, setAdicionais] = useState<ItemEscolhido[]>([]);
+  const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
+  const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -211,14 +222,19 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
         alunoId,
         professorId,
         valor: Number(valor),
+        ...(adicionais.length > 0 ? { adicionais } : {}),
       });
       setSucesso(true);
       setHoraInicio("");
       setHoraFim("");
       setValor("");
+      setAdicionais([]);
+      setSomaDosAdicionais(0);
     } catch (e) {
       // Pelo `code`, nunca pelo texto: o mesmo motivo do D7 da SPEC-033.
       const code = e instanceof ApiError ? e.code : undefined;
+      // LIM-054j: a disponibilidade da tela não reserva — relê o que sobrou.
+      if (code === "ESTOQUE_ESGOTADO") setChaveDosAdicionais((c) => c + 1);
       setErro(
         (code ? MENSAGEM[code] : undefined) ??
           (e instanceof ApiError
@@ -236,7 +252,8 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
    * O campo é digitado em reais; a carteira é em centavos. `Math.round`
    * porque `1.1 * 100` é `110.00000000000001` em ponto flutuante.
    */
-  const valorCentavos = Math.round(Number(valor || 0) * 100);
+  const valorCentavos =
+    Math.round(Number(valor || 0) * 100) + Math.round(somaDosAdicionais * 100);
   const saldoCobre = saldoCentavos !== null && saldoCentavos >= valorCentavos;
 
   const podeEnviar =
@@ -413,6 +430,22 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
             O clube define o preço da aula — não é o preço/hora da quadra.
           </p>
         </div>
+
+        {data && horaInicio && horaFim > horaInicio ? (
+          <SeletorDeAdicionais
+            data={data}
+            slots={[`${horaInicio}-${horaFim}`]}
+            chave={chaveDosAdicionais}
+            desabilitado={enviando}
+            onChange={(itens, soma) => {
+              setAdicionais(itens);
+              setSomaDosAdicionais(soma);
+            }}
+          />
+        ) : null}
+        {somaDosAdicionais > 0 && valor !== "" ? (
+          <p className="text-sm font-semibold">Total: {emReais(valorCentavos)}</p>
+        ) : null}
 
         {erro ? (
           <p
