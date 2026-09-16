@@ -417,11 +417,22 @@ export async function listStudents(
   page = 1,
   pageSize = 20,
   busca?: string,
+  /**
+   * SPEC-057/TASK-004 (card 5350) — o recorte por nível.
+   *
+   * São **dois parâmetros porque são duas perguntas**: "deste nível" e "sem
+   * nível nenhum". A primeira versão do contrato usava um literal dentro do
+   * `nivelId`, e o gate de UUID do back a reprovou — com razão, porque o
+   * decorador de lá também normaliza a grafia.
+   */
+  nivel?: { nivelId?: string; semNivel?: boolean },
 ): Promise<Paginated<Student>> {
   const q = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
+  if (nivel?.semNivel) q.set("semNivel", "true");
+  else if (nivel?.nivelId) q.set("nivelId", nivel.nivelId);
   // Só vai quando há o que buscar: mandar `busca=` vazio seria pedir ao
   // servidor que ignore, e o servidor já ignora — mas a URL ficaria mentindo
   // sobre o que foi pedido, e é por URL que se investiga um caso.
