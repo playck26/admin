@@ -417,11 +417,22 @@ export async function listStudents(
   page = 1,
   pageSize = 20,
   busca?: string,
+  /**
+   * SPEC-057/TASK-004 (card 5350) — o recorte por nível.
+   *
+   * São **dois parâmetros porque são duas perguntas**: "deste nível" e "sem
+   * nível nenhum". A primeira versão do contrato usava um literal dentro do
+   * `nivelId`, e o gate de UUID do back a reprovou — com razão, porque o
+   * decorador de lá também normaliza a grafia.
+   */
+  nivel?: { nivelId?: string; semNivel?: boolean },
 ): Promise<Paginated<Student>> {
   const q = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
+  if (nivel?.semNivel) q.set("semNivel", "true");
+  else if (nivel?.nivelId) q.set("nivelId", nivel.nivelId);
   // Só vai quando há o que buscar: mandar `busca=` vazio seria pedir ao
   // servidor que ignore, e o servidor já ignora — mas a URL ficaria mentindo
   // sobre o que foi pedido, e é por URL que se investiga um caso.
@@ -1366,6 +1377,27 @@ export async function getAgendaMes(mes: string): Promise<DiaDaAgenda[]> {
 export async function getAgendaDia(data: string): Promise<ItemDoDia[]> {
   const res = await authFetch(`/agenda/${data}`);
   return (await res.json()) as ItemDoDia[];
+}
+
+/**
+ * SPEC-057/TASK-005/D17 — um visitante (reposição) de uma aula de turma.
+ * Nome e nível, sem contato.
+ */
+export type VisitanteDaOcorrencia =
+  components["schemas"]["VisitanteDaOcorrenciaResponseDto"];
+
+/**
+ * SPEC-057/TASK-005/D17 — os visitantes de UMA aula, ao abrir o diálogo.
+ *
+ * Rota própria, e não campo do item: o item da semana precisa ser igual ao do
+ * dia (SPEC-034/AC-001), e carregar nomes por item da semana é o que a D17
+ * proíbe.
+ */
+export async function getVisitantesDaOcorrencia(
+  ocupacaoId: string,
+): Promise<VisitanteDaOcorrencia[]> {
+  const res = await authFetch(`/agenda/ocorrencias/${ocupacaoId}/visitantes`);
+  return (await res.json()) as VisitanteDaOcorrencia[];
 }
 
 /** SPEC-034/CON-034.1 — os sete dias, com o detalhe de cada um. */

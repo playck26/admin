@@ -31,6 +31,9 @@ function quadra(id: string, status: Court["status"]): Court {
     status,
     createdAt: "2026-09-01T00:00:00.000Z",
     imagemUrl: null,
+    // SPEC-057/TASK-005/D19 — cor e código da quadra na agenda.
+    cor: "#00763A",
+    codigoAgenda: "1",
   };
 }
 

@@ -27,6 +27,18 @@ function item(id: string, responsavel: string, adicionais: unknown[]) {
     criadaPor: null,
     canceladaPor: null,
     adicionais,
+    // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+    // tipo visual e a ocupação da aula (nula fora de turma).
+    quadraCor: "#00763A",
+    quadraCodigoAgenda: "1",
+    tipoVisual: "AVULSO",
+    capacidade: null,
+    matriculados: null,
+    faltasAvisadas: null,
+    reposicoesMarcadas: null,
+    reposicoesNaOcupacao: null,
+    ocupados: null,
+    vagasNaOcorrencia: null,
   };
 }
 

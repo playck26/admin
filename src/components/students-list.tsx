@@ -6,7 +6,13 @@ import { Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
-import { ApiError, listStudents, type Student } from "@/lib/api-client";
+import {
+  ApiError,
+  listLevels,
+  listStudents,
+  type Level,
+  type Student,
+} from "@/lib/api-client";
 import { CadastrosPendentes } from "@/components/cadastros-pendentes";
 
 const PAGE_SIZE = 20;
@@ -17,12 +23,32 @@ export function StudentsList() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * SPEC-057/TASK-004 (card 5350) — **o filtro que o gestor precisa ANTES de
+   * o aluno ganhar o dele.**
+   *
+   * `alunos.nivel_id` existe desde a primeira migration, mas é anulável e o
+   * nulo é o estado normal: a maior parte dos alunos nunca foi classificada.
+   * Ligar o filtro do app sem saber quantos estão sem nível seria ligar às
+   * cegas — e por isso `SEM_NIVEL` é a opção mais útil desta lista.
+   */
+  const [niveis, setNiveis] = useState<Level[]>([]);
+  const [filtro, setFiltro] = useState<string>("");
 
   const load = useCallback(async (targetPage: number) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await listStudents(targetPage, PAGE_SIZE);
+      const result = await listStudents(
+        targetPage,
+        PAGE_SIZE,
+        undefined,
+        filtro === "SEM_NIVEL"
+          ? { semNivel: true }
+          : filtro
+            ? { nivelId: filtro }
+            : undefined,
+      );
       setData(result.data);
       setTotal(result.total);
       setPage(result.page);
@@ -31,12 +57,20 @@ export function StudentsList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filtro]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load(1);
   }, [load]);
+
+  useEffect(() => {
+    // Catálogo de níveis: o gestor tem acesso (é rota dele). Falha aqui
+    // esconde o filtro, não a lista.
+    void listLevels()
+      .then(setNiveis)
+      .catch(() => undefined);
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -70,6 +104,36 @@ export function StudentsList() {
 
       <CadastrosPendentes onDecidir={() => void load(page)} />
 
+      {/*
+        O filtro só aparece quando o clube tem níveis. Num clube que não
+        nivelou ninguém, ele seria um seletor de uma opção só.
+      */}
+      {niveis.length > 0 && (
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="filtro-de-nivel"
+            className="text-[13px] font-medium text-[var(--color-on-surface-variant)]"
+          >
+            Nível
+          </label>
+          <select
+            id="filtro-de-nivel"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="h-10 rounded-xl border border-border bg-[var(--color-surface-container-lowest)] px-3 text-[13px] text-[var(--color-on-surface)]"
+          >
+            <option value="">Todos os níveis</option>
+            {niveis.map((nivel) => (
+              <option key={nivel.id} value={nivel.id}>
+                {nivel.nome}
+              </option>
+            ))}
+            {/* **A opção que o gestor precisa:** quem ficou de fora. */}
+            <option value="SEM_NIVEL">Sem nível</option>
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-[var(--color-on-surface-variant)]">Carregando...</p>
       ) : error ? (
@@ -77,7 +141,13 @@ export function StudentsList() {
           {error}
         </p>
       ) : data.length === 0 ? (
-        <p className="text-[var(--color-on-surface-variant)]">Nenhum aluno cadastrado ainda.</p>
+        <p className="text-[var(--color-on-surface-variant)]">
+          {filtro === "SEM_NIVEL"
+            ? "Todo aluno deste clube já tem nível."
+            : filtro
+              ? "Nenhum aluno neste nível."
+              : "Nenhum aluno cadastrado ainda."}
+        </p>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-[var(--color-surface-container-lowest)] shadow-[var(--shadow-low)]">
           <div className="overflow-x-auto">
@@ -86,6 +156,9 @@ export function StudentsList() {
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="text-xs font-medium tracking-wider text-[var(--color-on-surface-variant)] uppercase">
                     Nome
+                  </TableHead>
+                  <TableHead className="text-xs font-medium tracking-wider text-[var(--color-on-surface-variant)] uppercase">
+                    Nível
                   </TableHead>
                   <TableHead className="text-xs font-medium tracking-wider text-[var(--color-on-surface-variant)] uppercase">
                     Email
@@ -102,6 +175,14 @@ export function StudentsList() {
                 {data.map((aluno) => (
                   <TableRow key={aluno.id} className="border-border">
                     <TableCell className="font-medium text-[var(--color-on-surface)]">{aluno.nome}</TableCell>
+                    {/*
+                      **"—" e não vazio:** célula em branco parece dado que
+                      não carregou; o travessão diz que o aluno não foi
+                      classificado, que é uma informação, não uma falha.
+                    */}
+                    <TableCell className="text-[var(--color-on-surface-variant)]">
+                      {niveis.find((n) => n.id === aluno.nivelId)?.nome ?? "—"}
+                    </TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">{aluno.email}</TableCell>
                     <TableCell>
                       <StatusBadge ativo={aluno.status === "ativo"} />

@@ -32,6 +32,12 @@ const api = vi.hoisted(() => ({
   moveBooking: vi.fn(),
   createBooking: vi.fn(),
   cancelarOcorrenciaDeTurma: vi.fn(),
+  // SPEC-057/TASK-005 — o diálogo da aula de turma.
+  getClass: vi.fn(),
+  getAgendaDia: vi.fn(),
+  getVisitantesDaOcorrencia: vi.fn(),
+  allocateStudentInClass: vi.fn(),
+  removeStudentFromClass: vi.fn(),
 }));
 vi.mock("@/lib/api-client", () => ({
   ...api,
@@ -54,13 +60,25 @@ function item(
     quadraNome: "Mesmo nome",
     horaInicio: hora,
     horaFim: `${String(Number(hora.slice(0, 2)) + 1).padStart(2, "0")}:00`,
-    origemTipo: "AVULSO" as const,
-    origemTurmaId: null,
+    origemTipo: "AVULSO" as "AVULSO" | "TURMA",
+    origemTurmaId: null as string | null,
     responsavel,
     statusPagamento: "pendente_pagamento" as const,
     valor: 100,
     criadaPor: null,
     canceladaPor: null,
+    adicionais: [],
+    // SPEC-057/TASK-005 — o contrato do item cresceu.
+    quadraCor: "#00763A" as const,
+    quadraCodigoAgenda: quadraId === Q1 ? "1" : "2",
+    tipoVisual: "AVULSO" as "AVULSO" | "TURMA" | "PARTICULAR",
+    capacidade: null as number | null,
+    matriculados: null as number | null,
+    faltasAvisadas: null as number | null,
+    reposicoesMarcadas: null as number | null,
+    reposicoesNaOcupacao: null as number | null,
+    ocupados: null as number | null,
+    vagasNaOcorrencia: null as number | null,
   };
 }
 
@@ -80,8 +98,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   api.listCourts.mockResolvedValue({
     data: [
-      { id: Q1, nome: "Mesmo nome", status: "ativa" },
-      { id: Q2, nome: "Mesmo nome", status: "ativa" },
+      { id: Q1, nome: "Mesmo nome", status: "ativa", cor: "#00763A", codigoAgenda: "1" },
+      { id: Q2, nome: "Mesmo nome", status: "ativa", cor: "#00763A", codigoAgenda: "2" },
     ],
   });
   api.listStudents.mockResolvedValue({ data: [] });
@@ -176,5 +194,66 @@ describe("AgendaSemana (SPEC-034)", () => {
       target: { value: Q2 },
     });
     expect(screen.getByText("Reserva da q2")).toBeInTheDocument();
+  });
+});
+
+describe("AgendaSemana — SPEC-057/TASK-005 (card 5349)", () => {
+  it("D19: a legenda fica FORA da grade e identifica as homônimas pelo código", async () => {
+    api.getAgendaSemana.mockResolvedValue(semana("2026-09-06"));
+    render(<AgendaSemana />);
+
+    const legenda = await screen.findByRole("region", { name: "Legenda da agenda" });
+    expect(legenda.closest("table")).toBeNull();
+    await waitFor(() =>
+      expect(screen.getAllByText("Mesmo nome · Q-1").length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText("Mesmo nome · Q-2").length).toBeGreaterThan(0);
+  });
+
+  it("D19: o filtro de quadra escreve código + nome, e as homônimas deixam de ser iguais", async () => {
+    api.getAgendaSemana.mockResolvedValue(semana("2026-09-06"));
+    render(<AgendaSemana />);
+
+    // O código ABRE a opção: com o <select> limitado à largura da tela, um
+    // nome longo pode ser cortado no estado fechado, e o código não.
+    expect(
+      await screen.findByRole("option", { name: "Q-1 · Mesmo nome" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Q-2 · Mesmo nome" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Quadra").className).toMatch(/\bmax-w-full\b/);
+  });
+
+  it("D18: clicar na aula de TURMA abre a aula (matrícula); o cancelamento sai de lá", async () => {
+    const aula = {
+      ...item("t", "19:00", "Turma das 19h"),
+      origemTipo: "TURMA" as const,
+      origemTurmaId: "33333333-3333-4333-8333-333333333333",
+      tipoVisual: "TURMA" as const,
+      capacidade: 4,
+      matriculados: 3,
+      faltasAvisadas: 0,
+      reposicoesMarcadas: 1,
+      reposicoesNaOcupacao: 1,
+      ocupados: 4,
+      vagasNaOcorrencia: 0,
+    };
+    api.getAgendaSemana.mockResolvedValue(semana("2026-09-06", [aula]));
+    api.getClass.mockResolvedValue({ id: aula.origemTurmaId, capacidade: 4, alunos: [] });
+    api.getAgendaDia.mockResolvedValue([aula]);
+    api.getVisitantesDaOcorrencia.mockResolvedValue([]);
+    api.listStudents.mockResolvedValue({ data: [], total: 0 });
+    render(<AgendaSemana />);
+
+    fireEvent.click(await screen.findByText("Turma das 19h"));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Aula de Turma das 19h" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Matrículas 3/4")).toBeInTheDocument();
+    // AC-030 — nenhuma ação de reserva avulsa na aula de turma.
+    expect(screen.queryByRole("button", { name: "Marcar pago" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar esta aula" }));
+    expect(await screen.findByRole("dialog", { name: "Cancelar aula" })).toBeInTheDocument();
   });
 });

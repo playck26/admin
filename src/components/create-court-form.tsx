@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormActions, FormCard } from "@/components/form-card";
 import { SeletorDeCatalogo } from "@/components/seletor-de-catalogo";
+import { SeletorDeCorDaQuadra } from "@/components/seletor-de-cor-da-quadra";
 import { ApiError, createCourt } from "@/lib/api-client";
+import type { CorDeQuadra } from "@/lib/visual-da-agenda";
 
 export function CreateCourtForm() {
   const router = useRouter();
@@ -15,6 +17,8 @@ export function CreateCourtForm() {
   const [esporteId, setEsporteId] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [precoHora, setPrecoHora] = useState("");
+  // SPEC-057/D19 — vazio é "não escolhi": o campo vai ausente e o banco usa o padrão.
+  const [cor, setCor] = useState<CorDeQuadra | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +34,7 @@ export function CreateCourtForm() {
         // — mandar `""` num campo `uuid` daria 400 por formato.
         ...(categoriaId === "" ? {} : { categoriaId }),
         precoHora: Number(precoHora),
+        ...(cor === "" ? {} : { cor }),
       });
       router.push("/quadras");
     } catch (err) {
@@ -86,6 +91,7 @@ export function CreateCourtForm() {
             className="h-11 px-4"
           />
         </div>
+        <SeletorDeCorDaQuadra valor={cor} onChange={setCor} desabilitado={loading} />
 
         {error ? (
           <p role="alert" className="text-sm text-[var(--color-error)]">

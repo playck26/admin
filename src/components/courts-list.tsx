@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { rotuloDaQuadra } from "@/lib/visual-da-agenda";
 import { ApiError, listCourts, type Court } from "@/lib/api-client";
 
 const PAGE_SIZE = 20;
@@ -87,7 +88,20 @@ export function CourtsList() {
               <TableBody>
                 {data.map((quadra) => (
                   <TableRow key={quadra.id} className="border-border">
-                    <TableCell className="font-medium text-[var(--color-on-surface)]">{quadra.nome}</TableCell>
+                    <TableCell className="font-medium text-[var(--color-on-surface)]">
+                      {/*
+                        SPEC-057/D19 — nome + Q-código, com a cor da agenda como
+                        marcador decorativo: homônimas se distinguem pelo código.
+                      */}
+                      <span className="inline-flex items-center gap-2 break-words">
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: quadra.cor }}
+                        />
+                        {rotuloDaQuadra(quadra.nome, quadra.codigoAgenda)}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">
                       {/*
                         SPEC-020 — `esporte` virou objeto. O travessão cobre a

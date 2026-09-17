@@ -14,6 +14,10 @@ import {
   AgendaSemanaAcoes,
   type AcaoDaSemana,
 } from "@/components/agenda-semana-acoes";
+import { AulaDaTurmaDialog } from "@/components/aula-da-turma-dialog";
+import { BlocoDaAgenda } from "@/components/bloco-da-agenda";
+import { LegendaDaAgenda } from "@/components/legenda-da-agenda";
+import type { ItemDoDia } from "@/lib/api-client";
 
 const DIA_CURTO = new Intl.DateTimeFormat("pt-BR", {
   weekday: "short",
@@ -66,6 +70,14 @@ export function AgendaSemana() {
   const [quadras, setQuadras] = useState<Court[]>([]);
   const [quadraId, setQuadraId] = useState("");
   const [acao, setAcao] = useState<AcaoDaSemana | null>(null);
+  /**
+   * SPEC-057/TASK-005/D18 — a aula de turma aberta para operar matrícula.
+   * Estado separado de `acao` porque é outro diálogo: ele não tem formulário
+   * de envio único, e dele se chega ao cancelamento (que é uma `acao`).
+   */
+  const [aula, setAula] = useState<{ item: ItemDoDia; data: string } | null>(
+    null,
+  );
 
   // Dois cliques rápidos em "próxima semana" deixam duas requisições no ar, e
   // nada garante que voltem na ordem em que saíram. Sem o selo, a resposta
@@ -128,7 +140,7 @@ export function AgendaSemana() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="min-w-48 font-medium capitalize">{rotulo}</span>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           {/*
             AC-022 exige que o vao abra a criacao com data, hora E QUADRA
             pre-preenchidas -- e uma grade dia x hora nao identifica a quadra
@@ -140,12 +152,17 @@ export function AgendaSemana() {
             aria-label="Quadra"
             value={quadraId}
             onChange={(e) => setQuadraId(e.target.value)}
-            className="rounded-lg border border-border bg-[var(--color-surface)] p-2 text-sm"
+            // SPEC-057/D19 — `max-w-full`: sem ele o <select> cresce até a opção
+            // mais longa, e uma quadra de nome longo empurrava a página inteira a
+            // 671 px num viewport de 320 (medido em Chrome). Limitado, o texto
+            // fechado pode ser cortado — por isso o CÓDIGO vem primeiro.
+            className="max-w-full min-w-0 rounded-lg border border-border bg-[var(--color-surface)] p-2 text-sm"
           >
             <option value="">Todas as quadras</option>
             {quadras.map((q) => (
               <option key={q.id} value={q.id}>
-                {q.nome}
+                {/* Homônimas se distinguem pelo código, que abre a opção. */}
+                Q-{q.codigoAgenda} · {q.nome}
               </option>
             ))}
           </select>
@@ -160,6 +177,12 @@ export function AgendaSemana() {
           </Button>
         </div>
       </div>
+
+      {/*
+        SPEC-057/TASK-005/D19 — a legenda fica FORA da grade: a grade rola na
+        horizontal a 320 px, e uma legenda dentro dela sumiria com as colunas.
+      */}
+      <LegendaDaAgenda quadras={quadras} />
 
       {erro ? (
         <p role="alert" className="text-[var(--color-error)]">
@@ -185,7 +208,7 @@ export function AgendaSemana() {
                     {DIA_CURTO.format(new Date(`${d.data}T00:00:00.000Z`))}
                     {/* Fechado é informação, não ausência dela (SPEC-010). */}
                     {d.fechado ? (
-                      <span className="block text-[11px] font-normal">fechado</span>
+                      <span className="block text-xs font-normal">fechado</span>
                     ) : null}
                   </th>
                 ))}
@@ -229,34 +252,23 @@ export function AgendaSemana() {
                           />
                         ) : (
                           itens.map((i) => (
-                            <button
+                            /*
+                              SPEC-057/TASK-005/D19 — o bloco deixa de pintar o
+                              fundo por tipo/status (tokens a 1,04:1 entre si,
+                              SPEC-052/D3). Tipo e estado viram ícone, borda e
+                              rótulo; a cor passa a ser da QUADRA, num marcador.
+                              D18 — clicar na aula de turma abre a operação de
+                              matrícula; o cancelamento sai de lá.
+                            */
+                            <BlocoDaAgenda
                               key={i.id}
-                              type="button"
+                              item={i}
                               onClick={() =>
-                                setAcao(
-                                  i.origemTipo === "TURMA"
-                                    ? { tipo: "cancelar-aula", item: i, data: d.data }
-                                    : { tipo: "mover", item: i, data: d.data },
-                                )
-                              }
-                              className={`mb-1 block w-full rounded px-2 py-1 text-left text-xs transition-colors hover:opacity-90 ${
                                 i.origemTipo === "TURMA"
-                                  ? "bg-[var(--color-secondary-container)] text-[var(--color-on-secondary-container)]"
-                                  : i.statusPagamento === "pago"
-                                    ? "bg-[var(--color-primary-container)] text-[var(--color-on-primary-container)]"
-                                    : "bg-[var(--color-tertiary-container)] text-[var(--color-on-tertiary-container)]"
-                              }`}
-                            >
-                              <span className="block font-medium">
-                                {i.horaInicio}–{i.horaFim}
-                              </span>
-                              <span className="block truncate">
-                                {i.responsavel ?? "sem responsável"}
-                              </span>
-                              <span className="block truncate opacity-80">
-                                {i.quadraNome}
-                              </span>
-                            </button>
+                                  ? setAula({ item: i, data: d.data })
+                                  : setAcao({ tipo: "mover", item: i, data: d.data })
+                              }
+                            />
                           ))
                         )}
                       </td>
@@ -268,6 +280,20 @@ export function AgendaSemana() {
           </table>
         </div>
       )}
+
+      {aula ? (
+        <AulaDaTurmaDialog
+          key={aula.item.id}
+          item={aula.item}
+          data={aula.data}
+          onFechar={() => setAula(null)}
+          onMudou={() => void carregar(inicio)}
+          onCancelarAula={() => {
+            setAcao({ tipo: "cancelar-aula", item: aula.item, data: aula.data });
+            setAula(null);
+          }}
+        />
+      ) : null}
 
       {acao ? (
         <AgendaSemanaAcoes

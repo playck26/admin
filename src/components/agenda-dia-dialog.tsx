@@ -1,5 +1,6 @@
 "use client";
 
+import { AulaDaTurmaDialog } from "@/components/aula-da-turma-dialog";
 import { ItensDaReserva } from "@/components/itens-da-reserva";
 import { LinhaDoTempoDaReserva } from "@/components/linha-do-tempo-da-reserva";
 import { useEffect, useState } from "react";
@@ -12,6 +13,13 @@ import {
   updateBookingPaymentStatus,
   type ItemDoDia,
 } from "@/lib/api-client";
+import {
+  ROTULO_DO_ESTADO,
+  ROTULO_DO_TIPO,
+  estadoDoItem,
+  lotacaoDaAula,
+  rotuloDaQuadra,
+} from "@/lib/visual-da-agenda";
 
 const DIA_LONGO = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
@@ -46,6 +54,8 @@ export function AgendaDiaDialog({
    */
   const [devolvido, setDevolvido] = useState<number | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
+  /** SPEC-057/TASK-005/D18 — a aula de turma aberta para operar matrícula. */
+  const [aula, setAula] = useState<ItemDoDia | null>(null);
 
   function carregar() {
     return getAgendaDia(data)
@@ -128,15 +138,19 @@ export function AgendaDiaDialog({
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--color-surface-variant)] px-4 py-3"
               >
                 <div>
+                  {/*
+                    SPEC-057/D19 — o nome sozinho não identifica a quadra
+                    (homônimas existem); o código vai junto.
+                  */}
                   <p className="font-medium">
-                    {item.horaInicio}–{item.horaFim} · {item.quadraNome}
+                    {item.horaInicio}–{item.horaFim} ·{" "}
+                    {rotuloDaQuadra(item.quadraNome, item.quadraCodigoAgenda)}
                   </p>
                   <p className="text-sm text-[var(--color-on-surface-variant)]">
-                    {item.responsavel ?? "sem responsável"}
-                    {item.origemTipo === "TURMA" ? " · turma" : ""}
-                    {item.origemTipo === "AVULSO"
-                      ? ` · ${item.statusPagamento === "pago" ? "pago" : "pendente"}`
-                      : ""}
+                    {item.responsavel ?? "sem responsável"} ·{" "}
+                    {ROTULO_DO_TIPO[item.tipoVisual]} ·{" "}
+                    {ROTULO_DO_ESTADO[estadoDoItem(item)]}
+                    {lotacaoDaAula(item) ? ` · ${lotacaoDaAula(item)}` : ""}
                   </p>
                   {/* SPEC-054/D12 — o que foi alugado junto com a reserva. */}
                   <ItensDaReserva adicionais={item.adicionais} />
@@ -183,6 +197,21 @@ export function AgendaDiaDialog({
                   servidor recusa as duas desde SPEC-012:TASK-000, e
                   oferecer botão que falha é pior do que não oferecer.
                 */}
+                {/*
+                  SPEC-057/TASK-005/D18 — a aula de turma ganha AÇÕES DE
+                  MATRÍCULA, e só elas. A AC-007 continua: nenhuma ação de
+                  reserva avulsa aparece aqui.
+                */}
+                {item.origemTipo === "TURMA" && item.origemTurmaId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() => setAula(item)}
+                  >
+                    Alunos da aula
+                  </Button>
+                ) : null}
                 {item.origemTipo === "AVULSO" ? (
                   <div className="flex gap-2">
                     {item.statusPagamento !== "pago" ? (
@@ -231,6 +260,20 @@ export function AgendaDiaDialog({
           </p>
         ) : null}
       </div>
+
+      {aula ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AulaDaTurmaDialog
+            item={aula}
+            data={data}
+            onFechar={() => setAula(null)}
+            onMudou={() => {
+              void carregar();
+              onMudou();
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
