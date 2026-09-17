@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { getEvasao, type ListaDeEvasao } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
+import { OrigensDaCobertura } from "@/components/origens-da-cobertura";
 
 /**
  * SPEC-015/TASK-004 — o cartão "alunos em risco" do dashboard.
@@ -110,6 +111,9 @@ export function EvasaoCard() {
                     {a.turmaNome ?? "turma"}
                   </Link>
                 </p>
+                {/* SPEC-057/TASK-001/D6 — o alerta sobre presunção
+                    automática diz isso ao lado do motivo. */}
+                <OrigensDaCobertura origens={a.cobertura.origens} compacto />
               </div>
 
               <div className="flex items-center gap-2 text-sm">
@@ -126,7 +130,7 @@ export function EvasaoCard() {
                   <Badge variant="destructive">{a.frequenciaPct}% de presença</Badge>
                 )}
                 {a.confianca === "baixa" ? (
-                  <Badge variant="outline" title="A turma tem pouca chamada completa no período">
+                  <Badge variant="outline" title="A turma tem pouco preenchimento de chamada no período">
                     dado parcial
                   </Badge>
                 ) : null}

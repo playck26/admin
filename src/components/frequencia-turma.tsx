@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getFrequenciaDaTurma, type FrequenciaDaTurma } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { OrigensDaCobertura } from "@/components/origens-da-cobertura";
 
 const JANELAS = [30, 60, 90] as const;
 
@@ -96,10 +97,12 @@ export function FrequenciaTurma({ turmaId }: { turmaId: string }) {
     <div className="space-y-6">
       {seletor}
 
-      {/* AC-002/AC-013 — a cobertura vem primeiro, e em três números. */}
+      {/* AC-002/AC-013 — a cobertura vem primeiro, e em três números.
+          SPEC-057/TASK-001/D6 — o nome virou "Preenchimento": com o
+          fechamento automático, chamada completa não prova que alguém olhou. */}
       <Card className="p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h3 className="text-sm font-semibold">Cobertura de chamada</h3>
+          <h3 className="text-sm font-semibold">Preenchimento de chamada</h3>
           {cobertura.confianca === "baixa" ? (
             <Badge variant="secondary">Confiança baixa</Badge>
           ) : null}
@@ -119,6 +122,7 @@ export function FrequenciaTurma({ turmaId }: { turmaId: string }) {
             {cobertura.aviso}
           </p>
         ) : null}
+        <OrigensDaCobertura origens={cobertura.origens} />
       </Card>
 
       {alunos.length === 0 ? (
