@@ -66,10 +66,15 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
    * um remendo local teria de reproduzir a regra de agrupamento que o
    * servidor já resolveu.
    */
-  async function naoHouve(ocupacaoId: string) {
+  async function naoHouve(ocupacaoId: string, automatica = false) {
     if (
       !window.confirm(
         "Registrar que esta aula NÃO aconteceu?\n\n" +
+          // SPEC-057/TASK-001/D5 — a exceção apaga as presenças presumidas, e
+          // quem confirma precisa saber disso antes.
+          (automatica
+            ? "As presenças do fechamento automático serão apagadas. "
+            : "") +
           "Ela deixa de aparecer como pendente para o professor e não conta " +
           "na frequência de ninguém.",
       )
@@ -106,6 +111,15 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
    * ainda, e `cancelada` não vai acontecer.
    */
   const pendentes = ocorrencias.filter((o) => o.estado === "pendente");
+  /**
+   * SPEC-057/TASK-001/D4 — terminaram depois da ativação da presença
+   * automática sem ninguém matriculado nem repondo. Não têm chamada nem
+   * cabeçalho, e não são pendência: a tela só conta, para o gestor não ler a
+   * ausência delas como aula sumida.
+   */
+  const semParticipantes = ocorrencias.filter(
+    (o) => o.estado === "sem_participantes",
+  );
 
   return (
     <section className="flex flex-col gap-3">
@@ -176,6 +190,16 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
         </div>
       ) : null}
 
+      {semParticipantes.length > 0 ? (
+        <p className="text-xs text-[var(--color-on-surface-variant)]">
+          {semParticipantes.length === 1
+            ? "1 aula sem participantes"
+            : `${semParticipantes.length} aulas sem participantes`}{" "}
+          no período — ninguém matriculado nem repondo, então não há chamada a
+          lançar.
+        </p>
+      ) : null}
+
       <ul className="flex flex-col gap-2">
         {comChamada.map((o) => {
           const abertaAqui = aberta === o.ocupacaoId;
@@ -202,6 +226,11 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
                     aula não realizada
                   </span>
                 ) : null}
+                {o.origem === "automatica" ? (
+                  <span className="rounded-full bg-[var(--color-surface-variant)] px-2 py-0.5 text-xs">
+                    fechada automaticamente
+                  </span>
+                ) : null}
                 <span className="ml-auto text-sm text-[var(--color-on-surface-variant)]">
                   {o.estado === "nao_houve"
                     ? "sem chamada"
@@ -215,10 +244,26 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
 
               {abertaAqui ? (
                 <div className="flex flex-col gap-2 border-t border-border p-4">
-                  {o.registradoPor ? (
-                    <p className="text-xs text-[var(--color-on-surface-variant)]">
-                      Lançada por {o.registradoPor}
-                    </p>
+                  <Proveniencia
+                    origem={o.origem}
+                    origemInicial={o.origemInicial}
+                    registradoPor={o.registradoPor}
+                  />
+                  {/* SPEC-057/TASK-001/D5 — a exceção estreita também é do
+                      gestor: automática sem revisão pode virar "não
+                      aconteceu". O prazo (7 dias do fechamento) é do
+                      servidor; a recusa volta como aviso. */}
+                  {o.origem === "automatica" && !o.cancelada ? (
+                    <button
+                      type="button"
+                      disabled={registrando === o.ocupacaoId}
+                      onClick={() => void naoHouve(o.ocupacaoId, true)}
+                      className="self-start rounded-lg border border-border px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+                    >
+                      {registrando === o.ocupacaoId
+                        ? "Registrando..."
+                        : "A aula não aconteceu"}
+                    </button>
                   ) : null}
                   <ul className="flex flex-col gap-1.5">
                     {o.alunos.map((a) => (
@@ -247,5 +292,37 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * SPEC-057/TASK-001/D1/D6 — **quem responde pela chamada**, em palavras.
+ *
+ * Antes era só "Lançada por {nome}", e sem nome a linha sumia. Com o
+ * fechamento automático, nome ausente é o caso normal — e sumir com a linha
+ * esconderia exatamente o que o gestor precisa ver: que ninguém olhou ainda.
+ */
+function Proveniencia({
+  origem,
+  origemInicial,
+  registradoPor,
+}: {
+  origem: string | null;
+  origemInicial: string | null;
+  registradoPor: string | null;
+}) {
+  let texto: string | null = null;
+  if (origem === "automatica") {
+    texto = "Fechada automaticamente — presenças presumidas, sem revisão do professor.";
+  } else if (origemInicial === "automatica") {
+    texto = `Fechada automaticamente e revisada${registradoPor ? ` por ${registradoPor}` : ""}.`;
+  } else if (origem === "legada_humana") {
+    texto = `Registro humano anterior à automação${registradoPor ? ` — lançada por ${registradoPor}` : ""}.`;
+  } else if (registradoPor) {
+    texto = `Lançada por ${registradoPor}`;
+  }
+  if (!texto) return null;
+  return (
+    <p className="text-xs text-[var(--color-on-surface-variant)]">{texto}</p>
   );
 }

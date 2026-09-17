@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getFrequenciaDoAluno, type FrequenciaDoAluno } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
+import { OrigensDaCobertura } from "@/components/origens-da-cobertura";
 
 /**
  * SPEC-015/TASK-004 — o bloco de frequência na tela do aluno.
@@ -106,6 +107,8 @@ export function FrequenciaAluno({ alunoId }: { alunoId: string }) {
               <p className="text-xs text-[var(--color-on-surface-variant)]">
                 {t.presente} veio · {t.ausente} faltou · {t.justificado} justificou
               </p>
+              {/* SPEC-057/TASK-001/D6 — por turma, como a cobertura. */}
+              <OrigensDaCobertura origens={t.cobertura.origens} compacto />
             </div>
             <div className="flex items-center gap-2">
               <span className="tabular-nums text-sm text-[var(--color-on-surface)]">

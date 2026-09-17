@@ -36,6 +36,8 @@ function ocorrencia(patch: Record<string, unknown> = {}) {
     chamadaFeita: false,
     estado: "pendente",
     registradoPor: null,
+    origem: null,
+    origemInicial: null,
     alunos: [],
     ...patch,
   };
@@ -47,6 +49,8 @@ const COM_CHAMADA = ocorrencia({
   chamadaFeita: true,
   estado: "feita",
   registradoPor: "Carlos Lima",
+  origem: "professor",
+  origemInicial: "professor",
   alunos: [
     { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, alunoAtivo: true },
     { alunoId: "a2", nome: "Bruno", status: "ausente", naTurmaHoje: true, alunoAtivo: true },
@@ -189,5 +193,82 @@ describe("PresencasTurma — a aula não realizada na lista de baixo", () => {
     render(<PresencasTurma turmaId="t1" />);
 
     expect(await screen.findByText("1/2 presentes")).toBeInTheDocument();
+  });
+});
+
+/**
+ * TEST (SPEC-057/TASK-001/D1/D4/D5/D6) — a proveniência no histórico do gestor.
+ *
+ * Com o fechamento automático, "Lançada por" sem nome passou a ser o caso
+ * normal. Estas provas guardam que a tela diz QUEM respondeu — inclusive
+ * "ninguém ainda" — em vez de apagar a linha.
+ */
+describe("PresencasTurma — origem da chamada (SPEC-057)", () => {
+  const AUTOMATICA = ocorrencia({
+    ocupacaoId: "oc-auto",
+    chamadaFeita: true,
+    estado: "feita",
+    origem: "automatica",
+    origemInicial: "automatica",
+    registradoPor: null,
+    alunos: [
+      { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, alunoAtivo: true },
+    ],
+  });
+
+  it("automática sem revisão: selo, texto de presunção e a exceção de 'não aconteceu'", async () => {
+    listPresencasDaTurma.mockResolvedValue([AUTOMATICA]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    expect(await screen.findByText("fechada automaticamente")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /25\/08\/2026/ }));
+    expect(screen.getByText(/presenças presumidas, sem revisão do professor/)).toBeInTheDocument();
+
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
+    registrarNaoHouveAula.mockResolvedValue({ ocupacaoId: "oc-auto", completude: "nao_houve" });
+    fireEvent.click(screen.getByRole("button", { name: "A aula não aconteceu" }));
+
+    expect(confirm).toHaveBeenCalledWith(
+      expect.stringContaining("presenças do fechamento automático serão apagadas"),
+    );
+    await waitFor(() =>
+      expect(registrarNaoHouveAula).toHaveBeenCalledWith("t1", "oc-auto"),
+    );
+  });
+
+  it("automática revisada: diz quem revisou e não oferece a exceção", async () => {
+    listPresencasDaTurma.mockResolvedValue([
+      { ...AUTOMATICA, origem: "professor", registradoPor: "Carlos Lima" },
+    ]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /25\/08\/2026/ }));
+    expect(
+      screen.getByText("Fechada automaticamente e revisada por Carlos Lima."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "A aula não aconteceu" })).toBeNull();
+  });
+
+  it("legado: 'Registro humano anterior à automação', com o autor", async () => {
+    listPresencasDaTurma.mockResolvedValue([
+      { ...COM_CHAMADA, origem: "legada_humana", origemInicial: "legada_humana" },
+    ]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /24\/08\/2026/ }));
+    expect(
+      screen.getByText("Registro humano anterior à automação — lançada por Carlos Lima."),
+    ).toBeInTheDocument();
+  });
+
+  it("sem participantes: nem pendente, nem chamada — só a contagem", async () => {
+    listPresencasDaTurma.mockResolvedValue([
+      ocorrencia({ ocupacaoId: "oc-vazia", estado: "sem_participantes" }),
+    ]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    expect(await screen.findByText(/1 aula sem participantes/)).toBeInTheDocument();
+    expect(screen.queryByText(/Aulas sem chamada/)).toBeNull();
   });
 });
