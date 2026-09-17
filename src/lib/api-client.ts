@@ -1379,6 +1379,27 @@ export async function getAgendaDia(data: string): Promise<ItemDoDia[]> {
   return (await res.json()) as ItemDoDia[];
 }
 
+/**
+ * SPEC-057/TASK-005/D17 — um visitante (reposição) de uma aula de turma.
+ * Nome e nível, sem contato.
+ */
+export type VisitanteDaOcorrencia =
+  components["schemas"]["VisitanteDaOcorrenciaResponseDto"];
+
+/**
+ * SPEC-057/TASK-005/D17 — os visitantes de UMA aula, ao abrir o diálogo.
+ *
+ * Rota própria, e não campo do item: o item da semana precisa ser igual ao do
+ * dia (SPEC-034/AC-001), e carregar nomes por item da semana é o que a D17
+ * proíbe.
+ */
+export async function getVisitantesDaOcorrencia(
+  ocupacaoId: string,
+): Promise<VisitanteDaOcorrencia[]> {
+  const res = await authFetch(`/agenda/ocorrencias/${ocupacaoId}/visitantes`);
+  return (await res.json()) as VisitanteDaOcorrencia[];
+}
+
 /** SPEC-034/CON-034.1 — os sete dias, com o detalhe de cada um. */
 export type DiaComItens = components["schemas"]["DiaComItensResponseDto"];
 

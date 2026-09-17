@@ -74,13 +74,25 @@ describe("AgendaView (SPEC-012)", () => {
         criadaPor: null,
         canceladaPor: null,
         adicionais: [],
+        // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+        // tipo visual e a ocupação da aula (nula fora de turma).
+        quadraCor: "#00763A",
+        quadraCodigoAgenda: "1",
+        tipoVisual: "AVULSO",
+        capacidade: null,
+        matriculados: null,
+        faltasAvisadas: null,
+        reposicoesMarcadas: null,
+        reposicoesNaOcupacao: null,
+        ocupados: null,
+        vagasNaOcorrencia: null,
       },
     ]);
 
     render(<AgendaView />);
     fireEvent.click(await screen.findByText("3 reservas"));
 
-    expect(await screen.findByText("09:00–11:00 · Quadra 1")).toBeInTheDocument();
+    expect(await screen.findByText("09:00–11:00 · Quadra 1 · Q-1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marcar pago" })).toBeInTheDocument();
   });
 
@@ -105,15 +117,32 @@ describe("AgendaView (SPEC-012)", () => {
         criadaPor: null,
         canceladaPor: null,
         adicionais: [],
+        // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+        // tipo visual e a ocupação da aula (nula fora de turma).
+        quadraCor: "#00763A",
+        quadraCodigoAgenda: "2",
+        tipoVisual: "TURMA",
+        capacidade: 8,
+        matriculados: 6,
+        faltasAvisadas: 1,
+        reposicoesMarcadas: 2,
+        reposicoesNaOcupacao: 2,
+        ocupados: 7,
+        vagasNaOcorrencia: 1,
       },
     ]);
 
     render(<AgendaView />);
     fireEvent.click(await screen.findByText("3 reservas"));
 
-    expect(await screen.findByText("14:00–15:00 · Quadra 2")).toBeInTheDocument();
+    expect(await screen.findByText("14:00–15:00 · Quadra 2 · Q-2")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Marcar pago" })).not.toBeInTheDocument();
+    // SPEC-057/TASK-005/D18 — a AC-007 continua valendo para ação de RESERVA;
+    // a aula de turma ganha só a entrada para as ações de MATRÍCULA.
+    expect(screen.getByRole("button", { name: "Alunos da aula" })).toBeInTheDocument();
+    // D17/D19 — tipo, estado e lotação desta aula, por texto.
+    expect(screen.getByText(/Turma · Programada · 1 vaga · 7\/8/)).toBeInTheDocument();
   });
 
   // SPEC-032/AC-009 — as duas pontas, e o caso nulo, que e o mais comum hoje.
@@ -133,6 +162,18 @@ describe("AgendaView (SPEC-012)", () => {
         criadaPor: "Maria",
         canceladaPor: "Gabriel",
         adicionais: [],
+        // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+        // tipo visual e a ocupação da aula (nula fora de turma).
+        quadraCor: "#00763A",
+        quadraCodigoAgenda: "1",
+        tipoVisual: "AVULSO",
+        capacidade: null,
+        matriculados: null,
+        faltasAvisadas: null,
+        reposicoesMarcadas: null,
+        reposicoesNaOcupacao: null,
+        ocupados: null,
+        vagasNaOcorrencia: null,
       },
     ]);
 
@@ -163,6 +204,18 @@ describe("AgendaView (SPEC-012)", () => {
         criadaPor: null,
         canceladaPor: null,
         adicionais: [],
+        // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+        // tipo visual e a ocupação da aula (nula fora de turma).
+        quadraCor: "#00763A",
+        quadraCodigoAgenda: "1",
+        tipoVisual: "AVULSO",
+        capacidade: null,
+        matriculados: null,
+        faltasAvisadas: null,
+        reposicoesMarcadas: null,
+        reposicoesNaOcupacao: null,
+        ocupados: null,
+        vagasNaOcorrencia: null,
       },
     ]);
 
@@ -192,6 +245,18 @@ describe("AgendaView (SPEC-012)", () => {
         criadaPor: null,
         canceladaPor: null,
         adicionais: [],
+        // SPEC-057/TASK-005 — o contrato do item cresceu: cor e código da quadra,
+        // tipo visual e a ocupação da aula (nula fora de turma).
+        quadraCor: "#00763A",
+        quadraCodigoAgenda: "1",
+        tipoVisual: "AVULSO",
+        capacidade: null,
+        matriculados: null,
+        faltasAvisadas: null,
+        reposicoesMarcadas: null,
+        reposicoesNaOcupacao: null,
+        ocupados: null,
+        vagasNaOcorrencia: null,
       },
     ]);
 

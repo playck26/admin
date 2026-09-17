@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SeletorDeAluno } from "@/components/seletor-de-aluno";
 import { StatusBadge } from "@/components/status-badge";
+import { SeletorDeCorDaQuadra } from "@/components/seletor-de-cor-da-quadra";
+import type { CorDeQuadra } from "@/lib/visual-da-agenda";
 import {
   getExtratoDeCredito,
   ApiError,
@@ -65,6 +67,8 @@ export function CourtManager({ id }: { id: string }) {
   const [esporteId, setEsporteId] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [precoHora, setPrecoHora] = useState("");
+  // SPEC-057/TASK-005/D19 — a cor da quadra na agenda. Vazio só enquanto carrega.
+  const [cor, setCor] = useState<CorDeQuadra | "">("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -186,6 +190,7 @@ export function CourtManager({ id }: { id: string }) {
         setEsporteId(courtData.esporte?.id ?? "");
         setCategoriaId(courtData.categoria?.id ?? "");
         setPrecoHora(String(courtData.precoHora));
+        setCor(courtData.cor);
         // SPEC-039: só os ATIVOS entram no seletor. O servidor recusa o
         // inativo com `422 PROFESSOR_INATIVO`, e oferecer na lista quem vai
         // ser recusado é fazer o gestor descobrir por erro.
@@ -226,6 +231,8 @@ export function CourtManager({ id }: { id: string }) {
         // permite desclassificar uma quadra classificada por engano.
         categoriaId: categoriaId === "" ? null : categoriaId,
         precoHora: Number(precoHora),
+        // SPEC-057/D19 — ausente preserva a cor; nunca `null`, que o servidor recusa.
+        ...(cor === "" ? {} : { cor }),
       });
       setCourt(updated);
     } catch (err) {
@@ -429,6 +436,14 @@ export function CourtManager({ id }: { id: string }) {
                 className="h-10 px-3"
               />
             </div>
+            <SeletorDeCorDaQuadra valor={cor} onChange={setCor} desabilitado={editLoading} />
+            {/*
+              SPEC-057/D19 — o código é gerado pelo banco e não se edita. Ele é
+              o que separa duas quadras de mesmo nome na agenda.
+            */}
+            <p className="text-sm text-[var(--color-on-surface-variant)]">
+              Código na agenda: <span className="font-semibold">Q-{court.codigoAgenda}</span>
+            </p>
             {editError ? (
               <p role="alert" className="text-sm text-[var(--color-error)]">
                 {editError}
