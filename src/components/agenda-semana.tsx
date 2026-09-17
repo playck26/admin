@@ -18,7 +18,6 @@ import { AulaDaTurmaDialog } from "@/components/aula-da-turma-dialog";
 import { BlocoDaAgenda } from "@/components/bloco-da-agenda";
 import { LegendaDaAgenda } from "@/components/legenda-da-agenda";
 import type { ItemDoDia } from "@/lib/api-client";
-import { rotuloDaQuadra } from "@/lib/visual-da-agenda";
 
 const DIA_CURTO = new Intl.DateTimeFormat("pt-BR", {
   weekday: "short",
@@ -141,7 +140,7 @@ export function AgendaSemana() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="min-w-48 font-medium capitalize">{rotulo}</span>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           {/*
             AC-022 exige que o vao abra a criacao com data, hora E QUADRA
             pre-preenchidas -- e uma grade dia x hora nao identifica a quadra
@@ -153,13 +152,17 @@ export function AgendaSemana() {
             aria-label="Quadra"
             value={quadraId}
             onChange={(e) => setQuadraId(e.target.value)}
-            className="rounded-lg border border-border bg-[var(--color-surface)] p-2 text-sm"
+            // SPEC-057/D19 — `max-w-full`: sem ele o <select> cresce até a opção
+            // mais longa, e uma quadra de nome longo empurrava a página inteira a
+            // 671 px num viewport de 320 (medido em Chrome). Limitado, o texto
+            // fechado pode ser cortado — por isso o CÓDIGO vem primeiro.
+            className="max-w-full min-w-0 rounded-lg border border-border bg-[var(--color-surface)] p-2 text-sm"
           >
             <option value="">Todas as quadras</option>
             {quadras.map((q) => (
               <option key={q.id} value={q.id}>
-                {/* SPEC-057/D19 — homônimas se distinguem pelo código. */}
-                {rotuloDaQuadra(q.nome, q.codigoAgenda)}
+                {/* Homônimas se distinguem pelo código, que abre a opção. */}
+                Q-{q.codigoAgenda} · {q.nome}
               </option>
             ))}
           </select>

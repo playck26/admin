@@ -210,14 +210,17 @@ describe("AgendaSemana — SPEC-057/TASK-005 (card 5349)", () => {
     expect(screen.getAllByText("Mesmo nome · Q-2").length).toBeGreaterThan(0);
   });
 
-  it("D19: o filtro de quadra escreve nome + código, e as homônimas deixam de ser iguais", async () => {
+  it("D19: o filtro de quadra escreve código + nome, e as homônimas deixam de ser iguais", async () => {
     api.getAgendaSemana.mockResolvedValue(semana("2026-09-06"));
     render(<AgendaSemana />);
 
+    // O código ABRE a opção: com o <select> limitado à largura da tela, um
+    // nome longo pode ser cortado no estado fechado, e o código não.
     expect(
-      await screen.findByRole("option", { name: "Mesmo nome · Q-1" }),
+      await screen.findByRole("option", { name: "Q-1 · Mesmo nome" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Mesmo nome · Q-2" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Q-2 · Mesmo nome" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Quadra").className).toMatch(/\bmax-w-full\b/);
   });
 
   it("D18: clicar na aula de TURMA abre a aula (matrícula); o cancelamento sai de lá", async () => {
