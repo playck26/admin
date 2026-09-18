@@ -19,6 +19,19 @@ import { listCourts } from "@/lib/api-client";
  *
  * *Consequência aceita e declarada na spec:* quem ia direto a "Quadras" dá um
  * clique a mais.
+ *
+ * **SPEC-061/TASK-001 (card 5360) — os quatro cartões viraram dois grupos.**
+ * O Israel abriu a página e pediu: *"gostaria que agrupasse os itens adicional
+ * e tipo adicionais, assim como quadras com esportes e pisos… para que fique
+ * mais fluida a navegação"*.
+ *
+ * Quatro cartões iguais em fileira não dizem que **Esportes e pisos** é
+ * configuração de Quadras, nem que **Tipos** é como os Adicionais se agrupam —
+ * a relação existia só na cabeça de quem já sabia. O título de grupo é o que
+ * conta isso sem obrigar a ler as quatro descrições.
+ *
+ * **Nada muda de endereço, nome ou permissão:** é agrupamento visual, que foi
+ * exatamente o que o card pediu.
  */
 
 /** O `back` pagina até 100. Um clube tem poucas quadras; acima disso, a contagem é do total. */
@@ -47,34 +60,46 @@ export function ReservasHub() {
     };
   }, []);
 
-  const cartoes = [
+  const grupos = [
     {
-      href: "/quadras",
       titulo: "Quadras",
-      texto: "Cadastro, preço por hora, horário, foto e as reservas de cada uma.",
-      Icon: TennisCourtIcon,
-      detalhe: resumoDasQuadras,
+      resumo: "O espaço físico e o que se joga nele.",
+      cartoes: [
+        {
+          href: "/quadras",
+          titulo: "Quadras",
+          texto: "Cadastro, preço por hora, horário, foto e as reservas de cada uma.",
+          Icon: TennisCourtIcon,
+          detalhe: resumoDasQuadras,
+        },
+        {
+          href: "/quadras/catalogos",
+          titulo: "Esportes e pisos",
+          texto: "O que se joga nas suas quadras. Vira filtro no app do aluno.",
+          Icon: Tags,
+          detalhe: null,
+        },
+      ],
     },
     {
-      href: "/quadras/catalogos",
-      titulo: "Esportes e pisos",
-      texto: "O que se joga nas suas quadras. Vira filtro no app do aluno.",
-      Icon: Tags,
-      detalhe: null,
-    },
-    {
-      href: "/reservas/adicionais",
       titulo: "Adicionais",
-      texto: "O que o aluno pode alugar junto com a reserva, com preço e estoque.",
-      Icon: PackagePlus,
-      detalhe: null,
-    },
-    {
-      href: "/reservas/tipos",
-      titulo: "Tipos de adicional",
-      texto: "Como os adicionais se agrupam: raquetes, bolas, toalhas.",
-      Icon: Layers,
-      detalhe: null,
+      resumo: "O que o aluno pode alugar junto, e como isso se organiza.",
+      cartoes: [
+        {
+          href: "/reservas/adicionais",
+          titulo: "Adicionais",
+          texto: "O que o aluno pode alugar junto com a reserva, com preço e estoque.",
+          Icon: PackagePlus,
+          detalhe: null,
+        },
+        {
+          href: "/reservas/tipos",
+          titulo: "Tipos de adicional",
+          texto: "Como os adicionais se agrupam: raquetes, bolas, toalhas.",
+          Icon: Layers,
+          detalhe: null,
+        },
+      ],
     },
   ];
 
@@ -87,8 +112,20 @@ export function ReservasHub() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {cartoes.map(({ href, titulo, texto, Icon, detalhe }) => (
+      {grupos.map((grupo) => (
+        <section key={grupo.titulo} aria-labelledby={`grupo-${grupo.titulo}`}>
+          <h2
+            id={`grupo-${grupo.titulo}`}
+            className="text-xs font-extrabold tracking-[0.12em] text-[var(--color-on-surface-variant)] uppercase"
+          >
+            {grupo.titulo}
+          </h2>
+          <p className="mt-0.5 text-sm text-[var(--color-on-surface-variant)]">
+            {grupo.resumo}
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {grupo.cartoes.map(({ href, titulo, texto, Icon, detalhe }) => (
           <Link
             key={href}
             href={href}
@@ -115,8 +152,10 @@ export function ReservasHub() {
               ) : null}
             </span>
           </Link>
-        ))}
-      </div>
+            ))}
+          </div>
+        </section>
+      ))}
 
       <NomesDeTipoCard />
     </div>

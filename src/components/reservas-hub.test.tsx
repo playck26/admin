@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Court } from "@/lib/api-client";
 import { ReservasHub } from "./reservas-hub";
@@ -106,5 +106,58 @@ describe("ReservasHub — SPEC-054/D12: os adicionais entram na página Reservas
     render(<ReservasHub />);
 
     expect(await screen.findByLabelText("Nome para Quadra")).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-061/TASK-001 (card 5360) — **os quatro cartões viraram dois grupos.**
+ *
+ * O pedido do Israel foi de navegação, não de conteúdo: *"agrupasse os itens
+ * adicional e tipo adicionais, assim como quadras com esportes e pisos"*. Por
+ * isso o que estes testes protegem é **o agrupamento E a integridade dos
+ * quatro destinos** — agrupar não pode ter custado um caminho.
+ */
+describe("SPEC-061 — Reservas em dois grupos", () => {
+  // A contagem das quadras é informação de canto; o que estes testes julgam é
+  // o agrupamento. Uma lista vazia basta e mantém o teste sobre o assunto.
+  beforeEach(() => {
+    listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
+  });
+
+  it("mostra os dois grupos, com o cartão certo em cada um", async () => {
+    render(<ReservasHub />);
+
+    const quadras = await screen.findByRole("region", { name: "Quadras" });
+    expect(within(quadras).getByRole("link", { name: /Quadras/ })).toHaveAttribute(
+      "href",
+      "/quadras",
+    );
+    expect(
+      within(quadras).getByRole("link", { name: /Esportes e pisos/ }),
+    ).toHaveAttribute("href", "/quadras/catalogos");
+
+    const adicionais = await screen.findByRole("region", { name: "Adicionais" });
+    expect(
+      within(adicionais).getByRole("link", { name: /^Adicionais/ }),
+    ).toHaveAttribute("href", "/reservas/adicionais");
+    expect(
+      within(adicionais).getByRole("link", { name: /Tipos de adicional/ }),
+    ).toHaveAttribute("href", "/reservas/tipos");
+  });
+
+  // Agrupar não pode ter perdido destino: os quatro continuam a um clique.
+  it("os quatro destinos continuam na página", async () => {
+    render(<ReservasHub />);
+    await screen.findByRole("region", { name: "Quadras" });
+
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    for (const destino of [
+      "/quadras",
+      "/quadras/catalogos",
+      "/reservas/adicionais",
+      "/reservas/tipos",
+    ]) {
+      expect(hrefs).toContain(destino);
+    }
   });
 });
