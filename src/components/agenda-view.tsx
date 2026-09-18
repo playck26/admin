@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgendaDiaDialog } from "@/components/agenda-dia-dialog";
+import {
+  COR_DO_TIPO,
+  ROTULO_DO_TIPO,
+  TIPOS_NA_ORDEM,
+  rotuloDoDiaDoMes,
+  type ContagemPorTipo,
+} from "@/lib/visual-da-agenda";
 import { AgendaSemana } from "@/components/agenda-semana";
 import { ApiError, getAgendaMes, type DiaDaAgenda } from "@/lib/api-client";
 
@@ -26,6 +33,26 @@ function chaveMes(d: Date) {
  * indicador de pendência bastam para o gestor decidir onde clicar — o
  * detalhe abre no pop-up.
  */
+/**
+ * SPEC-060/AC-006 — **o Back antigo não manda as contagens.**
+ *
+ * Durante o rollout o Admin novo conversa com o Back velho. Ausência vira
+ * objeto vazio: o dia continua mostrando o total, sem ponto nenhum — que é
+ * exatamente o comportamento de antes desta spec. Ler `undefined` como zero
+ * daria o mesmo resultado aqui, mas mentiria no rótulo ("0 aulas de turma").
+ */
+function porTipoDoDia(dia: {
+  turmas?: number;
+  particulares?: number;
+  quadras?: number;
+}): ContagemPorTipo {
+  const { turmas, particulares, quadras } = dia;
+  if (turmas === undefined || particulares === undefined || quadras === undefined) {
+    return {};
+  }
+  return { TURMA: turmas, PARTICULAR: particulares, AVULSO: quadras };
+}
+
 export function AgendaView() {
   const [mes, setMes] = useState(() => chaveMes(new Date()));
   const [dias, setDias] = useState<DiaDaAgenda[]>([]);
@@ -141,7 +168,12 @@ export function AgendaView() {
                   key={dia.data}
                   type="button"
                   onClick={() => setDiaAberto(dia.data)}
-                  aria-label={`${numero}: ${dia.total} ${dia.total === 1 ? "reserva" : "reservas"}${dia.pendentes ? `, ${dia.pendentes} pendente(s)` : ""}${dia.fechado ? ", fechado" : ""}`}
+                  aria-label={rotuloDoDiaDoMes(
+                    numero,
+                    dia.total,
+                    porTipoDoDia(dia),
+                    dia.fechado,
+                  )}
                   className={`flex min-h-20 flex-col items-start gap-1 rounded-lg border p-2 text-left transition-colors hover:border-primary ${
                     dia.fechado
                       ? "border-transparent bg-[var(--color-surface-variant)] opacity-60"
@@ -160,6 +192,26 @@ export function AgendaView() {
                       <span className="text-xs text-[var(--color-on-surface-variant)]">
                         {dia.total} {dia.total === 1 ? "reserva" : "reservas"}
                       </span>
+                      {/*
+                        SPEC-060/D2 — um ponto por tipo PRESENTE no dia. A cor
+                        não responde sozinha: o `aria-label` do dia diz por
+                        extenso quantos de cada, e a legenda logo abaixo da
+                        grade nomeia as três.
+                      */}
+                      <span className="flex items-center gap-1" aria-hidden="true">
+                        {TIPOS_NA_ORDEM.map((tipo) => {
+                          const n = porTipoDoDia(dia)[tipo];
+                          if (!n) return null;
+                          return (
+                            <span
+                              key={tipo}
+                              data-ponto-do-tipo={tipo}
+                              className="size-2 rounded-full"
+                              style={{ backgroundColor: COR_DO_TIPO[tipo] }}
+                            />
+                          );
+                        })}
+                      </span>
                       {dia.pendentes > 0 ? (
                         <span className="rounded-full bg-[var(--color-tertiary-container)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-on-tertiary-container)]">
                           {dia.pendentes} a receber
@@ -171,6 +223,27 @@ export function AgendaView() {
               );
             })}
           </div>
+
+          {/*
+            SPEC-060/REQ-003 — a legenda das três cores. Ela fica **dentro** do
+            cartão da grade, colada nos pontos que explica: legenda longe do
+            que explica é legenda que ninguém lê.
+          */}
+          <ul
+            aria-label="Legenda dos tipos"
+            className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs font-medium text-[var(--color-on-surface-variant)]"
+          >
+            {TIPOS_NA_ORDEM.map((tipo) => (
+              <li key={tipo} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: COR_DO_TIPO[tipo] }}
+                />
+                {ROTULO_DO_TIPO[tipo]}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
