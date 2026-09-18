@@ -149,7 +149,12 @@ export function FrequenciaTurma({ turmaId }: { turmaId: string }) {
                       <span>{a.nome}</span>
                       {/* AC-004/AC-011 — os sinalizadores são o contexto que
                           impede o gestor de ler o número como acusação. */}
-                      {!a.naTurmaHoje ? (
+                      {/* DEF-035 — visitante ANTES de "saiu da turma": os
+                          dois têm `naTurmaHoje: false`, e chamar de evadido
+                          quem veio repor é acusação, não informação. */}
+                      {a.visitante ? (
+                        <Badge variant="outline">veio repor</Badge>
+                      ) : !a.naTurmaHoje ? (
                         <Badge variant="outline">saiu da turma</Badge>
                       ) : null}
                       {!a.alunoAtivo ? <Badge variant="outline">inativo</Badge> : null}

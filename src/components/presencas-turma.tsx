@@ -269,7 +269,13 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
                     {o.alunos.map((a) => (
                       <li key={a.alunoId} className="flex items-center gap-2 text-sm">
                         <span>{a.nome}</span>
-                        {!a.naTurmaHoje ? (
+                        {/* DEF-035 — quem estava repondo aparece assim, e
+                            não como quem abandonou a turma. */}
+                        {a.reposicao ? (
+                          <span className="text-xs text-[var(--color-on-surface-variant)]">
+                            (repondo aula)
+                          </span>
+                        ) : !a.naTurmaHoje ? (
                           <span className="text-xs text-[var(--color-on-surface-variant)]">
                             (saiu da turma)
                           </span>

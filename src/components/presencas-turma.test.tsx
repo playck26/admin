@@ -52,8 +52,8 @@ const COM_CHAMADA = ocorrencia({
   origem: "professor",
   origemInicial: "professor",
   alunos: [
-    { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, alunoAtivo: true },
-    { alunoId: "a2", nome: "Bruno", status: "ausente", naTurmaHoje: true, alunoAtivo: true },
+    { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, reposicao: false, alunoAtivo: true },
+    { alunoId: "a2", nome: "Bruno", status: "ausente", naTurmaHoje: true, reposicao: false, alunoAtivo: true },
   ],
 });
 
@@ -212,7 +212,7 @@ describe("PresencasTurma — origem da chamada (SPEC-057)", () => {
     origemInicial: "automatica",
     registradoPor: null,
     alunos: [
-      { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, alunoAtivo: true },
+      { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, reposicao: false, alunoAtivo: true },
     ],
   });
 
@@ -270,5 +270,42 @@ describe("PresencasTurma — origem da chamada (SPEC-057)", () => {
 
     expect(await screen.findByText(/1 aula sem participantes/)).toBeInTheDocument();
     expect(screen.queryByText(/Aulas sem chamada/)).toBeNull();
+  });
+});
+
+/**
+ * TEST (DEF-035) — **o rótulo acusava de evasão quem veio repor.**
+ *
+ * `naTurmaHoje: false` vale para dois casos diferentes: quem saiu da turma e
+ * quem nunca esteve nela. A tela só tinha esse campo e escolhia o primeiro.
+ * Achado pela validação independente da TASK-001, na conferência visual.
+ */
+describe("PresencasTurma — visitante x ex-aluno (DEF-035)", () => {
+  const COM_VISITANTE = ocorrencia({
+    ocupacaoId: "oc-visita",
+    chamadaFeita: true,
+    estado: "feita",
+    origem: "professor",
+    origemInicial: "professor",
+    registradoPor: "Carlos Lima",
+    alunos: [
+      { alunoId: "a1", nome: "Ana", status: "presente", naTurmaHoje: true, reposicao: false, alunoAtivo: true },
+      { alunoId: "a7", nome: "Carla Visitante", status: "presente", naTurmaHoje: false, reposicao: true, alunoAtivo: true },
+      { alunoId: "a9", nome: "Bruno Saiu", status: "ausente", naTurmaHoje: false, reposicao: false, alunoAtivo: true },
+    ],
+  });
+
+  it("diz 'repondo aula' para quem repôs e 'saiu da turma' só para quem saiu", async () => {
+    listPresencasDaTurma.mockResolvedValue([COM_VISITANTE]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /25\/08\/2026/ }));
+
+    const visitante = screen.getByText("Carla Visitante").closest("li");
+    const exAluno = screen.getByText("Bruno Saiu").closest("li");
+    expect(visitante).toHaveTextContent("(repondo aula)");
+    expect(visitante).not.toHaveTextContent("(saiu da turma)");
+    expect(exAluno).toHaveTextContent("(saiu da turma)");
+    expect(screen.getByText("Ana").closest("li")).not.toHaveTextContent("(");
   });
 });
