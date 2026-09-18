@@ -105,3 +105,70 @@ export function lotacaoDaAula(
   const vagas = item.vagasNaOcorrencia ?? 0;
   return `${vagas} ${vagas === 1 ? "vaga" : "vagas"} · ${fracao}`;
 }
+
+/**
+ * SPEC-060/D3 — **as cores dos TIPOS, que vivem só na grade do mês.**
+ *
+ * O Israel foi explícito ao separar as duas leituras: *"as cores da quadra não
+ * mostram no calendário, só na informação do dia; o que mostra no calendário
+ * são as cores para os tipos de reserva."*
+ *
+ * São três das seis cores da paleta de quadra, e isso é **deliberado**: elas
+ * já têm contraste medido neste produto (5,75:1, 5,39:1 e 5,14:1 sobre o
+ * cartão claro) e **nunca dividem tela** com as cores de quadra — no mês só há
+ * tipo; no dia e na semana só há quadra. Não existe onde confundir "verde =
+ * turma" com "verde = Quadra 1".
+ *
+ * **A cor nunca responde sozinha** (a regra da SPEC-052/D3): o rótulo do dia
+ * diz por extenso quantos de cada tipo, e a legenda nomeia as três.
+ */
+export const COR_DO_TIPO: Record<TipoVisual, string> = {
+  TURMA: "#00763A",
+  PARTICULAR: "#31658C",
+  AVULSO: "#8B5E00",
+};
+
+/** A ordem em que os pontos e a legenda aparecem. Estável, para não dançar. */
+export const TIPOS_NA_ORDEM: TipoVisual[] = ["TURMA", "PARTICULAR", "AVULSO"];
+
+/** O plural que o rótulo do dia usa, por tipo. */
+const PLURAL_DO_TIPO: Record<TipoVisual, [string, string]> = {
+  TURMA: ["aula de turma", "aulas de turma"],
+  PARTICULAR: ["aula particular", "aulas particulares"],
+  // **"reserva", e não "reserva de quadra":** a SPEC-053/AC-001 tirou essa
+  // expressão do painel, e o gate de redação a pegou aqui. O vocabulário do
+  // Admin já é "Reserva" (`ROTULO_DO_TIPO`), então o rótulo falado passa a
+  // dizer o mesmo que a legenda mostra.
+  AVULSO: ["reserva", "reservas"],
+};
+
+export type ContagemPorTipo = Partial<Record<TipoVisual, number>>;
+
+/**
+ * SPEC-060/AC-002 — o que o leitor de tela ouve no dia do mês.
+ *
+ * Contagens ausentes (Back antigo, durante o rollout) caem no comportamento
+ * de hoje: só o total. **Ler `undefined` como zero apagaria o dia inteiro** —
+ * por isso a ausência é tratada antes, e não com `?? 0`.
+ */
+export function rotuloDoDiaDoMes(
+  numero: number,
+  total: number,
+  porTipo: ContagemPorTipo,
+  fechado: boolean,
+): string {
+  const fim = fechado ? ", fechado" : "";
+  if (total === 0) return `${numero}${fechado ? ", fechado" : ", sem reserva"}`;
+
+  const partes = TIPOS_NA_ORDEM.flatMap((tipo) => {
+    const n = porTipo[tipo];
+    if (n === undefined || n === 0) return [];
+    const [um, muitos] = PLURAL_DO_TIPO[tipo];
+    return [`${n} ${n === 1 ? um : muitos}`];
+  });
+
+  if (partes.length === 0) {
+    return `${numero}: ${total} ${total === 1 ? "reserva" : "reservas"}${fim}`;
+  }
+  return `${numero}: ${partes.join(", ")}${fim}`;
+}

@@ -272,3 +272,81 @@ describe("AgendaView (SPEC-012)", () => {
     });
   });
 });
+
+/**
+ * SPEC-060 — **as cores na agenda do gestor.**
+ *
+ * O Israel olhou a agenda e disse que a cor das quadras existia sem aparecer
+ * em lugar nenhum. E fixou a regra que separa as duas leituras: no calendário,
+ * a cor é do **tipo de reserva**; a da **quadra** fica na informação do dia.
+ */
+describe("SPEC-060 — pontos por tipo na grade do mês", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  /** Monta o mês com UM dia, o 03/08, e devolve quando a grade desenhou. */
+  async function montarMes(dias: Record<string, unknown>[]) {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            /\/agenda\/\d{4}-\d{2}-\d{2}/.test(String(url)) ? [] : dias,
+        }),
+    );
+    render(<AgendaView />);
+    await screen.findByRole("list", { name: "Legenda dos tipos" });
+  }
+
+  const diaDoMes = (over: Record<string, unknown> = {}) => ({
+    data: "2026-08-03",
+    total: 3,
+    pendentes: 0,
+    turmas: 2,
+    particulares: 1,
+    quadras: 0,
+    fechado: false,
+    ...over,
+  });
+
+  it("mostra um ponto por tipo PRESENTE, e nenhum pelos ausentes", async () => {
+    await montarMes([diaDoMes()]);
+
+    const botao = await screen.findByRole("button", {
+      name: /3: 2 aulas de turma, 1 aula particular/,
+    });
+    expect(botao.querySelectorAll("[data-ponto-do-tipo]")).toHaveLength(2);
+    expect(botao.querySelector('[data-ponto-do-tipo="AVULSO"]')).toBeNull();
+  });
+
+  it("o rótulo do dia nomeia os tipos — a cor não responde sozinha", async () => {
+    await montarMes([diaDoMes({ turmas: 0, particulares: 0, quadras: 4, total: 4 })]);
+
+    expect(
+      await screen.findByRole("button", { name: /3: 4 reservas/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("a legenda nomeia as três cores", async () => {
+    await montarMes([diaDoMes()]);
+
+    const legenda = await screen.findByRole("list", { name: "Legenda dos tipos" });
+    expect(legenda).toHaveTextContent("Turma");
+    expect(legenda).toHaveTextContent("Particular");
+    expect(legenda).toHaveTextContent("Reserva");
+  });
+
+  // AC-006 — Back antigo: sem as contagens, o dia volta ao comportamento de
+  // antes (só o total), e NÃO inventa "0 aulas de turma" no rótulo.
+  it("sem as contagens no payload, o dia mostra só o total", async () => {
+    const semContagens = { ...diaDoMes() } as Record<string, unknown>;
+    delete semContagens.turmas;
+    delete semContagens.particulares;
+    delete semContagens.quadras;
+    await montarMes([semContagens]);
+
+    const botao = await screen.findByRole("button", { name: /3: 3 reservas/ });
+    expect(botao.querySelectorAll("[data-ponto-do-tipo]")).toHaveLength(0);
+  });
+});

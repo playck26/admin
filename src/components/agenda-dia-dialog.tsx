@@ -142,9 +142,27 @@ export function AgendaDiaDialog({
                     SPEC-057/D19 — o nome sozinho não identifica a quadra
                     (homônimas existem); o código vai junto.
                   */}
-                  <p className="font-medium">
-                    {item.horaInicio}–{item.horaFim} ·{" "}
-                    {rotuloDaQuadra(item.quadraNome, item.quadraCodigoAgenda)}
+                  {/*
+                    SPEC-060/D5 — **a cor da quadra aparece aqui**, e só aqui
+                    (no mês a cor é do tipo). O Israel notou que a paleta
+                    existia sem aparecer em lugar nenhum que ele usasse.
+
+                    **Cor é auxiliar, nunca identificação** (INV-140): quem
+                    identifica é `Nome · Q-código`, que continua inteiro ao
+                    lado dela — e a marca é `aria-hidden`, porque repetir a
+                    cor em texto não ajuda quem ouve.
+                  */}
+                  <p className="flex items-center gap-2 font-medium">
+                    <span
+                      aria-hidden="true"
+                      data-cor-da-quadra={item.quadraCor}
+                      className="size-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                      style={{ backgroundColor: item.quadraCor }}
+                    />
+                    <span>
+                      {item.horaInicio}–{item.horaFim} ·{" "}
+                      {rotuloDaQuadra(item.quadraNome, item.quadraCodigoAgenda)}
+                    </span>
                   </p>
                   <p className="text-sm text-[var(--color-on-surface-variant)]">
                     {item.responsavel ?? "sem responsável"} ·{" "}
