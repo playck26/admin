@@ -99,7 +99,13 @@ export function FrequenciaAluno({ alunoId }: { alunoId: string }) {
               >
                 {t.turmaNome ?? "Turma"}
               </Link>
-              {!t.naTurmaHoje ? (
+              {/* DEF-035 — a turma onde ele só repôs uma aula não é turma
+                  da qual ele saiu. */}
+              {t.visitante ? (
+                <Badge variant="outline" className="ml-2">
+                  repôs aula
+                </Badge>
+              ) : !t.naTurmaHoje ? (
                 <Badge variant="outline" className="ml-2">
                   saiu da turma
                 </Badge>
