@@ -116,7 +116,8 @@ service worker e sem ícone de instalação. Não era decisão revista — era A
 descumprida, e ninguém tinha rodado o `curl`.
 
 Agora há `app/manifest.ts`, `public/sw.js`, `register-service-worker.tsx` e
-`convite-de-instalacao.tsx`, com a decisão em `lib/instalacao-pwa.ts`. Três
+`convite-de-instalacao.tsx`, com a decisão em `lib/instalacao-pwa.ts`. **O
+`sw.js` recebe push desde a SPEC-062** — ver a seção 10. Três
 pontos não óbvios, cada um com teste:
 
 1. **O evento é capturado antes da hidratação** — um `<Script
@@ -612,7 +613,46 @@ desabilita campo e botão, e "Recarregar" é a única saída.
 > apagando o outro campo — verde na CI, defendendo a sobrescrita. Foi escrito
 > sobre o que o código **fazia**, não sobre o que ele **devia fazer**.
 
-## 10. Gaps e pontos de atenção
+## 10. Avisos do clube — push (SPEC-062/TASK-005)
+
+**O que existe:** `public/sw.js` (antes só instalabilidade) trata `push`,
+`notificationclick` e `pushsubscriptionchange`;
+`src/lib/push-reconciliacao.ts` (decisão, sem navegador),
+`src/lib/push-do-navegador.ts` (`PushManager` + API), `src/lib/sair.ts`, e o
+card `AvisosDoClube` nas configurações.
+
+**É cópia do `cliente`, e isso é a decisão.** `push-reconciliacao.ts`, o teste
+dele, o `sw.js` e o componente vieram de lá, com o visual desta casa. Poly-repo
+sem pacote compartilhado (ADR-001) — o mesmo custo declarado do
+`comprimir-imagem.ts`, e **sem gate de sincronia**: se um dos dois ganhar um
+caso, o outro não fica sabendo.
+
+**O que MUDA em relação ao `cliente`, e não é cosmético:**
+
+| | `cliente` | `admin` |
+|---|---|---|
+| logout | `POST /auth/logout` + limpar token | **só local** (`clearAccessToken`) |
+| `ApiError` | `code` é o 3º parâmetro | **o 4º** — há um `conflictWith` antes |
+
+A primeira diferença torna a ordem **mais** crítica aqui: o
+`DELETE /push/assinatura` precisa do token, e `clearAccessToken()` o apaga.
+Invertido, a linha fica no banco até o primeiro `410`. A segunda foi pega pelo
+`tsc` ao copiar o teste — a chamada do `cliente` compilava errado aqui.
+
+**Três regras que não são preferência** (idênticas ao `cliente`):
+`showNotification()` em **todo** push, inclusive no `catch` (o WebKit revoga a
+assinatura de quem recebe e não mostra); `requestPermission()` **só dentro de
+um gesto** (pedir na abertura leva "bloquear", e bloqueio não se desfaz sem ir
+às configurações do sistema); e o interruptor com **quatro** estados, `erro`
+entre eles — **nunca `ligado` por otimismo**.
+
+| Regra de camada | Gate |
+|---|---|
+| credencial de assinatura nunca em log ou resposta | revisão |
+| `requestPermission()` só em manipulador de evento | **prova de tela**: `avisos-do-clube.test.tsx` |
+| `push-reconciliacao.ts` idêntico ao do `cliente` | **não existe gate** — custo declarado (ADR-001) |
+
+## 11. Gaps e pontos de atenção
 
 | # | Gap | Severidade |
 |---|---|---|

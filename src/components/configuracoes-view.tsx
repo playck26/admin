@@ -12,6 +12,7 @@ import {
   AvisoReservasAfetadas,
   HorariosEditor,
 } from "@/components/horarios-editor";
+import { AvisosDoClube } from "@/components/avisos-do-clube";
 import { ContratoDoClubeCard } from "@/components/contrato-do-clube-card";
 import { PlanosCard } from "@/components/planos-card";
 import { LimiteDeTurmasCard } from "@/components/limite-de-turmas-card";
@@ -92,6 +93,8 @@ export function ConfiguracoesView() {
           quem entra, outro em quantas turmas, este até quando dá para
           desistir. */}
       <PrazosDeCancelamentoCard />
+
+      <AvisosDoClube />
 
       {/* SPEC-024 — o contrato fica junto do resto que o aluno enxerga.
           Publicar aqui interrompe todo mundo no proximo acesso, e o cartao
