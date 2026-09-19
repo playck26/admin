@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Settings } from "lucide-react";
 import { ADMIN_NAV_ITEMS, adminItemIsActive } from "@/components/admin-navigation";
-import { clearAccessToken } from "@/lib/auth-storage";
+import { sairDaConta } from "@/lib/sair";
 
 // Sino continua inerte (SPEC-008): não há backend de notificação.
 // A engrenagem **deixou de ser inerte** em SPEC-010 — passou a existir uma
@@ -17,8 +17,11 @@ export function AdminTopBar() {
   const current = ADMIN_NAV_ITEMS.find((item) => adminItemIsActive(pathname, item.href));
 
   function logout() {
-    clearAccessToken();
-    router.push("/login");
+    // SPEC-062/D2a — `sairDaConta()` desinscreve o aparelho ANTES de apagar o
+    // token, que e o que o `DELETE /push/assinatura` usa. Melhor-esforco: se
+    // falhar, a reconciliacao da proxima abertura resolve, e o redirect
+    // acontece de qualquer jeito.
+    void sairDaConta().finally(() => router.push("/login"));
   }
 
   return (
