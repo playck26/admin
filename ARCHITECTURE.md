@@ -652,6 +652,77 @@ entre eles — **nunca `ligado` por otimismo**.
 | `requestPermission()` só em manipulador de evento | **prova de tela**: `avisos-do-clube.test.tsx` |
 | `push-reconciliacao.ts` idêntico ao do `cliente` | **não existe gate** — custo declarado (ADR-001) |
 
+
+### A caixa de avisos, e o sino que leva a ela (SPEC-065)
+
+O push entrega **ou perde**: a SPEC-062 declarava, em LIM-062b, que *"sem
+assinatura viva, o aviso se perde; nao ha caixa de entrada"*. Era um limite
+barato enquanto o clube nao mandava nada, e deixou de ser quando a SPEC-063
+pos os treze gestos no ar.
+
+| O que | Onde |
+|---|---|
+| a tela | `/avisos` -> `components/caixa-de-avisos.tsx` |
+| o sino, com contagem | `components/sino-de-avisos.tsx`, no topo |
+| as travas contra rajada | `lib/contador-de-avisos.ts` |
+| o gancho do push | `public/sw.js`, mensagem `playck:aviso-novo` |
+
+**Abrir a caixa marca tudo como lido**, e nao ha estado por item: a
+alternativa nao tem resposta boa (*o que conta como ter lido -- aparecer na
+tela? ficar dois segundos? tocar?*), e marcacao arbitraria e pior que
+marcacao grossa e previsivel.
+
+#### O contador NAO faz polling, e as tres travas explicam por que ele nao precisa
+
+Ele sobe em dois momentos: a abertura do app, e a chegada de um push. O
+segundo era um gancho que **nao existia** -- o `sw.js` mostrava a notificacao
+e as abas so descobriam na proxima abertura.
+
+E rajada e o caso **normal**: um gesto que avisa vinte alunos sao vinte
+pushes; tres abas abertas dariam sessenta consultas. Tres travas, uma linha
+cada:
+
+| Trava | Corta |
+|---|---|
+| so a aba **visivel** consulta | o numero de abas |
+| **debounce** de 2 s -- evento novo REAGENDA, nao soma | a rajada |
+| **single-flight** -- com pedido em voo, o proximo nao comeca | a corrida |
+
+`P x A` vira ~1.
+
+**O push de teste nao mexe no contador**: ele e diagnostico do canal, nao
+recado do clube, e a caixa nao o mostra. Sem esse `if`, o numero subiria por
+um aviso que a pessoa nao acharia ao abrir.
+
+**A aba que marca tudo como lido posta `playck:avisos-lidos`**, e as outras
+zeram **sem consultar**. Sem isso, uma aba marcaria lido e a outra seguiria
+mostrando numero positivo -- o caso que derrubou a primeira versao da spec,
+quando eu afirmei que a contagem "so erra para menos" sem testar a direcao
+contraria.
+
+#### O que e duplicado, e o custo declarado
+
+`caixa-de-avisos.tsx`, `sino-de-avisos.tsx`, `contador-de-avisos.ts` e o teste
+dele sao **identicos byte a byte** nos dois fronts -- poly-repo sem pacote
+compartilhado (ADR-001), o mesmo custo do `netlify-ignore.mjs` e do
+`gates-de-push.mjs`. **Nao ha gate de sincronia**: mudanca num tem de ser
+copiada no outro a mao.
+
+**Uma armadilha que so apareceu rodando:** o primeiro rascunho usava
+`--color-on-surface-variant`, token do Admin que **nao existe no Cliente**. O
+`cores.test.ts` pegou. *Componente identico nos dois fronts exige token que
+exista nos dois* -- e o que existe e `--color-text-secondary`.
+
+**O sino do Admin era INERTE desde a SPEC-008**, e deixou de ser aqui -- pela
+mesma razao que a engrenagem deixou na SPEC-010: *"um botao que nao faz nada
+quando ja existe destino e pior do que nao ter o botao"*.
+
+**O `Paginacao` veio do `cliente` neste ciclo**, porque a caixa e o mesmo
+componente nos dois. **As listas que ja existiam aqui NAO foram migradas** --
+cada uma tem sua paginacao inline, e troca-las seria refatoracao sem pedido no
+meio de outra entrega. Divida nomeada: **existem dois jeitos de paginar no
+`admin` agora**, e o novo e o componente.
+
 ## 11. Gaps e pontos de atenção
 
 | # | Gap | Severidade |
