@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SinoDeAvisos } from "./sino-de-avisos";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, Settings } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { ADMIN_NAV_ITEMS, adminItemIsActive } from "@/components/admin-navigation";
 import { sairDaConta } from "@/lib/sair";
 
@@ -37,13 +38,12 @@ export function AdminTopBar() {
           <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--color-on-surface-variant)] uppercase">Painel administrativo</p>
           <p className="text-sm font-extrabold">{current?.label ?? "Gestão"}</p>
         </div>
-      <button
-        type="button"
-        aria-label="Notificações"
-        className="flex size-10 items-center justify-center rounded-lg text-[var(--color-on-surface-variant)] transition-colors hover:bg-accent hover:text-primary"
-      >
-        <Bell className="size-5" />
-      </button>
+      {/*
+        SPEC-065 — **o sino deixou de ser inerte**, pela mesma razao que a
+        engrenagem deixou na SPEC-010: passou a existir uma tela. Um botao que
+        nao faz nada quando ja existe destino e pior que nao ter o botao.
+      */}
+      <SinoDeAvisos />
       <Link
         href="/configuracoes"
         aria-label="Configurações"
