@@ -56,6 +56,11 @@ export function AgendaSemanaAcoes({
    * a soma de uma reserva é a do pedido.
    */
   const [adicionais, setAdicionais] = useState<ItemEscolhido[]>([]);
+  /**
+   * DEF-037 — enquanto o catálogo de adicionais está sendo buscado, confirmar
+   * marcaria sem a pessoa ter visto a lista. O seletor avisa; o botão espera.
+   */
+  const [adicionaisCarregando, setAdicionaisCarregando] = useState(false);
   const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
   const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
 
@@ -241,6 +246,7 @@ export function AgendaSemanaAcoes({
             {acao.tipo === "criar" && horaInicio && horaFim > horaInicio ? (
               <>
                 <SeletorDeAdicionais
+                  onCarregando={setAdicionaisCarregando}
                   data={data}
                   slots={[`${horaInicio}-${horaFim}`]}
                   chave={chaveDosAdicionais}
@@ -297,7 +303,8 @@ export function AgendaSemanaAcoes({
           <Button type="button" variant="outline" onClick={onFechar}>
             Voltar
           </Button>
-          <Button type="submit" disabled={enviando}>
+          {/* DEF-037 — esperar o catálogo antes de aceitar o clique. */}
+          <Button type="submit" disabled={enviando || adicionaisCarregando}>
             {acao.tipo === "cancelar-aula" ? "Cancelar aula" : "Salvar"}
           </Button>
         </div>

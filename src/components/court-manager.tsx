@@ -161,6 +161,11 @@ export function CourtManager({ id }: { id: string }) {
   const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
   /** Trocada depois de um `409 ESTOQUE_ESGOTADO`, para o seletor reler. */
   const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
+  /**
+   * DEF-037 — enquanto o catálogo de adicionais está sendo buscado, confirmar
+   * reservaria sem a pessoa ter visto a lista. O seletor avisa; o botão espera.
+   */
+  const [adicionaisCarregando, setAdicionaisCarregando] = useState(false);
   const adicionaisDoPedidoCentavos = Math.round(
     contarBlocos(slotsSelecionados) * somaDosAdicionais * 100,
   );
@@ -782,6 +787,7 @@ export function CourtManager({ id }: { id: string }) {
                 slots={slotsSelecionados}
                 chave={chaveDosAdicionais}
                 desabilitado={bookingLoading}
+                onCarregando={setAdicionaisCarregando}
                 onChange={(itens, soma) => {
                   setAdicionais(itens);
                   setSomaDosAdicionais(soma);
@@ -797,6 +803,8 @@ export function CourtManager({ id }: { id: string }) {
                 type="submit"
                 disabled={
                   bookingLoading ||
+                  // DEF-037 — esperar o catálogo antes de aceitar o clique.
+                  adicionaisCarregando ||
                   !alunoId ||
                   // Com professor, o preço é obrigatório: mandar sem ele
                   // gravaria uma aula de R$ 0, que o `CHECK` aceita e ninguém
