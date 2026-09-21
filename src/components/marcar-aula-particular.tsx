@@ -109,6 +109,12 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
   const [adicionais, setAdicionais] = useState<ItemEscolhido[]>([]);
   const [somaDosAdicionais, setSomaDosAdicionais] = useState(0);
   const [chaveDosAdicionais, setChaveDosAdicionais] = useState(0);
+  /**
+   * DEF-037 — enquanto o catálogo de adicionais está sendo buscado, confirmar
+   * marcaria sem a pessoa ter visto a lista. O seletor avisa; o botão espera.
+   */
+  const [adicionaisCarregando, setAdicionaisCarregando] = useState(false);
+
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -258,7 +264,9 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
     horaInicio !== "" &&
     horaFim !== "" &&
     valor !== "" &&
-    Number(valor) >= 0;
+    Number(valor) >= 0 &&
+    // DEF-037 — a aula era marcada ANTES de a lista de adicionais aparecer.
+    !adicionaisCarregando;
 
   return (
     <FormCard
@@ -424,6 +432,7 @@ export function MarcarAulaParticular({ professorId }: { professorId: string }) {
             slots={[`${horaInicio}-${horaFim}`]}
             chave={chaveDosAdicionais}
             desabilitado={enviando}
+            onCarregando={setAdicionaisCarregando}
             onChange={(itens, soma) => {
               setAdicionais(itens);
               setSomaDosAdicionais(soma);

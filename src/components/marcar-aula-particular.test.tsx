@@ -102,6 +102,20 @@ async function preencher(data: string) {
   fireEvent.change(screen.getByLabelText("Data"), { target: { value: data } });
 }
 
+/**
+ * DEF-037 — **espera o catálogo de adicionais antes de clicar.**
+ *
+ * Antes desta correção estes casos clicavam em "Marcar aula" enquanto o seletor
+ * de adicionais ainda buscava, e passavam: era exatamente o defeito relatado —
+ * *"a aula é marcada antes mesmo de eu poder escolher os itens adicionais"*.
+ * **A suíte exercitava o caminho quebrado e dava verde.**
+ */
+async function marcarAula() {
+  const botao = screen.getByText("Marcar aula");
+  await waitFor(() => expect(botao).toBeEnabled());
+  fireEvent.click(botao);
+}
+
 describe("MarcarAulaParticular", () => {
   it("avisa a janela do professor no dia escolhido -- ANTES de enviar", async () => {
     await preencher(QUINTA);
@@ -157,7 +171,7 @@ describe("MarcarAulaParticular", () => {
     fireEvent.change(screen.getByLabelText(/Valor da aula/), {
       target: { value: "250" },
     });
-    fireEvent.click(screen.getByText("Marcar aula"));
+    await marcarAula();
 
     await waitFor(() => expect(criarReserva).toHaveBeenCalled());
     const [dto] = criarReserva.mock.calls[0] as [
@@ -193,7 +207,7 @@ describe("MarcarAulaParticular", () => {
     fireEvent.change(screen.getByLabelText(/Valor da aula/), {
       target: { value: "100" },
     });
-    fireEvent.click(screen.getByText("Marcar aula"));
+    await marcarAula();
 
     // A mensagem menciona a aula de TURMA, que é o caso que o gestor não
     // adivinharia — a trava do banco não enxerga turma, e quem recusa é o
@@ -302,7 +316,7 @@ describe("SPEC-054 — adicionais na aula particular", () => {
     expect(await screen.findByText(/Restam R\$\s*220,00/)).toBeInTheDocument();
     expect(screen.getByText(/Total: R\$\s*280,00/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Marcar aula"));
+    await marcarAula();
     await waitFor(() => expect(criarReserva).toHaveBeenCalled());
     const [dto] = criarReserva.mock.calls[0] as [
       { valor: number; adicionais?: unknown },
@@ -316,7 +330,7 @@ describe("SPEC-054 — adicionais na aula particular", () => {
     disponiveis.mockResolvedValue([RAQUETE]);
     await aulaDas9("250");
     await screen.findByRole("button", { name: "Mais Raquete" });
-    fireEvent.click(screen.getByText("Marcar aula"));
+    await marcarAula();
     await waitFor(() => expect(criarReserva).toHaveBeenCalled());
     const [dto] = criarReserva.mock.calls[0] as [Record<string, unknown>];
     expect("adicionais" in dto).toBe(false);
@@ -330,7 +344,7 @@ describe("SPEC-054 — adicionais na aula particular", () => {
     await aulaDas9("250");
     fireEvent.click(await screen.findByRole("button", { name: "Mais Raquete" }));
     const antes = disponiveis.mock.calls.length;
-    fireEvent.click(screen.getByText("Marcar aula"));
+    await marcarAula();
 
     expect(await screen.findByText("Raquete esgotou neste horário.")).toBeInTheDocument();
     await waitFor(() => expect(disponiveis.mock.calls.length).toBeGreaterThan(antes));
