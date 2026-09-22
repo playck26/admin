@@ -188,9 +188,21 @@ arquivo gerado está em dia.
 código é para a tela decidir **onde** mostrar o erro. Casar texto para isso
 seria o mesmo retrocesso que o back recusou no contrato de erro das triggers.
 
-**Gap conhecido:** o CI **não** valida se esse arquivo está atualizado — a
-mitigação é lembrar de rodar o comando, que é o tipo de mitigação que falha
-em silêncio. Ver Gaps.
+**O gap fechou na SPEC-067 (2026-09-22).** O job **`contrato`** do CI compara
+este arquivo com o contrato do `back` **fixado por SHA** em
+`src/lib/contrato.lock.json`, buscado por `raw` imutável — em poly-repo não há
+`../Back` no checkout (ADR-001). Ele gera num temporário e **não escreve** no
+repositório, e o passo exige a linha `OK ... em dia`, não só o exit 0: um
+script vazio também sai 0, e isso aconteceu ao replicar o gate.
+
+Duas perguntas, dois mecanismos. O job responde *"os tipos correspondem ao
+contrato fixado?"* e **reprova a PR**. O `contrato.yml` agendado responde *"o
+contrato fixado ainda é o atual?"* e **abre uma PR-espelho** (`contrato/sync`)
+em vez de reprovar PR alheia — 82 dos 277 commits do `back` em 30 dias mexeram
+no contrato.
+
+**Ressalva:** até o ruleset exigir `contrato` (SPEC-067/TASK-004, passo de
+painel), o job aparece na PR mas **não bloqueia** o merge.
 
 **E em 2026-09-05 o mecanismo que EXISTE mostrou o valor dele.** A SPEC-034
 acrescentou `quadraId` ao `ItemDaAgendaResponseDto`, e o `typecheck` ficou
@@ -201,13 +213,11 @@ continua sem gate é o outro sentido — campo novo que **ninguém consome** pas
 despercebido, e foi por isso que o `quadraId` precisou de um defeito
 reproduzido para nascer.
 
-**Reconferido em 2026-09-02** (SPEC-032/TASK-004), e o gap continua: os passos
-do `ci.yml` são `lint`, `typecheck`, `test` e `build` — `api-types:check` não
-está em nenhum. **E vale para os três frontends**: o mesmo grep não acha o
-comando no `sadmin` nem no `cliente`. Ou seja, nada impede o tipo gerado dos
-três de divergir do contrato publicado; o que segura hoje é o `typecheck`
-falhar **quando** o código usa um campo que sumiu — e não quando um campo
-novo aparece e ninguém o consome.
+**O "sentido que continua sem gate" fechou junto.** Um campo novo que ninguém
+consome passava despercebido pelo `typecheck` — e é exatamente o caso que o job
+`contrato` pega: a sabotagem da SPEC-067/AC-001 inventou um campo opcional à
+mão no tipo gerado, o `typecheck` saiu **0** e o `contrato` saiu **1**, no
+mesmo run de CI.
 
 ## 7. Requisitos de plataforma
 
@@ -220,7 +230,7 @@ produção custa **15 créditos**, qualquer que seja o tamanho do commit; entre 
 15/09, 26 merges nos três frontends gastaram ~351 dos 500. O `netlify.toml` chama
 `scripts/netlify-ignore.mjs`, que **cancela o build (exit 0) só se todo arquivo
 mudado** for documentação fora de `public/`, teste, `src/lib/api-types.ts` (só
-tipos), CI, lint ou a própria regra. Sem os dois commits, com o mesmo commit
+tipos), o `src/lib/contrato.lock.json` (SPEC-067), CI, lint ou a própria regra. Sem os dois commits, com o mesmo commit
 (*Trigger deploy* manual) ou com o `git diff` falhando, **constrói**. Aplicado ao
 histórico real da semana, pula exatamente os 6 deploys que não mudavam o site e
 constrói os outros 20. **O arquivo é idêntico nos três frontends**, sem gate de
@@ -234,7 +244,7 @@ deploy*.
 | `page.tsx` fina; lógica em componente cliente | revisão |
 | Todo acesso autenticado por `authFetch` | busca por `fetch(` fora de `lib/` — **0 violações em 2026-08-22** |
 | Presença é só leitura no Admin | não existe função de escrita de presença em `api-client.ts` (LIM-002) |
-| `api-types.ts` nunca editado à mão | arquivo é gerado; diff denuncia |
+| `api-types.ts` nunca editado à mão, e em dia com o contrato fixado | job **`contrato`** do CI (SPEC-067): regenera do `back@<sha>` do `contrato.lock.json` e compara — reprova a PR. Obrigatório só depois da TASK-004 |
 | Sem estado global sem ADR | busca por libs de estado no CI seria o gate — **hoje não existe** |
 | `typecheck`, `lint`, `test`, `build` verdes | CI (GitHub Actions) a cada push |
 | `comprimir-imagem.ts` idêntico entre `admin` e `cliente` | **não existe gate** — poly-repo sem pacote compartilhado (ADR-001). Custo declarado, ver a seção da compressão |
@@ -727,7 +737,7 @@ meio de outra entrega. Divida nomeada: **existem dois jeitos de paginar no
 
 | # | Gap | Severidade |
 |---|---|---|
-| 1 | **`api-types.ts` pode ficar stale**: o CI não compara com o `openapi.json` do `back`, e **não tem como** — em poly-repo o checkout do frontend não vê `../Back`. Este gap estava escrito aqui e **aconteceu de novo**: em 2026-08-26 causou o DEF-012, um apagão de três telas no app do aluno. Desde então existe `pnpm run api-types:check` (local, exit 1 se stale — provado nos dois sentidos), mas **um comando que ninguém roda não é gate** | **Alta** |
+| 1 | ~~**`api-types.ts` pode ficar stale**~~ — **fechado na SPEC-067**, pelo job `contrato` contra o contrato fixado por SHA; resta o ruleset exigi-lo (TASK-004). O histórico: o CI não comparava com o `openapi.json` do `back`, e **não tinha como** — em poly-repo o checkout do frontend não vê `../Back`. Este gap estava escrito aqui e **aconteceu de novo**: em 2026-08-26 causou o DEF-012, um apagão de três telas no app do aluno. Desde então existe `pnpm run api-types:check` (local, exit 1 se stale — provado nos dois sentidos), mas **um comando que ninguém roda não é gate** | **Alta** |
 | 2 | **Sem estado global e sem cache de servidor**: cada tela refaz suas chamadas. Adequado hoje; vira problema quando duas telas precisarem do mesmo dado fresco | Média |
 | 3 | Sem tratamento de offline apesar do service worker registrado (`cliente`) | Baixa |
 | 4 | Cobertura de teste concentrada em poucos componentes. **A grade da semana saiu dessa lista em 2026-09-05**, e por um motivo que vale registrar: os dois defeitos de estado dela (o diálogo que movia a reserva ERRADA e a corrida de fetch) foram achados por **revisão do diff**, não por teste, e o terceiro (quadra homônima) por validação cruzada. Os três só ganharam rede DEPOIS — `agenda-semana.test.tsx`. Componente sem teste aqui não é dívida abstrata: é onde os três moraram | Média |
