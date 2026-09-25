@@ -35,6 +35,10 @@ const SEM_PRAZO = {
   // ele é substituição total: um segundo card escrevendo o mesmo recurso
   // apagaria o campo do primeiro.
   precoAulaPadrao: null,
+  // SPEC-064/TASK-008 — o GET de verdade manda os dois: o valor CRU (nulo =
+  // nao configurou) e o padrao do servidor.
+  antecedenciaFilaAulaHoras: null,
+  antecedenciaFilaAulaPadraoHoras: 2,
 };
 
 beforeEach(() => {
@@ -60,6 +64,8 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       prazoCancelamentoAulaHoras: 24,
       prazoCancelamentoReservaHoras: 2,
       precoAulaPadrao: null,
+      antecedenciaFilaAulaHoras: null,
+      antecedenciaFilaAulaPadraoHoras: 2,
     });
     render(<PrazosDeCancelamentoCard />);
 
@@ -80,6 +86,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
         prazoCancelamentoAulaHoras: 24,
         prazoCancelamentoReservaHoras: 2,
         precoAulaPadrao: null,
+        antecedenciaFilaAulaHoras: null,
       }),
     );
     await screen.findByText("Salvo.");
@@ -94,6 +101,8 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
       prazoCancelamentoAulaHoras: 24,
       prazoCancelamentoReservaHoras: 2,
       precoAulaPadrao: null,
+      antecedenciaFilaAulaHoras: null,
+      antecedenciaFilaAulaPadraoHoras: 2,
     });
     render(<PrazosDeCancelamentoCard />);
     await waitFor(() => expect(campoAula()).toHaveValue("24"));
@@ -106,6 +115,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
         prazoCancelamentoAulaHoras: null,
         prazoCancelamentoReservaHoras: 2,
         precoAulaPadrao: null,
+        antecedenciaFilaAulaHoras: null,
       }),
     );
     const [enviado] = definirConfigOperacao.mock.calls[0] as [
@@ -223,6 +233,8 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
         // alunos sumindo da tela de aula particular. O `tsc` pegou o risco;
         // este caso e quem o mantem pego.
         precoAulaPadrao: 150,
+        antecedenciaFilaAulaHoras: null,
+        antecedenciaFilaAulaPadraoHoras: 2,
       });
       fireEvent.click(screen.getByRole("button", { name: "Recarregar" }));
 
@@ -237,6 +249,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
           prazoCancelamentoAulaHoras: 2,
           prazoCancelamentoReservaHoras: 4,
           precoAulaPadrao: 150,
+          antecedenciaFilaAulaHoras: null,
         }),
       );
     });
@@ -291,6 +304,7 @@ describe("PrazosDeCancelamentoCard — REQ-001", () => {
           prazoCancelamentoAulaHoras: 2147483647,
           prazoCancelamentoReservaHoras: null,
           precoAulaPadrao: null,
+          antecedenciaFilaAulaHoras: null,
         }),
       );
     });
@@ -328,5 +342,107 @@ describe("podeGravar — a regra, sem passar pela tela", () => {
     for (const salvando of [true, false]) {
       expect(podeGravar({ salvando, leituraFalhou: true })).toBe(false);
     }
+  });
+});
+
+/**
+ * SPEC-064/TASK-008 — **o gestor define a antecedência da fila de aula**
+ * (card 5331, RN3). O campo mora neste card porque o `PUT` é substituição
+ * total: um segundo card com o mesmo recurso apagaria o que este grava.
+ */
+describe("SPEC-064/TASK-008 — a antecedência da fila de espera de aula", () => {
+  const campoFila = () => screen.getByLabelText(/Fila de espera de aula/);
+
+  /**
+   * **O padrão vem do servidor**, e o marcador do campo o mostra. Sem isto a
+   * tela teria o `2` escrito no próprio código, e a primeira mudança do padrão
+   * a deixaria mentindo.
+   */
+  it("vazio mostra o padrão DO SERVIDOR como marcador, e não 'Sem prazo'", async () => {
+    getConfigOperacao.mockResolvedValue({
+      ...SEM_PRAZO,
+      antecedenciaFilaAulaPadraoHoras: 3,
+    });
+    render(<PrazosDeCancelamentoCard />);
+
+    await waitFor(() => expect(campoFila()).toHaveValue(""));
+    expect(campoFila()).toHaveAttribute("placeholder", "Padrão: 3 h");
+  });
+
+  it("o valor configurado aparece no campo", async () => {
+    getConfigOperacao.mockResolvedValue({
+      ...SEM_PRAZO,
+      antecedenciaFilaAulaHoras: 6,
+    });
+    render(<PrazosDeCancelamentoCard />);
+
+    await waitFor(() => expect(campoFila()).toHaveValue("6"));
+  });
+
+  it("digitar 5 manda 5 — junto com os prazos e o preço, no MESMO corpo", async () => {
+    render(<PrazosDeCancelamentoCard />);
+    await waitFor(() => expect(campoFila()).toHaveValue(""));
+
+    fireEvent.change(campoFila(), { target: { value: "5" } });
+    fireEvent.click(salvar());
+
+    await waitFor(() =>
+      expect(definirConfigOperacao).toHaveBeenCalledWith({
+        prazoCancelamentoAulaHoras: null,
+        prazoCancelamentoReservaHoras: null,
+        precoAulaPadrao: null,
+        antecedenciaFilaAulaHoras: 5,
+      }),
+    );
+  });
+
+  /** Vazio é "usa o padrão" — e ele sai como `null`, não como o padrão. */
+  it("apagar o campo manda null — volta ao padrão, não grava o 2", async () => {
+    getConfigOperacao.mockResolvedValue({
+      ...SEM_PRAZO,
+      antecedenciaFilaAulaHoras: 6,
+    });
+    render(<PrazosDeCancelamentoCard />);
+    await waitFor(() => expect(campoFila()).toHaveValue("6"));
+
+    fireEvent.change(campoFila(), { target: { value: "" } });
+    fireEvent.click(salvar());
+
+    await waitFor(() => expect(definirConfigOperacao).toHaveBeenCalled());
+    const [enviado] = definirConfigOperacao.mock.calls[0] as [
+      { antecedenciaFilaAulaHoras: number | null },
+    ];
+    expect(enviado.antecedenciaFilaAulaHoras).toBeNull();
+  });
+
+  it("zero é recusado ANTES de sair a requisição", async () => {
+    render(<PrazosDeCancelamentoCard />);
+    await waitFor(() => expect(campoFila()).toHaveValue(""));
+
+    fireEvent.change(campoFila(), { target: { value: "0" } });
+    fireEvent.click(salvar());
+
+    expect(
+      await screen.findByText(/antecedência da fila de espera/),
+    ).toBeInTheDocument();
+    expect(definirConfigOperacao).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **Back sem a coluna nova** — rollback, ou este Admin subindo antes dele.
+   * O `GET` não manda o campo, e ele chega `undefined`. Com `=== null` o
+   * campo mostraria o TEXTO "undefined", e salvar recusaria o próprio valor.
+   */
+  it("Back antigo, sem o campo: o campo fica VAZIO, não 'undefined'", async () => {
+    getConfigOperacao.mockResolvedValue({
+      prazoCancelamentoAulaHoras: 24,
+      prazoCancelamentoReservaHoras: 2,
+      precoAulaPadrao: null,
+    });
+    render(<PrazosDeCancelamentoCard />);
+
+    await waitFor(() => expect(campoAula()).toHaveValue("24"));
+    expect(campoFila()).toHaveValue("");
+    expect(campoFila()).toHaveAttribute("placeholder", "Padrão");
   });
 });
