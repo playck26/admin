@@ -1,6 +1,25 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-09-17** (era 2026-09-15).
+**Fonte: análise direta do código.** Data: **2026-09-25** (era 2026-09-17).
+**Conferido por comando em 2026-09-25, com a SPEC-075/TASK-005:** **56 arquivos
+de teste, 531 casos** (`vitest run --pool=threads`, sozinho e em série). *A
+TASK-005 soma **um arquivo de teste** (`levels-manager.test.tsx`, 10 casos) e
+**nenhum componente**: a edição de nível e a frase do primeiro entraram no
+`levels-manager` que existia. Os números do bloco abaixo (50/448/72) são de
+2026-09-17 e ficaram para trás de quatro specs — a contagem desta linha é a
+vigente.*
+
+**`/pessoas/niveis` edita nível (SPEC-075/D8).** Antes só criava e apagava; o
+`updateLevel` existia no `api-client` sem tela. Agora cada linha tem **Editar**
+(nome e ordem, `PATCH /levels/:id`), e a recusa do servidor aparece inteira —
+inclusive a `422 NIVEL_INCOMPATIVEL_COM_MATRICULAS` de uma reordenação que
+deixaria aluno sem nível fora do nível de uma turma. **E a tela diz qual é o
+primeiro nível** e que ele vale para quem ainda não foi classificado — pelo
+mesmo desempate do servidor (`ordem`, `createdAt`, `id`), em `primeiroNivel`,
+que só escreve a frase: **quem decide o acesso é o Back** (ADR-026). As recusas
+de nível das outras telas (alocar aluno, editar aluno, editar turma) já
+chegavam pela `ApiError.message` e não pediram mudança.
+
 **Conferido por comando nesta data, com a SPEC-057/TASK-005 empilhada sobre a
 TASK-004:** 50 arquivos de teste, 448 casos, **72 componentes**
 (`vitest run --pool=threads`; `.tsx` de `src/components`, sem subpastas e sem os
