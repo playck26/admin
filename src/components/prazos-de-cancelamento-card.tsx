@@ -93,6 +93,21 @@ export function PrazosDeCancelamentoCard() {
   const [aula, setAula] = useState("");
   const [reserva, setReserva] = useState("");
   const [precoAula, setPrecoAula] = useState("");
+  /**
+   * SPEC-064/TASK-008 — card 5331, RN3: *"Admin define a antecedência"* da
+   * fila de espera de AULA. Mora neste card pelo mesmo motivo do preço: o
+   * `PUT` é substituição total, e um segundo card gravando o mesmo recurso
+   * apagaria o que este grava.
+   *
+   * **Vazio aqui NÃO é "sem antecedência", ao contrário dos prazos acima.** É
+   * "usa o padrão do servidor" — e o padrão vem do `GET`
+   * (`antecedenciaFilaAulaPadraoHoras`), para esta tela não ter o número escrito
+   * de novo. Por isso o marcador do campo mostra o padrão, e não "Sem prazo".
+   */
+  const [antecedencia, setAntecedencia] = useState("");
+  const [antecedenciaPadrao, setAntecedenciaPadrao] = useState<number | null>(
+    null,
+  );
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
@@ -102,16 +117,27 @@ export function PrazosDeCancelamentoCard() {
   // abaixo ou fica com dependência faltando (o aviso do lint) ou passa a
   // recarregar em loop.
   const aplicar = useCallback((c: ConfigOperacao) => {
-    const paraCampo = (n: number | null) => (n === null ? "" : String(n));
+    // **`== null`, e não `=== null`** (SPEC-064/TASK-008). Um Back sem a coluna
+    // nova — rollback, ou este Admin subindo antes dele — não manda o campo, e
+    // ele chega `undefined`: com `=== null` o campo mostraria o TEXTO
+    // "undefined", e salvar recusaria o próprio valor.
+    const paraCampo = (n: number | null | undefined) =>
+      n == null ? "" : String(n);
     setAula(paraCampo(c.prazoCancelamentoAulaHoras));
     setReserva(paraCampo(c.prazoCancelamentoReservaHoras));
     setPrecoAula(paraCampo(c.precoAulaPadrao));
+    setAntecedencia(paraCampo(c.antecedenciaFilaAulaHoras));
   }, []);
 
   useEffect(() => {
     getConfigOperacao()
       .then((c) => {
         aplicar(c);
+        // O padrão só vem na LEITURA — a resposta do `PUT` não o traz, e por
+        // isso ele não passa pelo `aplicar`, que as duas usam.
+        // `?? null` pelo mesmo motivo: Back antigo não manda o padrão, e o
+        // marcador cai para "Padrão" sem número em vez de "Padrão: undefined h".
+        setAntecedenciaPadrao(c.antecedenciaFilaAulaPadraoHoras ?? null);
         setCarregado(true);
       })
       .catch((e: unknown) => {
@@ -178,6 +204,13 @@ export function PrazosDeCancelamentoCard() {
 
     const a = emHoras(aula);
     const r = emHoras(reserva);
+    const f = emHoras(antecedencia);
+    if (Number.isNaN(f)) {
+      setErro(
+        `A antecedência da fila de espera é um número inteiro de horas, entre 1 e ${TETO}. Para usar o padrão${antecedenciaPadrao === null ? "" : ` (${antecedenciaPadrao} h)`}, deixe o campo vazio.`,
+      );
+      return;
+    }
     if (Number.isNaN(a) || Number.isNaN(r)) {
       setErro(
         `O prazo é um número inteiro de horas, entre 1 e ${TETO}. Para não exigir antecedência, deixe o campo vazio — zero seria "só até a hora de começar", que é o que já vale sempre.`,
@@ -200,6 +233,10 @@ export function PrazosDeCancelamentoCard() {
           // card com o mesmo `PUT` seria dois lugares que precisam lembrar um
           // do outro, e o primeiro a esquecer apaga o do outro.
           precoAulaPadrao: precoAula.trim() === "" ? null : Number(precoAula),
+          // SPEC-064/TASK-008 — **o `tsc` exigiu este campo**, do mesmo jeito
+          // que exigiu o preço: sem ele, salvar os prazos apagaria a
+          // antecedência configurada. Vazio vira `null`, que é "usa o padrão".
+          antecedenciaFilaAulaHoras: f as number | null,
         }),
       );
       setSalvo(true);
@@ -219,6 +256,7 @@ export function PrazosDeCancelamentoCard() {
     rotulo: string,
     valor: string,
     setValor: (v: string) => void,
+    marcador = "Sem prazo",
   ) => (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium" htmlFor={id}>
@@ -241,7 +279,7 @@ export function PrazosDeCancelamentoCard() {
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        placeholder="Sem prazo"
+        placeholder={marcador}
         value={valor}
         onChange={(e) => {
           setValor(e.target.value);
@@ -289,6 +327,15 @@ export function PrazosDeCancelamentoCard() {
               precoAula,
               setPrecoAula,
             )}
+            {campo(
+              "antecedencia-fila-aula",
+              "Fila de espera de aula (horas)",
+              antecedencia,
+              setAntecedencia,
+              antecedenciaPadrao === null
+                ? "Padrão"
+                : `Padrão: ${antecedenciaPadrao} h`,
+            )}
             <button
               type="button"
               disabled={!podeGravar({ salvando, leituraFalhou })}
@@ -326,6 +373,18 @@ export function PrazosDeCancelamentoCard() {
             mesmo com os campos vazios. O prazo diz{" "}
             <strong>quanto antes</strong>; isto diz que{" "}
             <strong>depois do começo não dá</strong>.
+          </p>
+
+          {/*
+            SPEC-064/TASK-008 — o que o campo da fila faz, dito na tela: sem
+            isto o gestor lê "antecedência" ao lado dos prazos de cancelamento e
+            conclui que é a mesma regra, quando é outra.
+          */}
+          <p className="mt-2 text-sm text-[var(--color-on-surface-variant)]">
+            <strong>Fila de espera de aula:</strong> quando abre vaga numa aula
+            cheia, o próximo da fila só é chamado se ainda faltarem pelo menos
+            estas horas para ela começar. Vale só para aula de reposição — a
+            fila de turma não depende do horário.
           </p>
 
           {erro ? (

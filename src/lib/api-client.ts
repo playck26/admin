@@ -1304,9 +1304,15 @@ export async function definirLimiteDeTurmas(
  */
 export type ConfigOperacao = components["schemas"]["ConfigOperacaoResponseDto"];
 
-export async function getConfigOperacao(): Promise<ConfigOperacao> {
+/**
+ * SPEC-064/TASK-008 — **devolve o tipo de LEITURA**, porque é o que o `GET`
+ * manda: além do que se grava, os padrões resolvidos pelo servidor
+ * (`antecedenciaFilaAulaPadraoHoras`, os nomes de tipo). Continua servindo a
+ * quem só quer o que se grava — a leitura contém a base.
+ */
+export async function getConfigOperacao(): Promise<ConfigOperacaoComNomes> {
   const res = await authFetch("/company-settings/operacao");
-  return (await res.json()) as ConfigOperacao;
+  return (await res.json()) as ConfigOperacaoComNomes;
 }
 
 export async function definirConfigOperacao(
@@ -1681,7 +1687,8 @@ export async function getEvasao(dias = 30): Promise<ListaDeEvasao> {
  * Os tipos vêm do `openapi.json` (D14), como o resto: escritos à mão, o `tsc`
  * ficaria verde contra um contrato velho (DEF-012).
  */
-export type TipoDeAdicional = components["schemas"]["TipoDeAdicionalResponseDto"];
+export type TipoDeAdicional =
+  components["schemas"]["TipoDeAdicionalResponseDto"];
 export type Adicional = components["schemas"]["AdicionalResponseDto"];
 export type AdicionalEditado =
   components["schemas"]["AdicionalEditadoResponseDto"];
@@ -1773,7 +1780,10 @@ export async function adicionaisDisponiveis(
   data: string,
   slots: readonly string[],
 ): Promise<AdicionalDisponivel[]> {
-  const params = new URLSearchParams({ data, slots: [...slots].sort().join(",") });
+  const params = new URLSearchParams({
+    data,
+    slots: [...slots].sort().join(","),
+  });
   try {
     const res = await authFetch(`/adicionais/disponiveis?${params.toString()}`);
     return (await res.json()) as AdicionalDisponivel[];
@@ -1893,7 +1903,6 @@ export async function removerAssinaturaDePush(endpoint: string): Promise<void> {
 export async function pedirAvisoDeTeste(): Promise<void> {
   await authFetch("/push/teste", { method: "POST" });
 }
-
 
 // ---------------------------------------------------------------------------
 // SPEC-065 — a caixa de avisos
