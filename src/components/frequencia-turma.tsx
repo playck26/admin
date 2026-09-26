@@ -122,6 +122,8 @@ export function FrequenciaTurma({ turmaId }: { turmaId: string }) {
             {cobertura.aviso}
           </p>
         ) : null}
+        {/* SPEC-076/D6 — a frase do que "falta" quer dizer mora no bloco de
+            origens, e aparece com ele. */}
         <OrigensDaCobertura origens={cobertura.origens} />
       </Card>
 

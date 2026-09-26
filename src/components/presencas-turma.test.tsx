@@ -1,5 +1,11 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EvasaoCard } from "./evasao-card";
+import { FrequenciaAluno } from "./frequencia-aluno";
+import { FrequenciaTurma } from "./frequencia-turma";
+import { FALTA_E_AVISO, OrigensDaCobertura } from "./origens-da-cobertura";
 import { PresencasTurma } from "./presencas-turma";
 
 /**
@@ -17,13 +23,25 @@ import { PresencasTurma } from "./presencas-turma";
 
 const listPresencasDaTurma = vi.hoisted(() => vi.fn());
 const registrarNaoHouveAula = vi.hoisted(() => vi.fn());
+const desfazerNaoHouveAula = vi.hoisted(() => vi.fn());
+const getFrequenciaDaTurma = vi.hoisted(() => vi.fn());
+const getFrequenciaDoAluno = vi.hoisted(() => vi.fn());
+const getEvasao = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
     await vi.importActual<typeof import("@/lib/api-client")>(
       "@/lib/api-client",
     );
-  return { ...real, listPresencasDaTurma, registrarNaoHouveAula };
+  return {
+    ...real,
+    listPresencasDaTurma,
+    registrarNaoHouveAula,
+    desfazerNaoHouveAula,
+    getFrequenciaDaTurma,
+    getFrequenciaDoAluno,
+    getEvasao,
+  };
 });
 
 function ocorrencia(patch: Record<string, unknown> = {}) {
@@ -60,33 +78,34 @@ const COM_CHAMADA = ocorrencia({
 beforeEach(() => {
   listPresencasDaTurma.mockReset();
   registrarNaoHouveAula.mockReset();
+  desfazerNaoHouveAula.mockReset();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("PresencasTurma — aulas sem chamada (SPEC-030)", () => {
+describe("PresencasTurma — aguardando fechamento (SPEC-030 → SPEC-076/D5)", () => {
   it("mostra a aula pendente, que antes era invisível para o gestor", async () => {
     listPresencasDaTurma.mockResolvedValue([ocorrencia()]);
 
     render(<PresencasTurma turmaId="t1" />);
 
-    expect(await screen.findByText("Aulas sem chamada (1)")).toBeInTheDocument();
+    expect(await screen.findByText("Aguardando fechamento (1)")).toBeInTheDocument();
     expect(screen.getByText("25/08/2026")).toBeInTheDocument();
   });
 
-  // O caminho normal continua sendo o professor lançar a chamada. A tela diz
-  // isso ANTES de oferecer a saída — senão o gestor passa a fechar aula por
-  // atalho, e o registro do clube fica pior, não melhor.
-  it("diz de quem é a ação antes de oferecer o botão", async () => {
+  // SPEC-076 — o caminho normal é o fechamento automático, não o professor
+  // lançar. A tela diz isso ANTES de oferecer a saída.
+  it("diz que o fechamento é automático antes de oferecer o botão", async () => {
     listPresencasDaTurma.mockResolvedValue([ocorrencia()]);
 
     render(<PresencasTurma turmaId="t1" />);
 
     expect(
-      await screen.findByText(/Quem lança a chamada é o professor/),
+      await screen.findByText(/o fechamento automático ainda não passou/),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Quem lança a chamada é o professor/)).toBeNull();
   });
 
   it("não oferece a ação em aula futura, em andamento ou cancelada", async () => {
@@ -99,7 +118,7 @@ describe("PresencasTurma — aulas sem chamada (SPEC-030)", () => {
     render(<PresencasTurma turmaId="t1" />);
 
     await waitFor(() => expect(listPresencasDaTurma).toHaveBeenCalled());
-    expect(screen.queryByText(/Aulas sem chamada/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Aguardando fechamento/)).not.toBeInTheDocument();
   });
 
   it("pede confirmação, e desistir não chama a API", async () => {
@@ -147,7 +166,7 @@ describe("PresencasTurma — aulas sem chamada (SPEC-030)", () => {
       expect(listPresencasDaTurma).toHaveBeenCalledTimes(2),
     );
     await waitFor(() =>
-      expect(screen.queryByText(/Aulas sem chamada/)).not.toBeInTheDocument(),
+      expect(screen.queryByText(/Aguardando fechamento/)).not.toBeInTheDocument(),
     );
   });
 
@@ -167,7 +186,7 @@ describe("PresencasTurma — aulas sem chamada (SPEC-030)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /não foi possível registrar/i,
     );
-    expect(screen.getByText("Aulas sem chamada (1)")).toBeInTheDocument();
+    expect(screen.getByText("Aguardando fechamento (1)")).toBeInTheDocument();
   });
 });
 
@@ -216,13 +235,15 @@ describe("PresencasTurma — origem da chamada (SPEC-057)", () => {
     ],
   });
 
-  it("automática sem revisão: selo, texto de presunção e a exceção de 'não aconteceu'", async () => {
+  it("automática sem revisão: selo, de onde vem a falta e a exceção de 'não aconteceu'", async () => {
     listPresencasDaTurma.mockResolvedValue([AUTOMATICA]);
     render(<PresencasTurma turmaId="t1" />);
 
     expect(await screen.findByText("fechada automaticamente")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /25\/08\/2026/ }));
-    expect(screen.getByText(/presenças presumidas, sem revisão do professor/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/quem avisou falta pelo app aparece como Faltou/),
+    ).toBeInTheDocument();
 
     const confirm = vi.fn(() => true);
     vi.stubGlobal("confirm", confirm);
@@ -269,7 +290,7 @@ describe("PresencasTurma — origem da chamada (SPEC-057)", () => {
     render(<PresencasTurma turmaId="t1" />);
 
     expect(await screen.findByText(/1 aula sem participantes/)).toBeInTheDocument();
-    expect(screen.queryByText(/Aulas sem chamada/)).toBeNull();
+    expect(screen.queryByText(/Aguardando fechamento/)).toBeNull();
   });
 });
 
@@ -307,5 +328,196 @@ describe("PresencasTurma — visitante x ex-aluno (DEF-035)", () => {
     expect(visitante).not.toHaveTextContent("(saiu da turma)");
     expect(exAluno).toHaveTextContent("(saiu da turma)");
     expect(screen.getByText("Ana").closest("li")).not.toHaveTextContent("(");
+  });
+});
+
+const ORIGENS = {
+  automaticas: 1,
+  ratificadas: 0,
+  humanas: 1,
+  pendentesLegadas: 1,
+  pendentesAtuais: 1,
+};
+const COBERTURA = {
+  aconteceram: 4,
+  lancadas: 2,
+  completas: 2,
+  pctCompletas: 50,
+  confianca: "alta",
+  aviso: null,
+  origens: ORIGENS,
+};
+
+/** Os arquivos de `src/`, para a frase que não pode mais existir. */
+function arquivosDe(dir: string): string[] {
+  return readdirSync(dir).flatMap((nome) => {
+    const caminho = join(dir, nome);
+    return statSync(caminho).isDirectory() ? arquivosDe(caminho) : [caminho];
+  });
+}
+
+/**
+ * SPEC-076/AC-021 — **o Admin diz de onde vem a falta.** As quatro telas da
+ * D6 dizem que falta é aviso de falta pelo app; a frase que mandava esperar
+ * correção do professor não existe mais em `src/`; e "Aguardando fechamento"
+ * conta só `pendente`.
+ */
+describe("SPEC-076/AC-021 — falta é aviso de falta", () => {
+  it("origens da cobertura: os rótulos novos e a frase", () => {
+    render(<OrigensDaCobertura origens={ORIGENS} />);
+    expect(
+      screen.getByText(/1 sem registro, anteriores à automação/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/1 aguardando fechamento/)).toBeInTheDocument();
+    expect(screen.getByText(FALTA_E_AVISO)).toBeInTheDocument();
+    // O que a frase DIZ, e não só que ela aparece: as quatro telas mostram
+    // a mesma constante, e é o conteúdo dela que a D6 decide.
+    expect(FALTA_E_AVISO).toMatch(/aviso de falta pelo app/);
+    expect(FALTA_E_AVISO).toMatch(/Ninguém corrige presença à mão/);
+  });
+
+  it("frequência da turma diz a frase", async () => {
+    getFrequenciaDaTurma.mockResolvedValue({
+      turmaId: "t1",
+      turmaNome: "T",
+      janelaDias: 30,
+      cobertura: COBERTURA,
+      alunos: [],
+    });
+    render(<FrequenciaTurma turmaId="t1" />);
+    expect(await screen.findByText(FALTA_E_AVISO)).toBeInTheDocument();
+  });
+
+  it("frequência do aluno diz a frase", async () => {
+    getFrequenciaDoAluno.mockResolvedValue({
+      alunoId: "a1",
+      nome: "Ana",
+      alunoAtivo: true,
+      vinculo: "aprovado",
+      janelaDias: 30,
+      agregado: { base: 3, frequenciaPct: 66, faltasSeguidas: 0, confianca: "alta" },
+      porTurma: [
+        {
+          turmaId: "t1",
+          turmaNome: "T",
+          naTurmaHoje: true,
+          visitante: false,
+          presente: 2,
+          ausente: 1,
+          justificado: 0,
+          frequenciaPct: 66,
+          faltasSeguidas: 0,
+          cobertura: COBERTURA,
+        },
+      ],
+      ocorrencias: [],
+    });
+    render(<FrequenciaAluno alunoId="a1" />);
+    expect(await screen.findByText(FALTA_E_AVISO)).toBeInTheDocument();
+  });
+
+  it("o cartão de evasão diz a frase", async () => {
+    getEvasao.mockResolvedValue({
+      total: 1,
+      janelaDias: 30,
+      alunos: [
+        {
+          alunoId: "a1",
+          nome: "Ana",
+          turmaId: "t1",
+          turmaNome: "T",
+          motivo: "faltas_seguidas",
+          frequenciaPct: 40,
+          base: 5,
+          faltasSeguidas: 3,
+          faltasSeguidasComposicao: { ausente: 3, justificado: 0 },
+          confianca: "alta",
+          cobertura: COBERTURA,
+        },
+      ],
+    });
+    render(<EvasaoCard />);
+    expect(await screen.findByText(FALTA_E_AVISO)).toBeInTheDocument();
+  });
+
+  it("a frase antiga não existe mais em src/", () => {
+    const comAFrase = arquivosDe(join(__dirname, ".."))
+      .filter((f) => /\.(ts|tsx)$/.test(f))
+      .filter((f) =>
+        readFileSync(f, "utf8").includes(
+          ["faltas devem ser corrigidas", "pelo professor"].join(" "),
+        ),
+      );
+    expect(comAFrase).toEqual([]);
+  });
+
+  it("'Aguardando fechamento' conta só pendente — a sem_registro fica de fora, só contada", async () => {
+    listPresencasDaTurma.mockResolvedValue([
+      ocorrencia({ ocupacaoId: "oc-p", estado: "pendente" }),
+      ocorrencia({ ocupacaoId: "oc-s", data: "2026-08-01", estado: "sem_registro" }),
+    ]);
+    render(<PresencasTurma turmaId="t1" />);
+
+    expect(await screen.findByText("Aguardando fechamento (1)")).toBeInTheDocument();
+    expect(screen.getByText(/1 aula sem registro/)).toBeInTheDocument();
+    expect(screen.queryByText("01/08/2026")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "A aula não aconteceu" })).toHaveLength(1);
+  });
+});
+
+/**
+ * SPEC-076/AC-022 — **o "Desfazer (até …)" do gestor**: só com
+ * `desfazerNaoHouveAte`, com confirmação, chama a rota do gestor e relê.
+ */
+describe("SPEC-076/AC-022 — desfazer o 'não aconteceu'", () => {
+  const NAO_HOUVE = (extra: Record<string, unknown> = {}) =>
+    ocorrencia({ chamadaFeita: true, estado: "nao_houve", ...extra });
+
+  it("com o campo: mostra a data, confirma, chama o DELETE do gestor e relê", async () => {
+    const ate = new Date(2026, 9, 3, 14, 30).toISOString();
+    listPresencasDaTurma
+      .mockResolvedValueOnce([NAO_HOUVE({ desfazerNaoHouveAte: ate })])
+      .mockResolvedValueOnce([COM_CHAMADA]);
+    desfazerNaoHouveAula.mockResolvedValue({ ocupacaoId: "oc1", estado: "feita" });
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
+
+    render(<PresencasTurma turmaId="t1" />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Desfazer (até 03/10 às 14:30)" }),
+    );
+
+    expect(confirm).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(desfazerNaoHouveAula).toHaveBeenCalledWith("t1", "oc1"),
+    );
+    await waitFor(() => expect(listPresencasDaTurma).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("1/2 presentes")).toBeInTheDocument();
+  });
+
+  it("desistir da confirmação não chama a API", async () => {
+    listPresencasDaTurma.mockResolvedValue([
+      NAO_HOUVE({ desfazerNaoHouveAte: new Date(Date.now() + 86_400_000).toISOString() }),
+    ]);
+    vi.stubGlobal("confirm", vi.fn(() => false));
+
+    render(<PresencasTurma turmaId="t1" />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Desfazer/ }));
+
+    expect(desfazerNaoHouveAula).not.toHaveBeenCalled();
+  });
+
+  it("campo nulo: não aparece", async () => {
+    listPresencasDaTurma.mockResolvedValue([NAO_HOUVE({ desfazerNaoHouveAte: null })]);
+    render(<PresencasTurma turmaId="t1" />);
+    await screen.findByText("aula não realizada");
+    expect(screen.queryByRole("button", { name: /^Desfazer/ })).toBeNull();
+  });
+
+  it("Back anterior à SPEC-076 (sem o campo): não aparece", async () => {
+    listPresencasDaTurma.mockResolvedValue([NAO_HOUVE()]);
+    render(<PresencasTurma turmaId="t1" />);
+    await screen.findByText("aula não realizada");
+    expect(screen.queryByRole("button", { name: /^Desfazer/ })).toBeNull();
   });
 });

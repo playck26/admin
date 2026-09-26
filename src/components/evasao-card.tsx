@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { getEvasao, type ListaDeEvasao } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
-import { OrigensDaCobertura } from "@/components/origens-da-cobertura";
+import {
+  FALTA_E_AVISO,
+  OrigensDaCobertura,
+} from "@/components/origens-da-cobertura";
 
 /**
  * SPEC-015/TASK-004 — o cartão "alunos em risco" do dashboard.
@@ -80,6 +83,12 @@ export function EvasaoCard() {
           últimos {dados.janelaDias} dias
         </span>
       </div>
+
+      {/* SPEC-076/D6 — "faltas seguidas" é aviso de falta seguido: sem esta
+          frase o gestor leria a régua como falta constatada em quadra. */}
+      <p className="mt-2 text-xs text-[var(--color-on-surface-variant)]">
+        {FALTA_E_AVISO}
+      </p>
 
       {/* AC-008 — a forma vazia é um estado normal, não um erro. O cartão
           fica na tela para o gestor saber que a régua está rodando. */}

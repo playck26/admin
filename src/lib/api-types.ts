@@ -1246,7 +1246,7 @@ export interface paths {
         get?: never;
         put: operations["ClassesController_naoHouve"];
         post?: never;
-        delete?: never;
+        delete: operations["ClassesController_desfazerNaoHouve"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1532,7 +1532,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MeTeacherAttendanceController_chamada"];
-        put: operations["MeTeacherAttendanceController_salvar"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1550,7 +1550,7 @@ export interface paths {
         get?: never;
         put: operations["MeTeacherAttendanceController_naoHouve"];
         post?: never;
-        delete?: never;
+        delete: operations["MeTeacherAttendanceController_desfazerNaoHouve"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2054,7 +2054,10 @@ export interface components {
             ratificadas: number;
             /** @example 3 */
             humanas: number;
-            /** @example 1 */
+            /**
+             * @description Aulas anteriores à automação sem registro de presença — não cobram ação.
+             * @example 1
+             */
             pendentesLegadas: number;
             /** @example 0 */
             pendentesAtuais: number;
@@ -3454,13 +3457,18 @@ export interface components {
             cancelada: boolean;
             chamadaFeita: boolean;
             /** @enum {string} */
-            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "cancelada";
+            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "sem_registro" | "cancelada";
             /** @example Carlos Lima */
             registradoPor: string | null;
             /** @enum {string|null} */
             origem: "automatica" | "professor" | "gestor" | "legada_humana" | null;
             /** @enum {string|null} */
             origemInicial: "automatica" | "professor" | "gestor" | "legada_humana" | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-03T03:00:00.000Z
+             */
+            desfazerNaoHouveAte: string | null;
             alunos: components["schemas"]["AlunoNoHistoricoResponseDto"][];
         };
         ChamadaNaoHouveResponseDto: {
@@ -3468,6 +3476,15 @@ export interface components {
             ocupacaoId: string;
             /** @example nao_houve */
             completude: string;
+        };
+        NaoHouveDesfeitoResponseDto: {
+            /** Format: uuid */
+            ocupacaoId: string;
+            /**
+             * @description `feita` (refechada, com o instante de antes), `sem_participantes`, `pendente` (pós-corte, o worker fecha) ou `sem_registro` (anterior ao corte) — ou o estado de antes, quando não havia `nao_houve`.
+             * @enum {string}
+             */
+            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "sem_registro" | "cancelada";
         };
         TurmaEncontroResponseDto: {
             /** @example 2 */
@@ -3854,12 +3871,13 @@ export interface components {
             marcados: number;
             /** @example 8 */
             totalAlunos: number;
+            /** @description Dentro do prazo de registrar que a aula não aconteceu. Ninguém lança presença à mão (SPEC-076). */
             podeLancar: boolean;
             /**
-             * @description `futura` = ainda não começou. `em_andamento` = começou e não terminou. `pendente` = terminou sem chamada. `feita` = chamada declarada completa. `legada` = chamada anterior à SPEC-015. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030). `sem_participantes` = terminou depois do corte da presença automática, sem chamada e sem participante (SPEC-057); não é pendência. `cancelada` = ocorrência cancelada.
+             * @description `futura` = ainda não começou. `em_andamento` = começou e não terminou. `pendente` = terminou depois do corte e o fechamento automático ainda não passou. `sem_registro` = terminou sem chamada antes do corte, anterior à automação (SPEC-076/D5). `feita` = chamada declarada completa. `legada` = chamada anterior à SPEC-015. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030). `sem_participantes` = terminou depois do corte da presença automática, sem chamada e sem participante (SPEC-057); não é pendência. `cancelada` = ocorrência cancelada.
              * @enum {string}
              */
-            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "cancelada";
+            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "sem_registro" | "cancelada";
         };
         OcorrenciasDaTurmaPaginadasResponseDto: {
             data: components["schemas"]["OcorrenciaDaTurmaResponseDto"][];
@@ -3901,31 +3919,23 @@ export interface components {
             origemInicial: "automatica" | "professor" | "gestor" | "legada_humana" | null;
             /**
              * Format: date-time
+             * @description Prazo da exceção do `nao_houve` sobre chamada automática: o fechamento automático + 7 dias. Ninguém corrige presença (SPEC-076).
              * @example 2026-09-25T17:00:00.000Z
              */
             corrigivelAte: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-03T03:00:00.000Z
+             */
+            desfazerNaoHouveAte: string | null;
+            /**
+             * @description O estado da ocorrência, pelo mesmo resolvedor da lista da turma e do histórico do gestor.
+             * @enum {string}
+             */
+            estado: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "sem_registro" | "cancelada";
+            /** @description Sem uso de escrita desde a SPEC-076 (o `PUT` da chamada saiu). */
             versao: string;
             alunos: components["schemas"]["LinhaDaChamadaResponseDto"][];
-        };
-        ItemChamadaDto: {
-            alunoId: string;
-            /** @enum {string} */
-            status: "presente" | "ausente" | "justificado";
-        };
-        SalvarChamadaDto: {
-            /**
-             * @description Opaca: devolva exatamente o que o GET entregou, sem interpretar. O formato já mudou duas vezes (ganhou o cabecalho e a impressao digital da matricula) e pode mudar de novo — quem fizer parse quebra sem aviso. Serve so para comparacao de igualdade.
-             * @example <opaco — devolva o valor recebido no GET>
-             */
-            versao: string;
-            itens: components["schemas"]["ItemChamadaDto"][];
-        };
-        ChamadaSalvaResponseDto: {
-            /** Format: uuid */
-            ocupacaoId: string;
-            versao: string;
-            /** @example 8 */
-            total: number;
         };
         DiaDaAgendaDoProfessorDto: {
             /** @example 2026-09-01 */
@@ -3946,7 +3956,7 @@ export interface components {
              */
             particulares: number;
             /**
-             * @description Quantas ainda sem chamada registrada. É esta contagem que faz o calendário valer: a grade ele já conhece de cabeça; o que falta registrar, não. **Aula particular nunca entra aqui** (SPEC-039/LIM-039a), mas conta em `aulas`.
+             * @description Quantas aulas `pendente`: terminaram depois do corte e o fechamento automático ainda não passou. **Não é cobrança do professor** desde a SPEC-076 (ninguém lança presença à mão); fica no contrato por compatibilidade (LIM-076d). `sem_registro` não entra. **Aula particular nunca entra aqui** (SPEC-039/LIM-039a), mas conta em `aulas`.
              * @example 1
              */
             pendentes: number;
@@ -3969,10 +3979,10 @@ export interface components {
             /** @example 19:00 */
             horaFim: string;
             /**
-             * @description `futura` = ainda não começou; a chamada **não** pode ser lançada. `em_andamento` = começou e não terminou; pode lançar, e não é pendência. `pendente` = já terminou e não há linha em `chamadas`. `legada` = chamada de antes da SPEC-015, com `completude: desconhecida`. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030); **não** é pendência e não pinta o ponto vermelho. `sem_participantes` = terminou depois do corte da presença automática, sem chamada e sem ninguém matriculado nem repondo (SPEC-057); não é pendência. `cancelada` não aparece aqui: o filtro do calendário a exclui antes. **`null` na aula PARTICULAR** (SPEC-039/LIM-039a): ela não tem chamada, e resolver um estado ali pintaria `pendente` numa aula que nunca poderá receber uma — ponto vermelho que o professor não limpa.
+             * @description `futura` = ainda não começou. `em_andamento` = começou e não terminou. `pendente` = terminou depois do corte da presença automática e o fechamento automático ainda não passou (SPEC-076: aguardando, não é cobrança). `sem_registro` = terminou sem chamada ANTES do corte (ou sem corte): anterior à automação, não é pendência (SPEC-076/D5). `legada` = chamada de antes da SPEC-015, com `completude: desconhecida`. `nao_houve` = alguém declarou que a aula não aconteceu (SPEC-030). `sem_participantes` = terminou depois do corte da presença automática, sem chamada e sem ninguém matriculado nem repondo (SPEC-057); não é pendência. `cancelada` não aparece aqui: o filtro do calendário a exclui antes. **`null` na aula PARTICULAR** (SPEC-039/LIM-039a): ela não tem chamada, e resolver um estado ali diria `pendente` numa aula que nunca poderá receber uma.
              * @enum {string|null}
              */
-            chamada: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | null;
+            chamada: "futura" | "em_andamento" | "pendente" | "feita" | "legada" | "nao_houve" | "sem_participantes" | "sem_registro" | null;
             /**
              * @description Quantos avisaram falta nesta aula.
              * @example 2
@@ -6975,6 +6985,28 @@ export interface operations {
             };
         };
     };
+    ClassesController_desfazerNaoHouve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turmaId: string;
+                ocupacaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NaoHouveDesfeitoResponseDto"];
+                };
+            };
+        };
+    };
     ClassesController_list: {
         parameters: {
             query?: {
@@ -7618,31 +7650,6 @@ export interface operations {
             };
         };
     };
-    MeTeacherAttendanceController_salvar: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ocupacaoId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SalvarChamadaDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChamadaSalvaResponseDto"];
-                };
-            };
-        };
-    };
     MeTeacherAttendanceController_naoHouve: {
         parameters: {
             query?: never;
@@ -7660,6 +7667,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChamadaNaoHouveResponseDto"];
+                };
+            };
+        };
+    };
+    MeTeacherAttendanceController_desfazerNaoHouve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ocupacaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NaoHouveDesfeitoResponseDto"];
                 };
             };
         };
