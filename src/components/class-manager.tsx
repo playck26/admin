@@ -32,6 +32,7 @@ import {
 } from "@/components/encontros-field";
 import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
 import { AulasCanceladasDaTurma } from "@/components/aulas-canceladas-da-turma";
+import { avisoDeAulaLotada } from "@/lib/aula-lotada";
 
 const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
@@ -364,6 +365,13 @@ export function ClassManager({ id }: { id: string }) {
             <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">
               {turma.alunosAlocados}/{turma.capacidade} vagas ocupadas
             </p>
+            {turma.proximaAulaLotada && !cheia ? (
+              // ADR-027 — a alocação continua liberada: quem já é visitante
+              // daquela aula ainda cabe, e só o servidor sabe disso.
+              <p role="status" className="mt-1 text-sm text-[var(--color-error)]">
+                {avisoDeAulaLotada(turma.proximaAulaLotada)}
+              </p>
+            ) : null}
           </div>
 
           {turma.alunos.length === 0 ? (

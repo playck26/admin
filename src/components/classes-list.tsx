@@ -6,13 +6,14 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
-import { ApiError, listClasses, type SchoolClass } from "@/lib/api-client";
+import { ApiError, listClasses, type SchoolClassComLotacao } from "@/lib/api-client";
+import { diaEMes } from "@/lib/aula-lotada";
 import { DIAS_SEMANA } from "@/lib/dias-semana";
 
 const PAGE_SIZE = 20;
 
 export function ClassesList() {
-  const [data, setData] = useState<SchoolClass[]>([]);
+  const [data, setData] = useState<SchoolClassComLotacao[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -111,6 +112,14 @@ export function ClassesList() {
                     </TableCell>
                     <TableCell className="text-[var(--color-on-surface-variant)]">
                       {turma.alunosAlocados}/{turma.capacidade}
+                      {turma.proximaAulaLotada ? (
+                        // ADR-027 — há vaga de matrícula, mas um aluno novo
+                        // não caberia nesta aula: sem isto, "3/8" prometia
+                        // uma vaga que a alocação recusa.
+                        <span className="block text-xs text-[var(--color-error)]">
+                          Lotada em {diaEMes(turma.proximaAulaLotada)}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <StatusBadge ativo={turma.status === "ativa"} activeLabel="Ativa" inactiveLabel="Inativa" />

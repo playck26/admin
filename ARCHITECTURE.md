@@ -1,6 +1,36 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-09-17** (era 2026-09-15).
+**Fonte: análise direta do código.** Data: **2026-09-26** (era 2026-09-25).
+**Conferido por comando em 2026-09-26:** **57 arquivos de teste, 538 casos**
+(`vitest run --pool=threads`, sozinho e em série). *A SPEC-075/TASK-005 somou
+`levels-manager.test.tsx` (10 casos); a ADR-027 somou
+`turmas-aula-lotada.test.tsx` (5) e 2 casos no `aula-da-turma-dialog.test.tsx`,
+um módulo (`lib/aula-lotada.ts`) e **nenhum componente**. Os números do bloco
+abaixo (50/448/72) são de 2026-09-17 e ficaram para trás — a contagem desta
+linha é a vigente.*
+
+**A tela do gestor não anuncia a vaga que a alocação recusa (ADR-027).** A
+alocação passou a exigir que o aluno caiba em todas as próximas aulas, contando
+as reposições (`409 AULA_LOTADA`). A lista e o detalhe da turma trazem
+`proximaAulaLotada`: `/turmas` escreve "Lotada em dd/mm" ao lado de "3/8", e a
+página da turma e o diálogo da aula (agenda) avisam antes de alocar — **sem
+bloquear**, porque quem já é visitante daquela aula ainda cabe, e só o servidor
+sabe disso. O texto mora em `lib/aula-lotada.ts` (data por fatia, nunca `new
+Date`, que em UTC−3 volta um dia). **E o diálogo da aula deixou de engolir o
+dia:** ele trocava todo `409` ao alocar pelo texto de "vaga de matrícula"; o
+`AULA_LOTADA` agora passa a mensagem do servidor inteira.
+
+**`/pessoas/niveis` edita nível (SPEC-075/D8).** Antes só criava e apagava; o
+`updateLevel` existia no `api-client` sem tela. Agora cada linha tem **Editar**
+(nome e ordem, `PATCH /levels/:id`), e a recusa do servidor aparece inteira —
+inclusive a `422 NIVEL_INCOMPATIVEL_COM_MATRICULAS` de uma reordenação que
+deixaria aluno sem nível fora do nível de uma turma. **E a tela diz qual é o
+primeiro nível** e que ele vale para quem ainda não foi classificado — pelo
+mesmo desempate do servidor (`ordem`, `createdAt`, `id`), em `primeiroNivel`,
+que só escreve a frase: **quem decide o acesso é o Back** (ADR-026). As recusas
+de nível das outras telas (alocar aluno, editar aluno, editar turma) já
+chegavam pela `ApiError.message` e não pediram mudança.
+
 **Conferido por comando nesta data, com a SPEC-057/TASK-005 empilhada sobre a
 TASK-004:** 50 arquivos de teste, 448 casos, **72 componentes**
 (`vitest run --pool=threads`; `.tsx` de `src/components`, sem subpastas e sem os

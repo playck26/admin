@@ -1892,6 +1892,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/pre-reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MePreReservasController_meus"];
+        put?: never;
+        post: operations["MePreReservasController_pedir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/pre-reservas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["MePreReservasController_cancelar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3445,7 +3477,7 @@ export interface components {
             /** @example 19:00 */
             horaFim: string;
         };
-        TurmaResponseDto: {
+        TurmaComLotacaoResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
@@ -3465,9 +3497,15 @@ export interface components {
             status: "ativa" | "inativa";
             /** @example 4 */
             alunosAlocados: number;
+            /**
+             * Format: date
+             * @description A primeira aula que ainda não terminou em que um aluno novo NÃO caberia, contando as reposições marcadas (ADR-027). Só vem preenchida quando a turma tem vaga de matrícula (`alunosAlocados < capacidade`) — sem vaga, a turma já está cheia e isto não acrescenta nada. `null` quando cabe. Quem já é visitante daquela aula ainda pode ser alocado: a alocação decide com o aluno de verdade.
+             * @example 2026-10-03
+             */
+            proximaAulaLotada: string | null;
         };
         TurmaPaginadaResponseDto: {
-            data: components["schemas"]["TurmaResponseDto"][];
+            data: components["schemas"]["TurmaComLotacaoResponseDto"][];
             /** @example 1 */
             page: number;
             /** @example 20 */
@@ -3490,6 +3528,27 @@ export interface components {
             quadraId: string;
             encontros: components["schemas"]["EncontroDto"][];
             capacidade: number;
+        };
+        TurmaResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** @example Turma Iniciante */
+            nome: string;
+            /** Format: uuid */
+            nivelId: string | null;
+            /** Format: uuid */
+            professorId: string | null;
+            /** Format: uuid */
+            quadraId: string;
+            encontros: components["schemas"]["TurmaEncontroResponseDto"][];
+            /** @example 10 */
+            capacidade: number;
+            /** @enum {string} */
+            status: "ativa" | "inativa";
+            /** @example 4 */
+            alunosAlocados: number;
         };
         AlunoDaTurmaResponseDto: {
             /** Format: uuid */
@@ -3517,6 +3576,12 @@ export interface components {
             status: "ativa" | "inativa";
             /** @example 4 */
             alunosAlocados: number;
+            /**
+             * Format: date
+             * @description A primeira aula que ainda não terminou em que um aluno novo NÃO caberia, contando as reposições marcadas (ADR-027). Só vem preenchida quando a turma tem vaga de matrícula (`alunosAlocados < capacidade`) — sem vaga, a turma já está cheia e isto não acrescenta nada. `null` quando cabe. Quem já é visitante daquela aula ainda pode ser alocado: a alocação decide com o aluno de verdade.
+             * @example 2026-10-03
+             */
+            proximaAulaLotada: string | null;
             alunos: components["schemas"]["AlunoDaTurmaResponseDto"][];
         };
         EventoDeTurmaResponseDto: {
@@ -3632,7 +3697,7 @@ export interface components {
              */
             podeEntrar: boolean;
             /**
-             * @description Por que não pode entrar. `null` quando pode.
+             * @description Por que não pode entrar. `null` quando pode. `TURMA_CHEIA` também quando há vaga de matrícula mas uma das próximas aulas já está lotada contando as reposições marcadas — a matrícula deixaria esse dia acima da capacidade.
              * @enum {string|null}
              */
             motivo?: "ALUNO_NAO_APROVADO" | "TURMA_INATIVA" | "LIMITE_DE_TURMAS" | "TURMA_CHEIA" | null;
@@ -3663,7 +3728,7 @@ export interface components {
             /** @example 409 */
             statusCode: number;
             /**
-             * @description O código é o contrato; a mensagem é texto para humano e pode mudar sem aviso. Tela que decide pela mensagem quebra na primeira revisão de copy.
+             * @description O código é o contrato; a mensagem é texto para humano e pode mudar sem aviso. Tela que decide pela mensagem quebra na primeira revisão de copy. `TURMA_CHEIA` vem também quando uma das próximas aulas já está lotada contando as reposições marcadas, e então a mensagem diz o dia.
              * @enum {string}
              */
             code: "ALUNO_NAO_APROVADO" | "TURMA_INATIVA" | "LIMITE_DE_TURMAS" | "TURMA_CHEIA" | "PRAZO_DE_CANCELAMENTO";
@@ -4262,6 +4327,39 @@ export interface components {
              * @example 5f7c1e2a-0000-4000-8000-000000000004
              */
             reposicaoId: string | null;
+        };
+        PreReservaResponseDto: {
+            /** @example 5f7c1e2a-0000-4000-8000-000000000003 */
+            id: string;
+            /** @example 5f7c1e2a-0000-4000-8000-000000000001 */
+            quadraId: string;
+            /** @example 2026-10-02 */
+            data: string;
+            /** @example 19:00 */
+            horaInicio: string;
+            /** @example 20:00 */
+            horaFim: string;
+            /**
+             * @description Nasce `aguardando`. Quem o muda para `avisada` é o varredor (SPEC-074/D3), nunca esta rota.
+             * @example aguardando
+             */
+            estado: string;
+            /** @example 2026-09-25T12:31:00.000Z */
+            criadaEm: string;
+        };
+        PedirPreReservaDto: {
+            /** @example 5f7c1e2a-0000-4000-8000-000000000001 */
+            quadraId: string;
+            /**
+             * @description AAAA-MM-DD
+             * @example 2026-10-02
+             */
+            data: string;
+            /**
+             * @description O início do slot, em hora cheia. O fim é o servidor que diz.
+             * @example 19:00
+             */
+            horaInicio: string;
         };
     };
     responses: never;
@@ -7085,6 +7183,20 @@ export interface operations {
                     "application/json": components["schemas"]["MatriculaEmTurmaResponseDto"];
                 };
             };
+            /** @description Turma sem vaga de matrícula (capacidade), ou uma das próximas aulas já lotada contando as reposições marcadas (`AULA_LOTADA`): alocar deixaria esse dia acima da capacidade, e a mensagem diz o dia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aluno desligado (`ALUNO_INATIVO`), ou de outro nível (`NIVEL_INCOMPATIVEL`, SPEC-075/D5): o gestor também é recusado, e a mensagem diz o que fazer — mudar o nível do aluno. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     ClassesController_removeStudent: {
@@ -7234,6 +7346,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErroDeMatriculaResponseDto"];
                 };
+            };
+            /** @description Turma de outro nível (`NIVEL_INCOMPATIVEL`, SPEC-075). A mensagem diz o nível da turma e o do aluno — ou que ele ainda não tem nível e conta como o primeiro. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7636,7 +7755,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Já matriculado na turma de destino (`JA_MATRICULADO_NA_TURMA`) ou turma fora de operação (`TURMA_INATIVA`). */
+            /** @description Já matriculado na turma de destino (`JA_MATRICULADO_NA_TURMA`), turma fora de operação (`TURMA_INATIVA`) ou turma de outro nível (`NIVEL_INCOMPATIVEL`, SPEC-075). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8046,7 +8165,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Turma fora de operação (`TURMA_INATIVA`) ou já matriculado nela (`JA_MATRICULADO_NA_TURMA`). */
+            /** @description Turma fora de operação (`TURMA_INATIVA`), já matriculado nela (`JA_MATRICULADO_NA_TURMA`) ou turma de outro nível (`NIVEL_INCOMPATIVEL`, SPEC-075). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8083,7 +8202,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Já matriculado na turma da aula (`JA_MATRICULADO_NA_TURMA`). */
+            /** @description Já matriculado na turma da aula (`JA_MATRICULADO_NA_TURMA`) ou turma de outro nível (`NIVEL_INCOMPATIVEL`, SPEC-075). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8111,7 +8230,7 @@ export interface operations {
                     "application/json": components["schemas"]["ConfirmacaoDaVezResponseDto"];
                 };
             };
-            /** @description A vez nao esta aberta (`NAO_E_SUA_VEZ`), o prazo venceu (`VEZ_EXPIRADA`) ou a confirmacao foi recusada pelo gesto de destino (`TURMA_SEM_VAGA`, `TURMA_CHEIA`, `SEM_CREDITO_DE_REPOSICAO`, `TETO_DE_REPOSICAO`, ...). **Em todos, a linha fica encerrada.** */
+            /** @description A vez nao esta aberta (`NAO_E_SUA_VEZ`), o prazo venceu (`VEZ_EXPIRADA`) ou a confirmacao foi recusada pelo gesto de destino (`TURMA_SEM_VAGA`, `TURMA_CHEIA`, `SEM_CREDITO_DE_REPOSICAO`, `NIVEL_INCOMPATIVEL` (SPEC-075), `TETO_DE_REPOSICAO`, ...). **Em todos, a linha fica encerrada.** */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8132,6 +8251,95 @@ export interface operations {
         requestBody?: never;
         responses: {
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MePreReservasController_meus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreReservaResponseDto"][];
+                };
+            };
+        };
+    };
+    MePreReservasController_pedir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedirPreReservaDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreReservaResponseDto"];
+                };
+            };
+            /** @description A quadra não existe nesta empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O horário está livre (`HORARIO_LIVRE`), já é do aluno (`HORARIO_JA_E_SEU`), ou o aviso já foi pedido (`PRE_RESERVA_DUPLICADA`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aluno inativo (`ALUNO_INATIVO`), quadra fora de operação (`QUADRA_INATIVA`), horário que já começou (`HORARIO_NO_PASSADO`), fora do expediente (`FORA_DO_EXPEDIENTE`) ou teto de avisos ativos (`LIMITE_DE_PRE_RESERVAS`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MePreReservasController_cancelar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O pedido não existe, é de outro aluno ou já terminou — os três no mesmo `404`, que não revela o pedido de ninguém. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
