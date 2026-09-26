@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getFrequenciaDoAluno, type FrequenciaDoAluno } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
-import { OrigensDaCobertura } from "@/components/origens-da-cobertura";
+import {
+  FALTA_E_AVISO,
+  OrigensDaCobertura,
+} from "@/components/origens-da-cobertura";
 
 /**
  * SPEC-015/TASK-004 — o bloco de frequência na tela do aluno.
@@ -84,6 +87,11 @@ export function FrequenciaAluno({ alunoId }: { alunoId: string }) {
           </Badge>
         ) : null}
       </div>
+
+      {/* SPEC-076/D6 — o que "falta" quer dizer, antes dos números. */}
+      <p className="text-xs text-[var(--color-on-surface-variant)]">
+        {FALTA_E_AVISO}
+      </p>
 
       {/* AC-007 — a quebra vem SEMPRE, e é o que o agregado esconderia. */}
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">

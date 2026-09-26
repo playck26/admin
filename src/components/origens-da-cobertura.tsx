@@ -6,23 +6,32 @@ type Origens = components["schemas"]["OrigensDaCoberturaResponseDto"];
  * SPEC-057/TASK-001/D6 — **de onde veio cada aula que conta na frequência.**
  *
  * Com a presença automática, "chamada completa" deixou de querer dizer
- * "alguém olhou": o fechamento automático presume que todo mundo veio. O
- * percentual continua o mesmo cálculo; o que este bloco acrescenta é quanto
- * dele é presunção — e aparece **mesmo com o percentual suprimido**, porque é
- * justamente ali que o gestor precisa saber por quê.
+ * "alguém olhou". O percentual continua o mesmo cálculo; o que este bloco
+ * acrescenta é de onde ele vem — e aparece **mesmo com o percentual
+ * suprimido**, porque é justamente ali que o gestor precisa saber por quê.
  *
  * `compacto` é a linha única do cartão de evasão; o padrão é a lista do
  * relatório da turma e do aluno.
  */
-export const EXPLICACAO_DA_PRESUNCAO =
-  "Presenças automáticas são presumidas; faltas devem ser corrigidas pelo professor.";
+
+/**
+ * SPEC-076/D6 — **o que "falta" quer dizer desde a SPEC-076**, numa frase
+ * só, usada pelas quatro telas que mostram falta ou frequência.
+ *
+ * A frase de antes mandava o gestor esperar uma correção do professor que não
+ * existe mais: ninguém lança presença à mão (decisões 1 e 9). O fechamento
+ * automático grava `ausente` para quem avisou falta pelo app, e `presente`
+ * para os demais (LIM-076b).
+ */
+export const FALTA_E_AVISO =
+  "Falta, aqui, é aviso de falta pelo app: no fechamento automático, quem avisou fica como Faltou e os demais como presentes. Ninguém corrige presença à mão.";
 
 const ITENS: { chave: keyof Origens; rotulo: string }[] = [
   { chave: "automaticas", rotulo: "automáticas" },
   { chave: "ratificadas", rotulo: "automáticas revisadas" },
   { chave: "humanas", rotulo: "lançadas por pessoa" },
-  { chave: "pendentesLegadas", rotulo: "pendentes anteriores à automação" },
-  { chave: "pendentesAtuais", rotulo: "pendentes" },
+  { chave: "pendentesLegadas", rotulo: "sem registro, anteriores à automação" },
+  { chave: "pendentesAtuais", rotulo: "aguardando fechamento" },
 ];
 
 export function OrigensDaCobertura({
@@ -51,9 +60,7 @@ export function OrigensDaCobertura({
         <span className="font-medium text-foreground">Origem das aulas:</span>{" "}
         {texto}
       </p>
-      {origens.automaticas + origens.ratificadas > 0 ? (
-        <p>{EXPLICACAO_DA_PRESUNCAO}</p>
-      ) : null}
+      <p>{FALTA_E_AVISO}</p>
     </div>
   );
 }

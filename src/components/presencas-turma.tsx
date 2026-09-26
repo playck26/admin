@@ -4,10 +4,18 @@ import { useEffect, useState } from "react";
 import { CalendarCheck, ChevronDown } from "lucide-react";
 import {
   ApiError,
+  desfazerNaoHouveAula,
   listPresencasDaTurma,
   registrarNaoHouveAula,
   type OcorrenciaPresenca,
 } from "@/lib/api-client";
+
+/** `2026-09-25T17:00:00.000Z` → `25/09 às 14:00`, no relógio de quem lê. */
+function formatarPrazo(iso: string): string {
+  const d = new Date(iso);
+  const dois = (n: number) => String(n).padStart(2, "0");
+  return `${dois(d.getDate())}/${dois(d.getMonth() + 1)} às ${dois(d.getHours())}:${dois(d.getMinutes())}`;
+}
 
 const ROTULO: Record<string, string> = {
   presente: "Veio",
@@ -75,8 +83,7 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
           (automatica
             ? "As presenças do fechamento automático serão apagadas. "
             : "") +
-          "Ela deixa de aparecer como pendente para o professor e não conta " +
-          "na frequência de ninguém.",
+          "Ela não conta na frequência de ninguém.",
       )
     ) {
       return;
@@ -97,20 +104,48 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
     }
   }
 
+  /**
+   * SPEC-076/D3 — **desfazer o "não aconteceu"**, com confirmação, e reler.
+   * O botão só existe onde o servidor mandou `desfazerNaoHouveAte` — o Back
+   * anterior à SPEC-076 não manda, e aí ele não aparece (D12).
+   */
+  async function desfazer(ocupacaoId: string) {
+    if (
+      !window.confirm(
+        "Desfazer o registro de que esta aula não aconteceu?\n\n" +
+          "A chamada volta ao que o fechamento automático registra.",
+      )
+    ) {
+      return;
+    }
+    setErro(null);
+    setRegistrando(ocupacaoId);
+    try {
+      await desfazerNaoHouveAula(turmaId, ocupacaoId);
+      await carregar();
+    } catch (err) {
+      setErro(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível desfazer. Tente de novo.",
+      );
+    } finally {
+      setRegistrando(null);
+    }
+  }
+
   const comChamada = ocorrencias.filter((o) => o.chamadaFeita);
   /**
-   * **SPEC-030 — as aulas que ninguém respondeu, e elas não apareciam aqui.**
+   * **SPEC-030 → SPEC-076/D5 — as aulas que aguardam o fechamento
+   * automático.** Terminaram depois do corte e o worker ainda não passou; o
+   * gestor pode registrar que não aconteceram.
    *
-   * Esta tela sempre filtrou por `chamadaFeita`, então a aula pendente — a
-   * única sobre a qual o gestor tem o que fazer — era invisível para ele. Com
-   * o professor ainda no clube isso era coerente (quem lança é ele); quando o
-   * professor sai, ninguém mais tem caminho, e o dia fica vermelho para
-   * sempre no calendário.
-   *
-   * Só `pendente`: `futura` e `em_andamento` não são pendência de ninguém
-   * ainda, e `cancelada` não vai acontecer.
+   * Só `pendente`: `sem_registro` (anterior à automação) não aguarda nada, e
+   * `futura`, `em_andamento` e `cancelada` também não entram.
    */
   const pendentes = ocorrencias.filter((o) => o.estado === "pendente");
+  /** SPEC-076/D5 — anteriores à automação, sem registro. Só contadas. */
+  const semRegistro = ocorrencias.filter((o) => o.estado === "sem_registro");
   /**
    * SPEC-057/TASK-001/D4 — terminaram depois da ativação da presença
    * automática sem ninguém matriculado nem repondo. Não têm chamada nem
@@ -138,11 +173,11 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
       {!carregando && !erro && comChamada.length === 0 ? (
         <div className="flex items-center gap-3 rounded-lg border border-border p-4 text-sm text-[var(--color-on-surface-variant)]">
           <CalendarCheck className="size-5 shrink-0" aria-hidden="true" />
-          {/* Estado vazio que diz de quem é a ação: sem isso o gestor não
-              sabe se o sistema falhou ou se o professor ainda não lançou. */}
+          {/* Estado vazio que diz como a chamada nasce: sem isso o gestor não
+              sabe se o sistema falhou ou se falta alguém fazer algo. */}
           <span>
-            Nenhuma chamada lançada nos últimos 30 dias. Quem lança é o professor
-            da turma, pelo app dele.
+            Nenhuma chamada nos últimos 30 dias. A chamada é fechada
+            automaticamente depois de cada aula.
           </span>
         </div>
       ) : null}
@@ -152,15 +187,12 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
       {pendentes.length > 0 ? (
         <div className="flex flex-col gap-2 rounded-lg border border-[var(--color-outline-variant)] p-4">
           <h3 className="text-sm font-semibold text-[var(--color-on-surface)]">
-            Aulas sem chamada ({pendentes.length})
+            Aguardando fechamento ({pendentes.length})
           </h3>
-          {/* Diz de quem é a ação primeiro, e só depois oferece a saída: o
-              caminho normal continua sendo o professor lançar a chamada. */}
           <p className="text-xs text-[var(--color-on-surface-variant)]">
-            Já terminaram e ninguém registrou. Quem lança a chamada é o
-            professor, pelo app dele — mas se a aula não chegou a acontecer
-            (chuva, clube fechado, professor que saiu), registre aqui para ela
-            parar de aparecer como pendente.
+            Já terminaram, e o fechamento automático ainda não passou — ele
+            registra a chamada sozinho. Se a aula não chegou a acontecer
+            (chuva, clube fechado), registre aqui.
           </p>
           <ul className="flex flex-col gap-2">
             {pendentes.map((o) => (
@@ -196,7 +228,16 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
             ? "1 aula sem participantes"
             : `${semParticipantes.length} aulas sem participantes`}{" "}
           no período — ninguém matriculado nem repondo, então não há chamada a
-          lançar.
+          fechar.
+        </p>
+      ) : null}
+
+      {semRegistro.length > 0 ? (
+        <p className="text-xs text-[var(--color-on-surface-variant)]">
+          {semRegistro.length === 1
+            ? "1 aula sem registro"
+            : `${semRegistro.length} aulas sem registro`}{" "}
+          no período — anteriores à presença automática.
         </p>
       ) : null}
 
@@ -241,6 +282,23 @@ export function PresencasTurma({ turmaId }: { turmaId: string }) {
                   aria-hidden="true"
                 />
               </button>
+
+              {/* SPEC-076/D3 — fora do botão da linha (botão dentro de botão
+                  não existe) e visível sem abrir: é a ação desta linha. */}
+              {o.desfazerNaoHouveAte ? (
+                <div className="border-t border-border px-4 py-2">
+                  <button
+                    type="button"
+                    disabled={registrando === o.ocupacaoId}
+                    onClick={() => void desfazer(o.ocupacaoId)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+                  >
+                    {registrando === o.ocupacaoId
+                      ? "Desfazendo..."
+                      : `Desfazer (até ${formatarPrazo(o.desfazerNaoHouveAte)})`}
+                  </button>
+                </div>
+              ) : null}
 
               {abertaAqui ? (
                 <div className="flex flex-col gap-2 border-t border-border p-4">
@@ -319,7 +377,7 @@ function Proveniencia({
 }) {
   let texto: string | null = null;
   if (origem === "automatica") {
-    texto = "Fechada automaticamente — presenças presumidas, sem revisão do professor.";
+    texto = "Fechada automaticamente — quem avisou falta pelo app aparece como Faltou.";
   } else if (origemInicial === "automatica") {
     texto = `Fechada automaticamente e revisada${registradoPor ? ` por ${registradoPor}` : ""}.`;
   } else if (origem === "legada_humana") {

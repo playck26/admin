@@ -1557,6 +1557,24 @@ export async function registrarNaoHouveAula(
   return (await res.json()) as { ocupacaoId: string; completude: string };
 }
 
+/**
+ * SPEC-076/D3 — **desfazer o "a aula não aconteceu"**, pelo gestor.
+ *
+ * Sobre chamada automática, o servidor a refecha com o instante de antes (a
+ * janela não recomeça); sobre registro humano, apaga o cabeçalho. Sem
+ * `nao_houve` gravado não escreve nada e devolve o estado atual.
+ */
+export async function desfazerNaoHouveAula(
+  turmaId: string,
+  ocupacaoId: string,
+): Promise<components["schemas"]["NaoHouveDesfeitoResponseDto"]> {
+  const res = await authFetch(
+    `/classes/${turmaId}/presencas/${ocupacaoId}/nao-houve`,
+    { method: "DELETE" },
+  );
+  return (await res.json()) as components["schemas"]["NaoHouveDesfeitoResponseDto"];
+}
+
 // ---------------------------------------------------------------------
 // SPEC-015 — frequência (TASK-001, 002, 003)
 //
