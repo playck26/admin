@@ -1,13 +1,24 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-09-25** (era 2026-09-17).
-**Conferido por comando em 2026-09-25, com a SPEC-075/TASK-005:** **56 arquivos
-de teste, 531 casos** (`vitest run --pool=threads`, sozinho e em série). *A
-TASK-005 soma **um arquivo de teste** (`levels-manager.test.tsx`, 10 casos) e
-**nenhum componente**: a edição de nível e a frase do primeiro entraram no
-`levels-manager` que existia. Os números do bloco abaixo (50/448/72) são de
-2026-09-17 e ficaram para trás de quatro specs — a contagem desta linha é a
-vigente.*
+**Fonte: análise direta do código.** Data: **2026-09-26** (era 2026-09-25).
+**Conferido por comando em 2026-09-26:** **57 arquivos de teste, 538 casos**
+(`vitest run --pool=threads`, sozinho e em série). *A SPEC-075/TASK-005 somou
+`levels-manager.test.tsx` (10 casos); a ADR-027 somou
+`turmas-aula-lotada.test.tsx` (5) e 2 casos no `aula-da-turma-dialog.test.tsx`,
+um módulo (`lib/aula-lotada.ts`) e **nenhum componente**. Os números do bloco
+abaixo (50/448/72) são de 2026-09-17 e ficaram para trás — a contagem desta
+linha é a vigente.*
+
+**A tela do gestor não anuncia a vaga que a alocação recusa (ADR-027).** A
+alocação passou a exigir que o aluno caiba em todas as próximas aulas, contando
+as reposições (`409 AULA_LOTADA`). A lista e o detalhe da turma trazem
+`proximaAulaLotada`: `/turmas` escreve "Lotada em dd/mm" ao lado de "3/8", e a
+página da turma e o diálogo da aula (agenda) avisam antes de alocar — **sem
+bloquear**, porque quem já é visitante daquela aula ainda cabe, e só o servidor
+sabe disso. O texto mora em `lib/aula-lotada.ts` (data por fatia, nunca `new
+Date`, que em UTC−3 volta um dia). **E o diálogo da aula deixou de engolir o
+dia:** ele trocava todo `409` ao alocar pelo texto de "vaga de matrícula"; o
+`AULA_LOTADA` agora passa a mensagem do servidor inteira.
 
 **`/pessoas/niveis` edita nível (SPEC-075/D8).** Antes só criava e apagava; o
 `updateLevel` existia no `api-client` sem tela. Agora cada linha tem **Editar**

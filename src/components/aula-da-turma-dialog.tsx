@@ -16,6 +16,7 @@ import {
   type VisitanteDaOcorrencia,
 } from "@/lib/api-client";
 import { rotuloDaQuadra } from "@/lib/visual-da-agenda";
+import { avisoDeAulaLotada } from "@/lib/aula-lotada";
 
 /**
  * O texto do `409` de capacidade ao alocar. O servidor responde uma frase de
@@ -98,7 +99,15 @@ export function AulaDaTurmaDialog({
       await carregar();
       onMudou();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && chave === "alocar") {
+      // `AULA_LOTADA` (ADR-027) passa a mensagem do servidor inteira: ela diz
+      // o DIA que lotaria. Trocá-la pelo texto de "vaga de matrícula" diria ao
+      // gestor o motivo errado — a turma TEM vaga de matrícula.
+      if (
+        e instanceof ApiError &&
+        e.status === 409 &&
+        chave === "alocar" &&
+        e.code !== "AULA_LOTADA"
+      ) {
         setErro(SEM_VAGA_DE_MATRICULA);
       } else {
         setErro(e instanceof ApiError ? e.message : "Não foi possível concluir.");
@@ -205,6 +214,15 @@ export function AulaDaTurmaDialog({
             ))}
           </ul>
         )}
+
+        {turma?.proximaAulaLotada &&
+        turma.alunosAlocados < turma.capacidade ? (
+          // ADR-027 — antes de o gestor tentar: a turma tem vaga de matrícula,
+          // mas uma próxima aula não comporta um aluno novo.
+          <p role="status" className="mb-2 text-sm text-[var(--color-error)]">
+            {avisoDeAulaLotada(turma.proximaAulaLotada)}
+          </p>
+        ) : null}
 
         <form
           className="mb-4 flex flex-col gap-2"

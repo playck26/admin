@@ -3477,7 +3477,7 @@ export interface components {
             /** @example 19:00 */
             horaFim: string;
         };
-        TurmaResponseDto: {
+        TurmaComLotacaoResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
@@ -3497,9 +3497,15 @@ export interface components {
             status: "ativa" | "inativa";
             /** @example 4 */
             alunosAlocados: number;
+            /**
+             * Format: date
+             * @description A primeira aula que ainda não terminou em que um aluno novo NÃO caberia, contando as reposições marcadas (ADR-027). Só vem preenchida quando a turma tem vaga de matrícula (`alunosAlocados < capacidade`) — sem vaga, a turma já está cheia e isto não acrescenta nada. `null` quando cabe. Quem já é visitante daquela aula ainda pode ser alocado: a alocação decide com o aluno de verdade.
+             * @example 2026-10-03
+             */
+            proximaAulaLotada: string | null;
         };
         TurmaPaginadaResponseDto: {
-            data: components["schemas"]["TurmaResponseDto"][];
+            data: components["schemas"]["TurmaComLotacaoResponseDto"][];
             /** @example 1 */
             page: number;
             /** @example 20 */
@@ -3522,6 +3528,27 @@ export interface components {
             quadraId: string;
             encontros: components["schemas"]["EncontroDto"][];
             capacidade: number;
+        };
+        TurmaResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** @example Turma Iniciante */
+            nome: string;
+            /** Format: uuid */
+            nivelId: string | null;
+            /** Format: uuid */
+            professorId: string | null;
+            /** Format: uuid */
+            quadraId: string;
+            encontros: components["schemas"]["TurmaEncontroResponseDto"][];
+            /** @example 10 */
+            capacidade: number;
+            /** @enum {string} */
+            status: "ativa" | "inativa";
+            /** @example 4 */
+            alunosAlocados: number;
         };
         AlunoDaTurmaResponseDto: {
             /** Format: uuid */
@@ -3549,6 +3576,12 @@ export interface components {
             status: "ativa" | "inativa";
             /** @example 4 */
             alunosAlocados: number;
+            /**
+             * Format: date
+             * @description A primeira aula que ainda não terminou em que um aluno novo NÃO caberia, contando as reposições marcadas (ADR-027). Só vem preenchida quando a turma tem vaga de matrícula (`alunosAlocados < capacidade`) — sem vaga, a turma já está cheia e isto não acrescenta nada. `null` quando cabe. Quem já é visitante daquela aula ainda pode ser alocado: a alocação decide com o aluno de verdade.
+             * @example 2026-10-03
+             */
+            proximaAulaLotada: string | null;
             alunos: components["schemas"]["AlunoDaTurmaResponseDto"][];
         };
         EventoDeTurmaResponseDto: {

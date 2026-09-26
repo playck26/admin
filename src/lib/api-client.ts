@@ -106,6 +106,9 @@ export type PaymentConfig =
  */
 export type EncontroDaTurma = components["schemas"]["TurmaEncontroResponseDto"];
 export type SchoolClass = components["schemas"]["TurmaResponseDto"];
+/** A turma como a LISTA e o detalhe a trazem: com `proximaAulaLotada` (ADR-027). */
+export type SchoolClassComLotacao =
+  components["schemas"]["TurmaComLotacaoResponseDto"];
 export type SchoolClassStudent =
   components["schemas"]["AlunoDaTurmaResponseDto"];
 /**
@@ -852,9 +855,9 @@ export async function listBookingEvents(
 export async function listClasses(
   page = 1,
   pageSize = 20,
-): Promise<Paginated<SchoolClass>> {
+): Promise<Paginated<SchoolClassComLotacao>> {
   const res = await authFetch(`/classes?page=${page}&pageSize=${pageSize}`);
-  return (await res.json()) as Paginated<SchoolClass>;
+  return (await res.json()) as Paginated<SchoolClassComLotacao>;
 }
 
 export async function createClass(dto: CreateClassDto): Promise<SchoolClass> {

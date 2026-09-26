@@ -167,6 +167,44 @@ describe("AulaDaTurmaDialog (D17/D18)", () => {
     );
   });
 
+  /**
+   * ADR-027 (achado A-04) — o `409 AULA_LOTADA` NÃO é "sem vaga de
+   * matrícula": a turma tem vaga, e o que falta é lugar num dia. Antes, todo
+   * `409` ao alocar virava o texto das faltas avisadas, e o dia sumia.
+   */
+  it("409 AULA_LOTADA ao alocar: mostra a mensagem do servidor, com o dia — e não o texto de vaga de matrícula", async () => {
+    abrir();
+    const doServidor =
+      "A aula de 03/10 desta turma já está lotada, contando as reposições marcadas. Alocar agora deixaria esse dia acima da capacidade.";
+    api.allocateStudentInClass.mockRejectedValue(
+      new ApiError(409, doServidor, undefined, "AULA_LOTADA"),
+    );
+
+    await screen.findByRole("option", { name: "Novo Aluno" });
+    fireEvent.change(screen.getByLabelText("Adicionar aluno"), {
+      target: { value: "n-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar à turma" }));
+
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent(doServidor);
+    expect(alerta).not.toHaveTextContent("A turma não tem vaga de matrícula");
+  });
+
+  it("avisa ANTES de alocar quando a turma tem vaga mas uma próxima aula está lotada", async () => {
+    api.getClass.mockResolvedValue({
+      ...detalhe([{ alunoId: "a-1", nome: "Bruno" }]),
+      alunosAlocados: 1,
+      proximaAulaLotada: "2026-10-03",
+    });
+    abrir();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "A aula de 03/10 já está lotada, contando as reposições marcadas: um aluno novo só cabe depois dela.",
+    );
+    // E não bloqueia: quem já é visitante daquela aula ainda cabe.
+    expect(screen.getByLabelText("Adicionar aluno")).not.toBeDisabled();
+  });
+
   it("sucesso ao remover: recarrega o detalhe e avisa a agenda", async () => {
     const { onMudou } = abrir();
     api.removeStudentFromClass.mockResolvedValue(undefined);
