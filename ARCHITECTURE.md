@@ -1,7 +1,26 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-09-26** (era 2026-09-25).
-**Conferido por comando em 2026-09-26:** **57 arquivos de teste, 538 casos**
+**Fonte: análise direta do código.** Data: **2026-09-28** (era 2026-09-26).
+**Conferido por comando em 2026-09-28, na branch do M1 da SPEC-079
+(`spec079/nivel-obrigatorio`):** **58 arquivos de teste, 557 casos**
+(`vitest run --pool=threads`, sozinho). *+1 arquivo (`create-class-form.test.tsx`,
+4) e +3 casos no `class-manager-status.test.tsx`; nenhum componente novo.*
+
+**Toda turma tem nível (SPEC-079, ADR-029).** Criar e editar turma não oferecem
+mais "Sem nível": a criação abre no **primeiro nível** do clube, pelo mesmo
+`primeiroNivel` de `/pessoas/niveis` (a ordem do servidor), e o pedido sempre
+leva o `nivelId`; clube sem nível deixa o seletor desabilitado ("Nenhum nível
+cadastrado") e o envio bloqueado. A edição mostra o nível da turma e, se ela
+ainda não tiver um (só antes da passagem do Back), **não manda** `nivelId` —
+sem o campo o servidor não mexe no nível; `null` pediria para tirá-lo, e o Back
+recusa. **Armadilha do Radix, achada pelo teste:** o `<select>` nativo escondido
+do `Select` grava o valor novo e despacha `change`; se a opção ainda não se
+registrou — e na criação ela se registra no mesmo render em que os níveis
+chegam —, ele devolve `""` ao `onValueChange` e apaga o nível escolhido, no
+navegador também. Por isso o `Select` de nível da criação tem `key` e remonta
+com o valor já definido (sem mudança, o Radix não despacha nada — é o caminho
+da edição, que só monta com a turma carregada).
+**Conferido por comando em 2026-09-26:** 57 arquivos de teste, 538 casos
 (`vitest run --pool=threads`, sozinho e em série). *A SPEC-075/TASK-005 somou
 `levels-manager.test.tsx` (10 casos); a ADR-027 somou
 `turmas-aula-lotada.test.tsx` (5) e 2 casos no `aula-da-turma-dialog.test.tsx`,
