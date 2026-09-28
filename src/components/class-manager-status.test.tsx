@@ -20,6 +20,7 @@ import { ClassManager } from "./class-manager";
  */
 const getClass = vi.hoisted(() => vi.fn());
 const updateClass = vi.hoisted(() => vi.fn());
+const listLevels = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real =
@@ -31,7 +32,7 @@ vi.mock("@/lib/api-client", async () => {
     getClass,
     updateClass,
     listCourts: vi.fn().mockResolvedValue({ data: [], total: 0 }),
-    listLevels: vi.fn().mockResolvedValue([]),
+    listLevels,
     listTeachers: vi.fn().mockResolvedValue({ data: [], total: 0 }),
     listStudents: vi.fn().mockResolvedValue({ data: [], total: 0 }),
     listarAulasCanceladas: vi.fn().mockResolvedValue([]),
@@ -43,13 +44,19 @@ vi.mock("@/components/turma-chamada-abas", () => ({
   TurmaChamadaAbas: () => null,
 }));
 
+const NIVEIS = [
+  { id: "n-1", companyId: "c-1", nome: "Iniciante", ordem: 0, createdAt: "2026-01-01T00:00:00.000Z" },
+  { id: "n-2", companyId: "c-1", nome: "Intermediário", ordem: 1, createdAt: "2026-01-01T00:00:00.000Z" },
+];
+
 function turma(status: "ativa" | "inativa") {
   return {
     id: "t-1",
     nome: "Turma A",
     quadraId: "q-1",
     quadraNome: "Quadra 1",
-    nivelId: null,
+    // SPEC-079 — toda turma tem nível.
+    nivelId: "n-2",
     professorId: null,
     capacidade: 10,
     status,
@@ -62,6 +69,7 @@ function turma(status: "ativa" | "inativa") {
 beforeEach(() => {
   vi.clearAllMocks();
   updateClass.mockResolvedValue(undefined);
+  listLevels.mockResolvedValue(NIVEIS);
 });
 
 describe("ClassManager — inativar e reativar", () => {
@@ -146,5 +154,61 @@ describe("ClassManager — inativar e reativar", () => {
     expect(
       await screen.findByText(/fora do horário de funcionamento/),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-079/AC-006 — **editar turma não oferece mais "Sem nível"** (decisão do
+ * Israel de 2026-09-28: toda turma tem nível). O seletor mostra o nível da
+ * turma, e salvar sem mexer nele manda o mesmo nível.
+ *
+ * O caso da turma antiga ainda sem nível só existe antes da passagem (a
+ * migração A da SPEC-079 dá o primeiro nível a todas): a tela não inventa um
+ * nível, e NÃO manda `nivelId` — sem o campo, o servidor não mexe no nível
+ * (AC-004). Mandar `null` seria pedir para tirar o nível, e o Back recusa.
+ */
+describe("SPEC-079/AC-006 — editar turma: sem \"Sem nível\"", () => {
+  it("o seletor mostra o nível da turma, e as opções são só os níveis do clube", async () => {
+    getClass.mockResolvedValue(turma("ativa"));
+    render(<ClassManager id="t-1" />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nível")).toHaveTextContent("Intermediário"),
+    );
+    fireEvent.click(screen.getByLabelText("Nível"));
+
+    const opcoes = await screen.findAllByRole("option");
+    expect(opcoes.map((o) => o.textContent)).toEqual([
+      "Iniciante",
+      "Intermediário",
+    ]);
+    expect(screen.queryByText("Sem nível")).toBeNull();
+  });
+
+  it("salvar sem mexer no nível manda o nível da turma", async () => {
+    getClass.mockResolvedValue(turma("ativa"));
+    render(<ClassManager id="t-1" />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nível")).toHaveTextContent("Intermediário"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Salvar/ }));
+
+    await waitFor(() => expect(updateClass).toHaveBeenCalledTimes(1));
+    expect(updateClass.mock.calls[0][1]).toMatchObject({ nivelId: "n-2" });
+  });
+
+  it("turma antiga sem nível: não inventa nível e não manda `nivelId`", async () => {
+    getClass.mockResolvedValue({ ...turma("ativa"), nivelId: null });
+    render(<ClassManager id="t-1" />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nível")).toHaveTextContent("Selecione um nível"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Salvar/ }));
+
+    await waitFor(() => expect(updateClass).toHaveBeenCalledTimes(1));
+    const corpo = updateClass.mock.calls[0][1] as Record<string, unknown>;
+    expect(corpo.nivelId).toBeUndefined();
   });
 });
