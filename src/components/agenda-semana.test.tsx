@@ -38,6 +38,9 @@ const api = vi.hoisted(() => ({
   getVisitantesDaOcorrencia: vi.fn(),
   allocateStudentInClass: vi.fn(),
   removeStudentFromClass: vi.fn(),
+  // SPEC-077/TASK-004 — a "Nova reserva" aberta pelo vão monta o seletor de
+  // adicionais, que pede a disponibilidade do horário.
+  adicionaisDisponiveis: vi.fn(),
 }));
 vi.mock("@/lib/api-client", () => ({
   ...api,
@@ -255,5 +258,78 @@ describe("AgendaSemana — SPEC-057/TASK-005 (card 5349)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancelar esta aula" }));
     expect(await screen.findByRole("dialog", { name: "Cancelar aula" })).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC-077/TASK-004 — **o que a matriz da SPEC-034 prometia da grade e nenhum
+ * teste afirmava** (034 AC-022; #42 e #43 da 077). O terceiro item da mesma
+ * linha — "Cancelar aula" do item de turma — já tem prova acima, no D18.
+ */
+describe("AgendaSemana — SPEC-077/TASK-004 (034 AC-022)", () => {
+  /** A linha do item: o cabeçalho dela, e a coluna do dia dentro dela. */
+  function ondeEsta(texto: string) {
+    const td = screen.getByText(texto).closest("td") as HTMLTableCellElement;
+    const tr = td.closest("tr") as HTMLTableRowElement;
+    return {
+      hora: tr.querySelector("th")?.textContent,
+      coluna: Array.from(tr.children).indexOf(td),
+    };
+  }
+
+  it("#42: cada item fica na célula da SUA hora — dois itens, duas linhas", async () => {
+    api.getAgendaSemana.mockResolvedValue(
+      semana("2026-09-06", [
+        item("a", "09:00", "Pessoa A"),
+        item("b", "14:00", "Pessoa B"),
+      ]),
+    );
+    render(<AgendaSemana />);
+    await screen.findByText("Pessoa A");
+
+    // Coluna 1 = o primeiro dia (a 0 é o cabeçalho das horas).
+    expect(ondeEsta("Pessoa A")).toEqual({ hora: "09h", coluna: 1 });
+    expect(ondeEsta("Pessoa B")).toEqual({ hora: "14h", coluna: 1 });
+  });
+
+  it("#43: com 'todas' o vão fica desabilitado; escolhida a quadra, ele abre a criação com data, hora e QUADRA do vão", async () => {
+    api.getAgendaSemana.mockResolvedValue(
+      semana("2026-09-06", [item("a", "09:00", "Pessoa A")]),
+    );
+    api.listStudents.mockResolvedValue({ data: [{ id: "a-1", nome: "Ana" }], total: 1 });
+    api.adicionaisDisponiveis.mockResolvedValue([]);
+    api.createBooking.mockResolvedValue({ reservas: [] });
+    render(<AgendaSemana />);
+    await screen.findByText("Pessoa A");
+    await screen.findByRole("option", { name: "Q-2 · Mesmo nome" });
+
+    const vao = () =>
+      screen.getByRole("button", { name: "Criar reserva em 2026-09-07 às 10:00" });
+    // "Todas as quadras": a grade não sabe ONDE reservar, e não oferece.
+    expect(vao()).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Quadra"), { target: { value: Q2 } });
+    expect(vao()).toBeEnabled();
+    fireEvent.click(vao());
+
+    expect(await screen.findByRole("dialog", { name: "Nova reserva" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Data")).toHaveValue("2026-09-07");
+    expect(screen.getByLabelText("Início")).toHaveValue("10:00");
+    expect(screen.getByLabelText("Fim")).toHaveValue("11:00");
+
+    // A quadra não é campo do formulário: ela vai no pedido. Por isso o caso
+    // chega ao envio — e afere que é a Q2 escolhida, e não a primeira da lista.
+    await screen.findByRole("option", { name: "Ana" });
+    fireEvent.change(screen.getByLabelText("Aluno"), { target: { value: "a-1" } });
+    const salvar = screen.getByRole("button", { name: "Salvar" });
+    await waitFor(() => expect(salvar).toBeEnabled());
+    fireEvent.click(salvar);
+    await waitFor(() => expect(api.createBooking).toHaveBeenCalled());
+    expect(api.createBooking.mock.calls[0][0]).toMatchObject({
+      quadraId: Q2,
+      data: "2026-09-07",
+      slots: [{ horaInicio: "10:00", horaFim: "11:00" }],
+      alunoId: "a-1",
+    });
   });
 });
