@@ -41,7 +41,8 @@ function turma(over: Record<string, unknown> = {}) {
     id: "t-1",
     companyId: "c-1",
     nome: "Turma A",
-    nivelId: null,
+    // SPEC-079 — toda turma tem nível. Irrelevante ao que este arquivo prova.
+    nivelId: "n-1",
     professorId: null,
     quadraId: "q-1",
     capacidade: 1,

@@ -22,8 +22,8 @@ import {
   paraEnvio,
   type EncontroForm,
 } from "@/components/encontros-field";
+import { primeiroNivel } from "@/components/levels-manager";
 
-const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
 
 export function CreateClassForm() {
@@ -35,7 +35,13 @@ export function CreateClassForm() {
 
   const [nome, setNome] = useState("");
   const [quadraId, setQuadraId] = useState("");
-  const [nivelId, setNivelId] = useState(SEM_NIVEL);
+  // SPEC-079/D5 — **toda turma tem nível** (decisão do Israel de 2026-09-28).
+  // Não há mais "Sem nível": o seletor abre no primeiro nível do clube, na
+  // mesma ordem que o servidor usa (INV-075c, `primeiroNivel`). Clube sem
+  // nível nenhum deixa o seletor desabilitado e o envio bloqueado — e só
+  // existe até o Back recusar apagar o último nível (SPEC-079/AC-015).
+  const [nivelId, setNivelId] = useState("");
+  const [niveisCarregados, setNiveisCarregados] = useState(false);
   const [professorId, setProfessorId] = useState(SEM_PROFESSOR);
   // SPEC-019/TASK-004 — os três campos soltos viraram uma lista. A turma
   // nasce com UM encontro, que é o caso comum e mantém a tela idêntica à de
@@ -52,6 +58,8 @@ export function CreateClassForm() {
       .then(([courtsData, levelsData, teachersData]) => {
         setCourts(courtsData.data);
         setLevels(levelsData);
+        setNivelId(primeiroNivel(levelsData)?.id ?? "");
+        setNiveisCarregados(true);
         setTeachers(teachersData.data);
       })
       .catch((err: unknown) => {
@@ -67,7 +75,7 @@ export function CreateClassForm() {
       await createClass({
         nome,
         quadraId,
-        nivelId: nivelId === SEM_NIVEL ? undefined : nivelId,
+        nivelId,
         professorId: professorId === SEM_PROFESSOR ? undefined : professorId,
         encontros: paraEnvio(encontros),
         capacidade: Number(capacidade),
@@ -123,12 +131,32 @@ export function CreateClassForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="nivel">Nível</Label>
-              <Select value={nivelId} onValueChange={setNivelId} disabled={loading}>
+              {/*
+                A `key` não é enfeite. O Radix mantém um `<select>` nativo
+                escondido e, quando o `value` MUDA, grava nele e despacha
+                `change`; se a opção ainda não se registrou — e ela se registra
+                no mesmo render em que os níveis chegam —, o nativo fica em ""
+                e o `onChange` dele devolve "" ao `onValueChange`, apagando o
+                primeiro nível que acabamos de escolher. Remontando com o valor
+                já definido não há mudança, e o Radix não despacha nada: é o
+                mesmo caminho da edição, que só monta com a turma carregada.
+              */}
+              <Select
+                key={niveisCarregados ? "niveis" : "carregando"}
+                value={nivelId}
+                onValueChange={setNivelId}
+                disabled={loading || levels.length === 0}
+              >
                 <SelectTrigger id="nivel" className="h-11 w-full px-4">
-                  <SelectValue placeholder="Sem nível" />
+                  <SelectValue
+                    placeholder={
+                      niveisCarregados && levels.length === 0
+                        ? "Nenhum nível cadastrado"
+                        : "Selecione um nível"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={SEM_NIVEL}>Sem nível</SelectItem>
                   {levels.map((nivel) => (
                     <SelectItem key={nivel.id} value={nivel.id}>
                       {nivel.nome}
@@ -186,7 +214,7 @@ export function CreateClassForm() {
             submitLabel="Criar turma"
             loadingLabel="Criando..."
             loading={loading}
-            submitDisabled={!quadraId}
+            submitDisabled={!quadraId || !nivelId}
             onCancel={() => router.push("/turmas")}
           />
         </form>

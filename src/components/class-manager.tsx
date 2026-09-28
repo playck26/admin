@@ -34,7 +34,6 @@ import { TurmaChamadaAbas } from "@/components/turma-chamada-abas";
 import { AulasCanceladasDaTurma } from "@/components/aulas-canceladas-da-turma";
 import { avisoDeAulaLotada } from "@/lib/aula-lotada";
 
-const SEM_NIVEL = "sem-nivel";
 const SEM_PROFESSOR = "sem-professor";
 
 export function ClassManager({ id }: { id: string }) {
@@ -46,7 +45,11 @@ export function ClassManager({ id }: { id: string }) {
 
   const [nome, setNome] = useState("");
   const [quadraId, setQuadraId] = useState("");
-  const [nivelId, setNivelId] = useState(SEM_NIVEL);
+  // SPEC-079/D5 — sem "Sem nível": toda turma tem nível. Vazio aqui só
+  // enquanto a turma carrega (ou numa turma antiga ainda sem nível, antes da
+  // passagem), e vazio não vai no pedido — o servidor não mexe no nível.
+  const [nivelId, setNivelId] = useState("");
+  const [niveisCarregados, setNiveisCarregados] = useState(false);
   const [professorId, setProfessorId] = useState(SEM_PROFESSOR);
   // SPEC-019/TASK-004 — os três campos soltos viraram uma lista.
   const [encontros, setEncontros] = useState<EncontroForm[]>([
@@ -67,7 +70,7 @@ export function ClassManager({ id }: { id: string }) {
     setTurma(turmaData);
     setNome(turmaData.nome);
     setQuadraId(turmaData.quadraId);
-    setNivelId(turmaData.nivelId ?? SEM_NIVEL);
+    setNivelId(turmaData.nivelId ?? "");
     setProfessorId(turmaData.professorId ?? SEM_PROFESSOR);
     // `?? []` seguido de fallback para um encontro vazio: turma sem
     // encontro nenhum não deveria existir (INV-051), mas se existir a tela
@@ -93,6 +96,7 @@ export function ClassManager({ id }: { id: string }) {
       .then(([, courtsData, levelsData, teachersData]) => {
         setCourts(courtsData.data);
         setLevels(levelsData);
+        setNiveisCarregados(true);
         setTeachers(teachersData.data);
       })
       .catch((err: unknown) => {
@@ -109,7 +113,7 @@ export function ClassManager({ id }: { id: string }) {
       await updateClass(id, {
         nome,
         quadraId,
-        nivelId: nivelId === SEM_NIVEL ? undefined : nivelId,
+        nivelId: nivelId || undefined,
         professorId: professorId === SEM_PROFESSOR ? undefined : professorId,
         encontros: paraEnvio(encontros),
         capacidade: Number(capacidade),
@@ -258,12 +262,21 @@ export function ClassManager({ id }: { id: string }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="nivel">Nível</Label>
-                <Select value={nivelId} onValueChange={setNivelId} disabled={editLoading}>
+                <Select
+                  value={nivelId}
+                  onValueChange={setNivelId}
+                  disabled={editLoading || levels.length === 0}
+                >
                   <SelectTrigger id="nivel" className="h-10 w-full px-3">
-                    <SelectValue placeholder="Sem nível" />
+                    <SelectValue
+                      placeholder={
+                        niveisCarregados && levels.length === 0
+                          ? "Nenhum nível cadastrado"
+                          : "Selecione um nível"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={SEM_NIVEL}>Sem nível</SelectItem>
                     {levels.map((nivel) => (
                       <SelectItem key={nivel.id} value={nivel.id}>
                         {nivel.nome}
