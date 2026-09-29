@@ -21,9 +21,22 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-client", async () => {
+  // **Sem rede neste teste** (2026-09-29). O `SeletorDeCatalogo` e o
+  // `HorarioQuadraSection`, dentro da ficha da quadra, pediam `/court-sports`,
+  // `/court-categories` e `/courts/:id/horarios` de verdade — o `vi.mock` espalha
+  // o módulo real. Sem API no teste o pedido falhava, e a falha chegava quando
+  // chegava, às vezes depois do fim do teste (a causa do "window is not defined"
+  // que derrubou o CI do Cliente em 2026-09-29). A rejeição imediata é o MESMO
+  // caminho, sem a espera.
+  const semRede = () => Promise.reject(new TypeError("sem rede no teste"));
   const real =
     await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
-  return { ...real, ...api };
+  return {
+    ...real,
+    listarCatalogo: semRede,
+    getHorariosQuadra: semRede,
+    ...api,
+  };
 });
 
 const QUADRA = {
