@@ -1,3 +1,4 @@
+import { AbasDoGrupo } from "@/components/abas-do-grupo";
 import { CatalogoDeQuadraManager } from "@/components/catalogo-de-quadra-manager";
 
 /**
@@ -10,10 +11,13 @@ import { CatalogoDeQuadraManager } from "@/components/catalogo-de-quadra-manager
  *
  * Fica sob `/quadras` porque é dali que se chega — quem vem cadastrar uma
  * quadra e não encontra o esporte na lista precisa de um caminho curto.
+ *
+ * **SPEC-080 — é a segunda aba do grupo Quadras** (card 5360).
  */
 export default function CatalogosDeQuadraPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
+      <AbasDoGrupo grupo="quadras" />
       <CatalogoDeQuadraManager
         catalogo="court-sports"
         titulo="Esportes"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Layers, PackagePlus, Tags } from "lucide-react";
+import { ArrowUpRight, PackagePlus } from "lucide-react";
 import { TennisCourtIcon } from "@/components/icons/tennis-court-icon";
 import { NomesDeTipoCard } from "@/components/nomes-de-tipo-card";
 import { listCourts } from "@/lib/api-client";
@@ -32,6 +32,15 @@ import { listCourts } from "@/lib/api-client";
  *
  * **Nada muda de endereço, nome ou permissão:** é agrupamento visual, que foi
  * exatamente o que o card pediu.
+ *
+ * **SPEC-080 (o mesmo card, reaberto em 2026-09-29) — dois itens, e as abas
+ * dentro.** Os títulos de grupo não bastaram: o Israel abriu a produção, viu
+ * os quatro cartões de sempre e pediu *"apenas 2 itens na primeira página, e
+ * na segunda vai estar os dois agrupados, um em cada aba"*. Agora são dois
+ * cartões; Esportes e pisos e Tipos de adicional viraram a segunda aba da
+ * página de cada um (`abas-do-grupo.tsx`). O texto de cada cartão nomeia as
+ * duas abas, para a segunda não ficar escondida. O "Nomes para o cliente"
+ * continua embaixo (decisão I2).
  */
 
 /** O `back` pagina até 100. Um clube tem poucas quadras; acima disso, a contagem é do total. */
@@ -60,46 +69,20 @@ export function ReservasHub() {
     };
   }, []);
 
-  const grupos = [
+  const cartoes = [
     {
+      href: "/quadras",
       titulo: "Quadras",
-      resumo: "O espaço físico e o que se joga nele.",
-      cartoes: [
-        {
-          href: "/quadras",
-          titulo: "Quadras",
-          texto: "Cadastro, preço por hora, horário, foto e as reservas de cada uma.",
-          Icon: TennisCourtIcon,
-          detalhe: resumoDasQuadras,
-        },
-        {
-          href: "/quadras/catalogos",
-          titulo: "Esportes e pisos",
-          texto: "O que se joga nas suas quadras. Vira filtro no app do aluno.",
-          Icon: Tags,
-          detalhe: null,
-        },
-      ],
+      texto: "Cadastro, preço, horário e foto de cada quadra, e os esportes e pisos.",
+      Icon: TennisCourtIcon,
+      detalhe: resumoDasQuadras,
     },
     {
+      href: "/reservas/adicionais",
       titulo: "Adicionais",
-      resumo: "O que o aluno pode alugar junto, e como isso se organiza.",
-      cartoes: [
-        {
-          href: "/reservas/adicionais",
-          titulo: "Adicionais",
-          texto: "O que o aluno pode alugar junto com a reserva, com preço e estoque.",
-          Icon: PackagePlus,
-          detalhe: null,
-        },
-        {
-          href: "/reservas/tipos",
-          titulo: "Tipos de adicional",
-          texto: "Como os adicionais se agrupam: raquetes, bolas, toalhas.",
-          Icon: Layers,
-          detalhe: null,
-        },
-      ],
+      texto: "O que o aluno aluga junto com a reserva, e os tipos que os organizam.",
+      Icon: PackagePlus,
+      detalhe: null,
     },
   ];
 
@@ -112,20 +95,8 @@ export function ReservasHub() {
         </p>
       </div>
 
-      {grupos.map((grupo) => (
-        <section key={grupo.titulo} aria-labelledby={`grupo-${grupo.titulo}`}>
-          <h2
-            id={`grupo-${grupo.titulo}`}
-            className="text-xs font-extrabold tracking-[0.12em] text-[var(--color-on-surface-variant)] uppercase"
-          >
-            {grupo.titulo}
-          </h2>
-          <p className="mt-0.5 text-sm text-[var(--color-on-surface-variant)]">
-            {grupo.resumo}
-          </p>
-
-          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            {grupo.cartoes.map(({ href, titulo, texto, Icon, detalhe }) => (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {cartoes.map(({ href, titulo, texto, Icon, detalhe }) => (
           <Link
             key={href}
             href={href}
@@ -153,9 +124,7 @@ export function ReservasHub() {
             </span>
           </Link>
             ))}
-          </div>
-        </section>
-      ))}
+      </div>
 
       <NomesDeTipoCard />
     </div>
