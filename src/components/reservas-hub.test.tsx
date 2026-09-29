@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Court } from "@/lib/api-client";
 import { ReservasHub } from "./reservas-hub";
@@ -62,15 +62,8 @@ describe("ReservasHub — SPEC-053/AC-013", () => {
     expect(await screen.findByText("2 ativas")).toBeInTheDocument();
   });
 
-  it("mostra o cartão Esportes e pisos, levando a /quadras/catalogos", async () => {
-    listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
-
-    render(<ReservasHub />);
-
-    expect(
-      await screen.findByRole("link", { name: /Esportes e pisos/ }),
-    ).toHaveAttribute("href", "/quadras/catalogos");
-  });
+  // SPEC-080 (2026-09-29): o cartão "Esportes e pisos" saiu desta página —
+  // virou a segunda aba de Quadras (`abas-do-grupo.test.tsx`).
 
   it("a falha da contagem não derruba os cartões", async () => {
     // A contagem é informação de canto; o caminho para o cadastro é o que a
@@ -87,7 +80,9 @@ describe("ReservasHub — SPEC-053/AC-013", () => {
 });
 
 describe("ReservasHub — SPEC-054/D12: os adicionais entram na página Reservas", () => {
-  it("cartões Adicionais e Tipos de adicional, cada um levando à sua tela", async () => {
+  // SPEC-080: "Tipos de adicional" virou a segunda aba de Adicionais; aqui
+  // fica só o cartão que leva ao grupo.
+  it("o cartão Adicionais leva à tela dos adicionais", async () => {
     listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
 
     render(<ReservasHub />);
@@ -95,9 +90,6 @@ describe("ReservasHub — SPEC-054/D12: os adicionais entram na página Reservas
     expect(
       await screen.findByRole("link", { name: /^Adicionais/ }),
     ).toHaveAttribute("href", "/reservas/adicionais");
-    expect(
-      screen.getByRole("link", { name: /Tipos de adicional/ }),
-    ).toHaveAttribute("href", "/reservas/tipos");
   });
 
   it("o cartão Nomes para o cliente fica na própria página", async () => {
@@ -110,54 +102,47 @@ describe("ReservasHub — SPEC-054/D12: os adicionais entram na página Reservas
 });
 
 /**
- * SPEC-061/TASK-001 (card 5360) — **os quatro cartões viraram dois grupos.**
- *
- * O pedido do Israel foi de navegação, não de conteúdo: *"agrupasse os itens
- * adicional e tipo adicionais, assim como quadras com esportes e pisos"*. Por
- * isso o que estes testes protegem é **o agrupamento E a integridade dos
- * quatro destinos** — agrupar não pode ter custado um caminho.
+ * SPEC-080 (card 5360, reaberto em 2026-09-29) — **dois itens, e as abas
+ * dentro.** A SPEC-061 tinha agrupado os quatro cartões sob dois títulos, e o
+ * Israel viu em produção a mesma coisa: *"eu quero apenas 2 itens na primeira
+ * página"*. O que estes testes protegem: são DOIS cartões, cada um nomeia as
+ * duas abas que abre, e o "Nomes para o cliente" continua embaixo (I2). A
+ * outra metade — que as abas levam às duas telas de cada grupo — está em
+ * `abas-do-grupo.test.tsx`.
  */
-describe("SPEC-061 — Reservas em dois grupos", () => {
-  // A contagem das quadras é informação de canto; o que estes testes julgam é
-  // o agrupamento. Uma lista vazia basta e mantém o teste sobre o assunto.
+describe("SPEC-080/AC-001 — a página Reservas tem dois itens", () => {
   beforeEach(() => {
     listCourts.mockResolvedValue({ data: [], page: 1, pageSize: 100, total: 0 });
   });
 
-  it("mostra os dois grupos, com o cartão certo em cada um", async () => {
+  it("exatamente dois cartões: Quadras e Adicionais, cada um levando à primeira aba", async () => {
     render(<ReservasHub />);
+    await screen.findByRole("link", { name: /^Adicionais/ });
 
-    const quadras = await screen.findByRole("region", { name: "Quadras" });
-    expect(within(quadras).getByRole("link", { name: /Quadras/ })).toHaveAttribute(
-      "href",
-      "/quadras",
-    );
-    expect(
-      within(quadras).getByRole("link", { name: /Esportes e pisos/ }),
-    ).toHaveAttribute("href", "/quadras/catalogos");
-
-    const adicionais = await screen.findByRole("region", { name: "Adicionais" });
-    expect(
-      within(adicionais).getByRole("link", { name: /^Adicionais/ }),
-    ).toHaveAttribute("href", "/reservas/adicionais");
-    expect(
-      within(adicionais).getByRole("link", { name: /Tipos de adicional/ }),
-    ).toHaveAttribute("href", "/reservas/tipos");
+    const destinos = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(destinos).toEqual(["/quadras", "/reservas/adicionais"]);
   });
 
-  // Agrupar não pode ter perdido destino: os quatro continuam a um clique.
-  it("os quatro destinos continuam na página", async () => {
+  it("Esportes e pisos e Tipos de adicional não são mais cartão — e cada cartão diz que eles estão lá dentro", async () => {
     render(<ReservasHub />);
-    await screen.findByRole("region", { name: "Quadras" });
 
-    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    for (const destino of [
-      "/quadras",
-      "/quadras/catalogos",
-      "/reservas/adicionais",
-      "/reservas/tipos",
-    ]) {
-      expect(hrefs).toContain(destino);
-    }
+    const quadras = await screen.findByRole("link", { name: /^Quadras/ });
+    const adicionais = screen.getByRole("link", { name: /^Adicionais/ });
+    expect(quadras).toHaveTextContent(/esportes e pisos/);
+    expect(adicionais).toHaveTextContent(/tipos/);
+    expect(
+      screen.queryByRole("link", { name: /^Esportes e pisos/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^Tipos de adicional/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("AC-003: o Nomes para o cliente continua embaixo dos dois", async () => {
+    render(<ReservasHub />);
+
+    expect(await screen.findByLabelText("Nome para Quadra")).toBeInTheDocument();
   });
 });

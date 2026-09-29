@@ -39,6 +39,9 @@ describe("SPEC-053/AC-014 — onde Reservas acende", () => {
     ["/quadras/novo"],
     ["/quadras/abc-123"],
     ["/quadras/catalogos"],
+    // SPEC-080/AC-006 — as duas abas do grupo Adicionais.
+    ["/reservas/adicionais"],
+    ["/reservas/tipos"],
   ])("%s acende Reservas, e só Reservas", (rota) => {
     expect(acesos(rota)).toEqual(["/reservas"]);
   });
