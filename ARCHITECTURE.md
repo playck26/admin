@@ -1,14 +1,23 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
 **Fonte: análise direta do código.** Data: **2026-10-04** (era 2026-09-29).
-**Conferido por comando em 2026-10-04, na branch da SPEC-083
-(`spec083/convite`, TASK-007):** **61 arquivos de teste, 604 casos**
-(`vitest run --pool=threads`, sozinho), **79 componentes** (`.tsx` de
-`src/components`, sem subpastas e sem os `.test.tsx`). *+1 arquivo
+**Estado atual, no head `a828503` da branch da SPEC-083 (`spec083/convite`,
+TASK-007), sem push:** **61 arquivos de teste, 608 casos**
+(`vitest run --pool=threads`, sozinho — a contagem da execução independente da
+validação da implementação, 1ª rodada, em 2026-10-04), **79 componentes**
+(`.tsx` de `src/components`, sem subpastas e sem os `.test.tsx`). A conta:
+604 do `df9a0b3` + 4 do `a828503` (o `it.each` de quatro linhas que amarra
+`situacaoDoConvite` e `enviarConviteDeAcesso` reais às rotas GET/POST de
+aluno e professor do contrato, em `convite-de-acesso-card.test.tsx`) = **608**,
+e nenhum arquivo novo.
+
+*Registro de 2026-10-04, no `df9a0b3` (o primeiro commit da TASK-007):*
+**61 arquivos de teste, 604 casos**, 79 componentes. *+1 arquivo
 (`convite-de-acesso-card.test.tsx`, 19), +17 casos no
 `importar-alunos.test.tsx` (7 → 24), e o `edit-student-status.test.tsx` com
 os mesmos 6 (ganhou o mock do cartão novo, que lê a situação ao montar e
 cairia na trava de rede do setup); +1 componente (`convite-de-acesso-card`).*
+O `convite-de-acesso-card.test.tsx` tem 23 casos no head (19 + 4).
 
 **O convite que chega por e-mail (SPEC-083).** Três mudanças, todas no
 contrato do `back@2463e32` (fixado em `contrato.lock.json`):
