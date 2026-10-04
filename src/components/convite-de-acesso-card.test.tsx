@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type SituacaoDoConvite } from "@/lib/api-client";
+import type { paths } from "@/lib/api-types";
 import { ConviteDeAcessoCard } from "./convite-de-acesso-card";
 import { EditStudentForm } from "./edit-student-form";
 import { EditTeacherForm } from "./edit-teacher-form";
@@ -244,6 +245,98 @@ describe("ConviteDeAcessoCard — o professor sem conta", () => {
       "já pertence a outra conta",
     );
   });
+});
+
+/**
+ * A metade do AC-038 que o mock do componente não alcança: **para onde vai o
+ * pedido, e com que método.** Os casos acima trocam `situacaoDoConvite` e
+ * `enviarConviteDeAcesso` por `vi.fn()` e só conferem os argumentos
+ * (`"professor", "p-1"`); por isso trocar o mapa aluno↔professor, errar o
+ * segmento `convite-de-acesso` ou tirar o `POST` do envio deixava todos verdes
+ * — e, sem o `POST`, o "Enviar convite" faria um GET, receberia a situação
+ * antiga como se tivesse enviado, e nenhum e-mail sairia. Aqui as duas funções
+ * são as REAIS, com o `fetch` simulado, como no multipart do AC-017.
+ */
+describe("SPEC-083/AC-038 — a rota e o método (D9)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // O caminho esperado é amarrado ao contrato gerado: se o Back renomear a
+  // rota, o `tsc` reprova esta tabela antes de o teste rodar.
+  type RotaDoContrato = keyof paths;
+  const CASOS: readonly {
+    pessoa: "aluno" | "professor";
+    id: string;
+    funcao: "situacaoDoConvite" | "enviarConviteDeAcesso";
+    metodo: "GET" | "POST";
+    contrato: RotaDoContrato;
+    caminho: string;
+  }[] = [
+    {
+      pessoa: "aluno",
+      id: "a-1",
+      funcao: "situacaoDoConvite",
+      metodo: "GET",
+      contrato: "/api/v1/students/{id}/convite-de-acesso",
+      caminho: "/api/v1/students/a-1/convite-de-acesso",
+    },
+    {
+      pessoa: "professor",
+      id: "p-1",
+      funcao: "situacaoDoConvite",
+      metodo: "GET",
+      contrato: "/api/v1/teachers/{id}/convite-de-acesso",
+      caminho: "/api/v1/teachers/p-1/convite-de-acesso",
+    },
+    {
+      pessoa: "aluno",
+      id: "a-1",
+      funcao: "enviarConviteDeAcesso",
+      metodo: "POST",
+      contrato: "/api/v1/students/{id}/convite-de-acesso",
+      caminho: "/api/v1/students/a-1/convite-de-acesso",
+    },
+    {
+      pessoa: "professor",
+      id: "p-1",
+      funcao: "enviarConviteDeAcesso",
+      metodo: "POST",
+      contrato: "/api/v1/teachers/{id}/convite-de-acesso",
+      caminho: "/api/v1/teachers/p-1/convite-de-acesso",
+    },
+  ];
+
+  it.each(CASOS)(
+    "$funcao($pessoa) → $metodo $caminho",
+    async ({ pessoa, id, funcao, metodo, contrato, caminho }) => {
+      // A tabela não pode divergir de si mesma: o caminho concreto é o do
+      // contrato com o `{id}` preenchido.
+      expect(caminho).toBe(contrato.replace("{id}", id));
+
+      const real =
+        await vi.importActual<typeof import("@/lib/api-client")>(
+          "@/lib/api-client",
+        );
+      const corpo = situacao({ situacao: "enviado", em: EM, expiraEm: EXPIRA });
+      const resposta = {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(corpo),
+        clone: () => resposta,
+      };
+      const fetchMock = vi.fn().mockResolvedValue(resposta);
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(real[funcao](pessoa, id)).resolves.toEqual(corpo);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(new URL(url).pathname).toBe(caminho);
+      // Sem `method` o `fetch` faz GET; o envio TEM de dizer POST.
+      expect((init.method ?? "GET").toUpperCase()).toBe(metodo);
+    },
+  );
 });
 
 describe("AC-038 — o cartão está nas duas fichas", () => {
