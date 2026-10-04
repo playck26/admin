@@ -17,6 +17,7 @@ import {
   type StudentComSenha,
 } from "@/lib/api-client";
 import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
+import { ConviteDeAcessoCard } from "@/components/convite-de-acesso-card";
 import { Button } from "@/components/ui/button";
 import { Ban } from "lucide-react";
 
@@ -180,9 +181,11 @@ export function EditStudentForm({ id }: { id: string }) {
       </form>
 
       {/*
-        SPEC-009/REQ-005 — enquanto não houver e-mail transacional
-        (GAP-004), este botão **é** o "esqueci minha senha" do aluno: ele
-        pede ao admin, que gera outra e reencaminha (ADR-013).
+        SPEC-009/REQ-005 — enquanto não houver "esqueci minha senha"
+        (SPEC-051), este botão **é** a recuperação de senha do aluno: ele
+        pede ao admin, que gera outra e reencaminha (ADR-013). O convite por
+        e-mail da SPEC-083 não substitui isto: ele não se aplica a quem já
+        criou a própria senha (D9, `CONTA_JA_ATIVADA`).
       */}
       <div className="mt-8 flex flex-col gap-3 border-t border-[var(--color-outline)] pt-6">
         <div>
@@ -214,6 +217,15 @@ export function EditStudentForm({ id }: { id: string }) {
           >
             {gerandoSenha ? "Gerando..." : "Gerar nova senha temporária"}
           </Button>
+        </div>
+        {/*
+          SPEC-083/D10 — o convite por e-mail ao lado da senha temporária. Ao
+          gerar uma senha, a ficha troca pelo cartão da senha e este cartão
+          desmonta; na volta ele lê a situação de novo, e o convite que a senha
+          nova matou já aparece como "não enviado".
+        */}
+        <div className="mt-2 border-t border-[var(--color-outline)] pt-4">
+          <ConviteDeAcessoCard pessoa="aluno" id={id} />
         </div>
       </div>
 

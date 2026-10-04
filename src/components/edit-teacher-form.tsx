@@ -18,6 +18,7 @@ import {
   type TeacherComSenha,
 } from "@/lib/api-client";
 import { SenhaTemporariaCard } from "@/components/senha-temporaria-card";
+import { ConviteDeAcessoCard } from "@/components/convite-de-acesso-card";
 
 export function EditTeacherForm({ id }: { id: string }) {
   const router = useRouter();
@@ -269,6 +270,27 @@ export function EditTeacherForm({ id }: { id: string }) {
               ? "O professor já tem acesso. Gerar outra senha invalida a anterior e encerra as sessões abertas."
               : "Cria a conta do professor com uma senha temporária de 7 dias. Ele troca a senha no primeiro acesso e enxerga apenas as próprias turmas."}
         </p>
+      </div>
+
+      {/*
+        SPEC-083/D9, D10 — o convite por e-mail ao lado da senha temporária.
+        Para o professor sem conta, enviar CRIA a conta (sem senha conhecida):
+        por isso a ficha relê o professor depois do envio, e o botão acima
+        passa de "Gerar acesso" a "Gerar nova senha temporária".
+      */}
+      <div className="mt-6">
+        <ConviteDeAcessoCard
+          pessoa="professor"
+          id={id}
+          semEmail={!teacher.email}
+          // Falhar em reler não desfaz o envio, que o cartão já mostra; o
+          // botão de cima só fica com o rótulo antigo até a próxima visita.
+          onEnviado={() =>
+            void getTeacher(id)
+              .then(setTeacher)
+              .catch(() => undefined)
+          }
+        />
       </div>
 
       <hr className="my-6 border-border" />

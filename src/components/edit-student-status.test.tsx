@@ -31,6 +31,15 @@ vi.mock("@/lib/api-client", async () => {
     updateStudent,
     listLevels: vi.fn().mockResolvedValue([]),
     regenerarSenhaTemporaria: vi.fn(),
+    // SPEC-083 — o cartão do convite, filho da ficha, lê a situação ao
+    // montar. Sem o mock, o pedido chegaria à trava de rede do setup.
+    situacaoDoConvite: vi.fn().mockResolvedValue({
+      situacao: "nao_enviado",
+      em: null,
+      expiraEm: null,
+      motivo: null,
+    }),
+    enviarConviteDeAcesso: vi.fn(),
   };
 });
 

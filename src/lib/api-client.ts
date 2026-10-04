@@ -635,12 +635,24 @@ export type RelatorioDeImportacao =
   components["schemas"]["RelatorioDeImportacaoDto"];
 export type ImportacaoConcluida =
   components["schemas"]["ImportacaoConcluidaDto"];
+/** SPEC-083 — uma linha da conferência: o que a caixa "enviar convite" marca. */
+export type LinhaValidaDaImportacao = components["schemas"]["LinhaValidaDto"];
+/** SPEC-083 — uma linha importada: com `senhaTemporaria` OU com `convite`. */
+export type AlunoImportado = components["schemas"]["AlunoImportadoDto"];
 
 async function enviarPlanilha(
   arquivo: File,
   conferir: boolean,
+  convidar: readonly number[] = [],
 ): Promise<Response> {
   const corpo = new FormData();
+  // SPEC-083/D5 — `convidar` são os números de linha da PLANILHA (contando o
+  // cabeçalho), os mesmos de `linhas[].linha` da conferência. **Só vai quando
+  // há alguém marcado:** sem o campo, o Back faz exatamente o de antes (todas
+  // as linhas com senha temporária), e a requisição de quem não convida fica
+  // idêntica à de hoje. Entra antes do arquivo para o servidor já tê-lo
+  // quando o arquivo chegar.
+  if (convidar.length > 0) corpo.append("convidar", convidar.join(","));
   corpo.append("arquivo", arquivo);
   // **Sem `Content-Type` a mao.** O navegador precisa gerar o `boundary`, e
   // defini-lo manualmente produz um corpo que o servidor nao consegue separar.
@@ -660,10 +672,51 @@ export async function conferirPlanilha(
 
 export async function importarPlanilha(
   arquivo: File,
+  convidar: readonly number[] = [],
 ): Promise<ImportacaoConcluida> {
-  const res = await enviarPlanilha(arquivo, false);
+  const res = await enviarPlanilha(arquivo, false, convidar);
   if (!res.ok) throw await parseError(res, "Não foi possível importar.");
   return (await res.json()) as ImportacaoConcluida;
+}
+
+/**
+ * SPEC-083/D9 — a situação do convite por e-mail, no cartão da ficha.
+ *
+ * Rota própria, e não campo do aluno: o DTO do aluno é o das listas, e a
+ * situação custaria uma leitura por linha. **Enviar e reenviar são a mesma
+ * rota**: ela revoga o convite vivo, emite outro e devolve a situação já com o
+ * resultado do envio. E-mail recusado pelo provedor não é erro da rota, é
+ * `falhou` com o motivo (AC-026); erro da rota é `409 CONTA_JA_ATIVADA`,
+ * `400 EMAIL_OBRIGATORIO` ou `409 EMAIL_EM_USO`, com a mensagem do Back.
+ */
+export type SituacaoDoConvite =
+  components["schemas"]["SituacaoDoConviteResponseDto"];
+export type PessoaDoConvite = "aluno" | "professor";
+
+const ROTA_DA_PESSOA: Record<PessoaDoConvite, string> = {
+  aluno: "students",
+  professor: "teachers",
+};
+
+export async function situacaoDoConvite(
+  pessoa: PessoaDoConvite,
+  id: string,
+): Promise<SituacaoDoConvite> {
+  const res = await authFetch(
+    `/${ROTA_DA_PESSOA[pessoa]}/${id}/convite-de-acesso`,
+  );
+  return (await res.json()) as SituacaoDoConvite;
+}
+
+export async function enviarConviteDeAcesso(
+  pessoa: PessoaDoConvite,
+  id: string,
+): Promise<SituacaoDoConvite> {
+  const res = await authFetch(
+    `/${ROTA_DA_PESSOA[pessoa]}/${id}/convite-de-acesso`,
+    { method: "POST" },
+  );
+  return (await res.json()) as SituacaoDoConvite;
 }
 
 export async function listarPlanos(apenasAtivos = false): Promise<Plano[]> {
