@@ -1,7 +1,47 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-10-04** (era 2026-09-29).
-**Estado atual, no head `a828503` da branch da SPEC-083 (`spec083/convite`,
+**Fonte: análise direta do código.** Data: **2026-10-26** (era 2026-10-04).
+**Estado atual, no head `3a91833` da branch da SPEC-090
+(`spec090/esqueci-senha`, TASK-004), sem push:** **63 arquivos de teste, 662
+casos** (`vitest run --pool=threads`, sozinho, exit 0), **82 componentes**
+(`.tsx` de `src/components`, sem subpastas e sem os `.test.tsx`). A conta:
+608 do bloco abaixo + 54 da SPEC-090 = **662** — `esqueci-senha-form.test.tsx`
+(novo, 10), `redefinir-senha-form.test.tsx` (novo, 20), +4 no
+`login-form.test.tsx` (3 → 7) e +20 no `convite-de-instalacao.test.tsx`
+(14 → 34, a I10); 61 + 2 = 63 arquivos. +3 componentes: `esqueci-senha-form`,
+`redefinir-senha-form`, `tela-de-acesso`. Contagem por arquivo conferida com
+`vitest list`.
+
+**Esqueci minha senha (SPEC-090).** O gestor pede o link pelo login, recebe o
+e-mail e cria a senha nova numa página pública — o mesmo fluxo do Cliente,
+contra as três rotas do Back (contrato fixado em `contrato.lock.json`,
+`back@38b95da`):
+- **Duas rotas novas, públicas:** `/esqueci-senha` (estática) e
+  `/redefinir-senha/[token]` (dinâmica, `referrer: "no-referrer"` na
+  `metadata` — a primeira página do Admin com credencial no endereço). As duas
+  usam `tela-de-acesso`, a composição do fundo e do cartão do login; **o
+  login não foi migrado para ela** (fora do escopo).
+- **O login ganha o link "Esqueceu a senha?"** (alvo de 44 px) e uma região
+  `role="status"` sempre presente, vazia no servidor, que mostra
+  `TEXTO_SENHA_REDEFINIDA` quando o endereço é `LOGIN_APOS_REDEFINICAO`
+  (`/login?senha=redefinida`, valor exato), 150 ms depois de montar
+  (`ATRASO_DO_ANUNCIO_MS`). A constante **mora só em `login-form.tsx`**: o
+  Admin não tem arquivo de protocolo como o `ativacao-navigation.ts` do Cliente.
+- **Três chamadas novas no `api-client`, todas sem `authFetch`** (rotas
+  públicas, sem sessão): `pedirRedefinicaoDeSenha` (`POST
+  /auth/esqueci-senha` → `202` sem corpo, com conta ou sem), `getRedefinicao`
+  (`GET /public/redefinicao/:token`, não consome o link) e `redefinirSenha`
+  (`POST /public/redefinicao` → `204`, sem abrir sessão). As duas que levam o
+  token saem com `referrerPolicy: "no-referrer"` (`SEM_REFERRER`).
+- **I9 — o `429` com texto fixo em português.** O throttler do Back responde
+  em inglês; as duas telas mostram `TEXTO_DE_MUITAS_TENTATIVAS` (*"Muitas
+  tentativas seguidas. Espere alguns minutos e tente de novo."*), decidido por
+  `ehMuitasTentativas` (`ApiError` com `status === 429`), em
+  `esqueci-senha-form.tsx` e importados por `redefinir-senha-form.tsx` (no
+  `GET` e no `POST`).
+- **I10 — sem convite de instalar nas duas telas.** Ver a seção 4.
+
+*Registro de 2026-10-04:* **no head `a828503` da branch da SPEC-083 (`spec083/convite`,
 TASK-007), sem push:** **61 arquivos de teste, 608 casos**
 (`vitest run --pool=threads`, sozinho — a contagem da execução independente da
 validação da implementação, 1ª rodada, em 2026-10-04), **79 componentes**
@@ -185,7 +225,9 @@ replicar):
 
 | Rota | Componente | Papel |
 |---|---|---|
-| `/login` | `login-form` | entrada |
+| `/login` | `login-form` | entrada. **SPEC-090:** link "Esqueceu a senha?" → `/esqueci-senha`, e a região de status que diz `TEXTO_SENHA_REDEFINIDA` em `/login?senha=redefinida` (só esse valor) |
+| `/esqueci-senha` | `tela-de-acesso` + `esqueci-senha-form` | **SPEC-090, pública.** Pede o link por e-mail. Depois do `202` a tela diz sempre a mesma frase (`TEXTO_DO_PEDIDO_ENVIADO`), com conta ou sem, e o foco vai a "Voltar ao login"; `400` → "Confira o e-mail digitado."; `429` → o texto fixo da I9; rede ou `5xx` → "Não foi possível pedir o link agora. Tente de novo." — nenhum dos erros diz que enviou. Sem convite de instalar (I10) |
+| `/redefinir-senha/[token]` | `tela-de-acesso` + `redefinir-senha-form` | **SPEC-090, pública, sem `Referer`.** Lê a conta que o link aceita (clube, logo e papel — nem e-mail, nem nome) e mostra o formulário da senha nova (mínimo 8). **Sem lista de contas**, ao contrário do Cliente: e-mail de gestor tem conta única (SPEC-086) e o Back só manda link do Admin para gestor (D6), então `GET` com exatamente uma conta → formulário; zero ou duas ou mais → o mesmo estado do `410`. O `204` faz `replace` (não `push`) para `LOGIN_APOS_REDEFINICAO`, importado do login, **sem sessão** (D5). Link morto é sempre o mesmo `410` → `TEXTO_LINK_DE_REDEFINICAO_INVALIDO` e "Pedir outro link"; `429` no `GET` ou no `POST` → o texto fixo da I9. Sem convite de instalar (I10) |
 | `/dashboard` | `dashboard-summary` + `evasao-card` + **`vencimentos-card`** | **SPEC-052: o bloco "Acesso rápido" saiu** — repetia o menu lateral item por item, e agora tem prova de ausência (`dashboard-summary.test.tsx`). 3 KPIs do período e, desde a **SPEC-015**, o cartão "alunos em risco" — a única tela do Admin que puxa para uma ação, com cada item clicável para o aluno **e** para a turma. **SPEC-045:** entra o de **vencimento de matrícula**, e agora são duas telas que puxam para ação. Dois grupos separados — vencidas antes de vencendo, porque quem já venceu está sem plano vigente *agora* — e a janela (7/30/60) é escolha do gestor, ecoada pelo servidor. **A rota `/dashboard` da API continua com três números**: o card chama `/matriculas/vencimentos` por conta própria, porque a tela pode juntar o que a API mantém separado e o contrário faria a resposta do painel crescer com o clube |
 | `/agenda` | `agenda-view` + `agenda-dia-dialog` + **`agenda-semana`** + **`agenda-semana-acoes`** | **duas abas.** *Mês*: o mês inteiro, e clique no dia abre o detalhe operável. *Semana* (**SPEC-034**): uma grade dia × hora — o mês já mostra volume, e quem abre a semana quer ver **onde** estão os buracos; sem as horas não haveria como clicar num vão para criar nem julgar se mover faz sentido. A faixa de horas sai **dos itens**, não de constante: um clube que abre às 6h não pode ter reserva escondida fora da janela. Três ações saem da grade — criar no vão, **mover** reserva avulsa e **cancelar uma ocorrência** de turma. O filtro de quadra casa por **`quadraId`, nunca por nome**: `quadras.nome` não é único no banco, e a validação cruzada de 2026-09-05 reproduziu o efeito — escolher a quadra A mostrava reserva da B homônima. **SPEC-032:** cada item mostra quem criou e quem cancelou — e quando não há evento diz *"sem histórico registrado"*, nunca "criada por —". Não é caso de borda: é o estado normal de quase toda linha no dia do deploy (LIM-032a), porque as ocupações anteriores à spec nasceram sem evento. **SPEC-054:** a "Nova reserva" da semana leva o `seletor-de-adicionais` (mover e cancelar aula não — mover não muda valor nem itens), e o diálogo do dia lista os itens de cada reserva **SPEC-057/TASK-005 (card 5349):** a cor da grade deixou de significar tipo/status — os três tokens mediam 1,04:1 entre si (SPEC-052/D3) — e passou a ser da **quadra**, num marcador de 4 px `aria-hidden`. `bloco-da-agenda` tem substrato **branco opaco e texto `#12160F` fixos** em todo tema e estado, **sem `opacity`** (misturaria o fundo e derrubaria o contraste medido), sem `truncate` (nome longo quebra linha; o `Q-<código>` e o estado nunca somem) e alvo `min-h-11`; tipo e estado viram **ícone, borda e rótulo** (pendente tracejado; cancelada tem precedência). A regra mora em `lib/visual-da-agenda.ts`, e `legenda-da-agenda` — **fora da grade**, porque a grade rola na horizontal a 320 px — aplica os mesmos mapas: tipos, estados e cada quadra por **nome + Q-código + nome da cor**. Fecha a LIM-052c. O filtro de quadra passa a escrever o código (homônimas deixam de ser opções iguais). **Clicar numa aula de turma abre `aula-da-turma-dialog`**, e não mais o cancelamento: "Matrículas X/Y" e "Ocupação desta aula X/Y" separadas (vaga de reposição não é vaga de matrícula), matriculados com *Remover*, `seletor-de-aluno` para alocar e os **visitantes de reposição** (nome e nível, pela rota `/agenda/ocorrencias/:id/visitantes`, carregada ao abrir). Ações pelos endpoints de matrícula que já existiam; **erro não fecha o diálogo nem tira a linha** (sem remoção otimista), e o `409` de capacidade explica a diferença entre as duas vagas. "Cancelar esta aula" sai de dentro dele. No diálogo do dia (aba Mês) a linha de turma ganha **"Alunos da aula"** e continua sem "Marcar pago" e "Cancelar" (SPEC-012/AC-007) |
 | `/pessoas/alunos` (+ `novo`, `convite`, `[id]`) | `students-list`, `create-student-form`, `convite-form`, `edit-student-form`, `frequencia-aluno`, **`carteira-do-aluno`** | alunos, fila de aprovação, convite, senha temporária, e a frequência do aluno (**SPEC-015**: agregado + quebra por turma, nunca um sem o outro). **SPEC-033:** a **carteira** entra na mesma ficha, pelo mesmo motivo da frequência — quem lança crédito está olhando para uma pessoa, não para uma carteira. Ela é a **única tela do Admin que pede senha para agir** (D6), e pede a **cada** lançamento: não há sessão elevada, e o campo é limpo depois do envio inclusive quando dá certo. O erro vai para o campo certo pelo **`code`** da resposta, nunca por texto — `SENHA_INVALIDA` é da senha, `SALDO_INSUFICIENTE` é do valor —, e errar a senha **não apaga** o que já foi digitado **SPEC-036:** logo abaixo entra `cadastro-completo-do-aluno` — sete campos que faltavam (nascimento, contato de emergência, endereço) e a **barra que mostra o que falta**, não só o número. `70%` não diz a ninguém o que fazer. **Campo vazio vira `null`, nunca `""`**: o servidor recusa string vazia com `400` (INV-108), e uma tela que a mandasse transformaria "apagar" num erro sem explicação. A lista de UFs tem o **tipo vindo do contrato** (`UpdateStudentDto["uf"]`), não de um `string[]` solto — que deixaria o typecheck verde e a tela oferecendo uma sigla que o servidor recusa **SPEC-037:** e a **matrícula** fecha a ficha, depois da carteira — as duas são dinheiro, e a ordem é de frequência: crédito se lança toda semana, matrícula uma vez por contrato. **Valor em branco vira `undefined`, nunca `0`**: zero é bolsa integral, um valor legítimo, e `Number("")` daria o plano de graça sem ninguém perceber. As três recusas viram mensagens com saídas DIFERENTES — `CONTRATO_NAO_ACEITO` pede ao aluno, `CONTRATO_NAO_PUBLICADO` pede ao gestor, `PLANO_INATIVO` pede outro plano **SPEC-038:** abaixo da lista entra `importar-alunos` — subir CSV, **conferir** e importar. A conferência é o que torna aceitável o tudo-ou-nada da escrita: o gestor vê o estrago antes de causá-lo, e "Importar" só libera depois de um relatório sem erros. **Trocar o arquivo apaga o relatório do anterior** — sem isso ele importaria um arquivo tendo conferido outro. As senhas temporárias aparecem **uma única vez**, com o aviso ACIMA da lista: depois de fechar a página é tarde, porque nenhuma rota as devolve. Fica na mesma página e não como item de menu: quem sobe planilha está olhando para os alunos que já existem, e é olhando para eles que percebe que faltam trezentos **SPEC-083:** o modelo vira `nome;email;telefone;nivel;turma` (BOM, `;`, CRLF), a conferência sem erro lista as linhas válidas com a caixa "enviar convite por e-mail" **desmarcada** (marcar/desmarcar todas, contador), só as marcadas vão em `convidar`, e o resultado diz `convite enviado` ou `falhou` (com o caminho: a ficha) na linha convidada; na ficha, `convite-de-acesso-card` fica ao lado do gerar senha temporária, com a situação e o botão da D9 **DEF-027:** e no fim da ficha entra **"Situação no clube"** — desligar e reativar o aluno. Existia para turma, quadra, professor e plano, e **não para aluno**, que é justamente o gesto que o back manda usar quando se tenta recusar o vínculo de alguém já aprovado. A recusa `409 ALUNO_COM_COMPROMISSOS` vai para a tela **inteira**, com a contagem: "não foi possível desligar" faria o gestor procurar na agenda dia a dia sem saber se procura uma reserva ou trinta |
@@ -242,6 +284,19 @@ pontos não óbvios, cada um com teste:
    `clearAccessToken()`, e dispensa que morre no logout faz o convite voltar a
    cada sessão.
 
+**SPEC-090 (I10, 2026-10-26) — o convite some de duas telas, e só delas.**
+`convite-de-instalacao.tsx` passou a ler a rota (`usePathname`) e não
+desenha nada onde `conviteCabeNaRota` diz não: `ROTAS_SEM_CONVITE`, **exata**
+(`["/esqueci-senha"]` — um prefixo pegaria `/esqueci-senha-x`), e
+`PREFIXOS_SEM_CONVITE`, com a **barra final** (`["/redefinir-senha/"]` — pega
+todo token e não pega `/redefinir-senha` sem token). **O `/login` do Admin
+continua com o convite**: a exceção do login (SPEC-084/I1) foi só do Cliente.
+As listas moram no componente, e não em `lib/instalacao-pwa.ts`, porque é da
+tela e não da decisão de instalar. Esconder **não é dispensar**: nada vai ao
+`localStorage` e o evento guardado não é consumido. Prova: 20 casos
+`SPEC-090/I10` em `convite-de-instalacao.test.tsx`; esvaziar
+`ROTAS_SEM_CONVITE` derruba 3, esvaziar `PREFIXOS_SEM_CONVITE` derruba 6.
+
 **Sem `orientation` no manifest**, ao contrário do `cliente` (que trava em
 `portrait`): este painel é usado no celular na beira da quadra **e** no desktop, e
 travar orientação quebraria o uso de mesa, onde a agenda e as tabelas precisam
@@ -268,6 +323,12 @@ concentra três comportamentos:
 
 **Chamar `fetch` direto numa tela é violação de camada** — perde as três
 coisas acima.
+
+**As rotas públicas usam `fetch` direto, mas dentro do `api-client`:** o
+`login` e, desde a SPEC-090, `pedirRedefinicaoDeSenha`, `getRedefinicao` e
+`redefinirSenha`. Não há token a anexar nem sessão a renovar, e por isso
+nenhuma passa por `authFetch`. As duas que levam o token da redefinição
+saem com `referrerPolicy: "no-referrer"`.
 
 ## 6. Tipos do contrato
 
