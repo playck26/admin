@@ -272,8 +272,9 @@ Agora há `app/manifest.ts`, `public/sw.js`, `register-service-worker.tsx` e
 `sw.js` recebe push desde a SPEC-062** — ver a seção 10. Três
 pontos não óbvios, cada um com teste:
 
-1. **O evento é capturado antes da hidratação** — um `<Script
-   strategy="beforeInteractive">` no `layout.tsx` guarda o
+1. **O evento é capturado antes da hidratação** — um `<script>` cru
+   (não o `Script` do Next — ver o comentário em `src/app/layout.tsx`) no
+   `layout.tsx` guarda o
    `beforeinstallprompt`, porque o Chrome o dispara logo após o `load`,
    normalmente antes de um `useEffect` assinar.
 2. **Dois modos** — `botao` no Chromium (diálogo nativo) e `instrucao` no iOS,
