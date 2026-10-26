@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,44 @@ import { Label } from "@/components/ui/label";
 import { ApiError, login } from "@/lib/api-client";
 import { saveAccessToken, saveAdminUser } from "@/lib/auth-storage";
 
+/**
+ * SPEC-090 (D9) — **o protocolo entre a redefinição de senha e o login.**
+ *
+ * Depois do `204`, a página do link manda para cá com este endereço, e o
+ * login mostra `TEXTO_SENHA_REDEFINIDA`. A constante mora **só aqui**, no
+ * lado de quem lê: a página da redefinição a importa, e não escreve o
+ * literal de novo — duas cópias divergiriam em silêncio, e o aviso deixaria
+ * de aparecer sem nenhum teste notar.
+ */
+export const CHAVE_SENHA_REDEFINIDA = "senha";
+export const VALOR_SENHA_REDEFINIDA = "redefinida";
+export const LOGIN_APOS_REDEFINICAO = `/login?${CHAVE_SENHA_REDEFINIDA}=${VALOR_SENHA_REDEFINIDA}`;
+export const TEXTO_SENHA_REDEFINIDA = "Senha redefinida. Entre com a senha nova.";
+
+/**
+ * Valor exato, como o `chegouDaAtivacao` do Cliente: `?senha=qualquer-coisa`
+ * não mostra aviso. Quem digita o endereço à mão não ganha um "redefinida"
+ * que não aconteceu.
+ */
+function chegouDaRedefinicao(busca: string): boolean {
+  return new URLSearchParams(busca).get(CHAVE_SENHA_REDEFINIDA) === VALOR_SENHA_REDEFINIDA;
+}
+
 export function LoginForm() {
   const router = useRouter();
+  /**
+   * Lido em efeito, por `window.location.search`, **sem `useSearchParams`**:
+   * o hook exigiria `Suspense` na página do login, que é estática. A região
+   * do aviso existe desde o servidor e começa **vazia**; o texto entra depois
+   * de hidratar. O custo é um quadro sem aviso, e nenhum HTML diferente entre
+   * servidor e navegador.
+   */
+  const [senhaRedefinida, setSenhaRedefinida] = useState(false);
+  useEffect(() => {
+    // Leitura única do endereço depois de hidratar; não há o que sincronizar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSenhaRedefinida(chegouDaRedefinicao(window.location.search));
+  }, []);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
@@ -50,6 +87,21 @@ export function LoginForm() {
         <h1 className="mt-2 text-[28px] leading-tight font-extrabold text-[var(--color-on-surface)]">Bem-vindo de volta</h1>
         <p className="mt-2 text-sm text-[var(--color-on-surface-variant)]">Entre para acompanhar a operação da sua escola.</p>
       </div>
+
+      {/*
+        Uma região de status só, sempre presente: o leitor de tela anuncia o
+        texto quando ele entra, e a página não muda de forma no servidor.
+      */}
+      <p
+        role="status"
+        className={
+          senhaRedefinida
+            ? "mb-4 rounded-lg bg-[var(--color-primary-container)]/40 p-3 text-sm leading-snug text-[var(--color-on-surface)]"
+            : undefined
+        }
+      >
+        {senhaRedefinida ? TEXTO_SENHA_REDEFINIDA : null}
+      </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-2">
@@ -90,6 +142,13 @@ export function LoginForm() {
               {showSenha ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
             </button>
           </div>
+          {/* SPEC-090: leva ao pedido do link. Alvo de 44 px, foco visível. */}
+          <Link
+            href="/esqueci-senha"
+            className="flex min-h-11 items-center self-end rounded-lg px-1 text-sm font-bold text-[var(--color-primary-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+          >
+            Esqueceu a senha?
+          </Link>
         </div>
         {error ? (
           <p role="alert" className="text-sm text-[var(--color-error)]">
