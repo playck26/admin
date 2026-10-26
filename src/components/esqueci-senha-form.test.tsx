@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EsqueciSenhaForm, TEXTO_DO_PEDIDO_ENVIADO } from "./esqueci-senha-form";
+import {
+  EsqueciSenhaForm,
+  TEXTO_DE_MUITAS_TENTATIVAS,
+  TEXTO_DO_PEDIDO_ENVIADO,
+} from "./esqueci-senha-form";
 
 /**
  * SPEC-090/AC-025 — `/esqueci-senha` no Admin.
@@ -72,16 +76,20 @@ describe("EsqueciSenhaForm (SPEC-090/AC-025)", () => {
     expect(segunda).toBe(primeira);
   });
 
-  it("429: mostra a mensagem do servidor e o formulário fica", async () => {
-    fetchMock.mockResolvedValue(
-      resposta(429, { statusCode: 429, message: "Muitas tentativas. Aguarde alguns minutos." }),
-    );
+  it("SPEC-090/I9: o texto fixo do 429 é o que o Israel decidiu", () => {
+    expect(TEXTO_DE_MUITAS_TENTATIVAS).toBe("Muitas tentativas seguidas. Espere alguns minutos e tente de novo.");
+  });
+
+  it("SPEC-090/I9 — 429: o texto fixo, e NÃO a mensagem do servidor; o formulário fica", async () => {
+    // A mensagem que o `@nestjs/throttler` manda de verdade, em inglês.
+    const DO_SERVIDOR = "ThrottlerException: Too Many Requests";
+    fetchMock.mockResolvedValue(resposta(429, { statusCode: 429, message: DO_SERVIDOR }));
     render(<EsqueciSenhaForm />);
     pedir("gestor@clube.com");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Muitas tentativas. Aguarde alguns minutos.",
-    );
+    const alerta = await screen.findByRole("alert");
+    expect(alerta.textContent).toBe(TEXTO_DE_MUITAS_TENTATIVAS);
+    expect(screen.queryByText(DO_SERVIDOR)).toBeNull();
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(screen.getByRole("button", { name: "Enviar link" })).toBeEnabled();

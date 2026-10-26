@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TEXTO_DE_MUITAS_TENTATIVAS } from "./esqueci-senha-form";
 import { RedefinirSenhaForm, TEXTO_LINK_DE_REDEFINICAO_INVALIDO } from "./redefinir-senha-form";
 import {
   ATRASO_DO_ANUNCIO_MS,
@@ -187,6 +188,43 @@ describe("RedefinirSenhaForm (SPEC-090/AC-025)", () => {
 
     expect(await screen.findByLabelText("Senha nova")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  describe("SPEC-090/I9 — 429: o texto fixo, nunca a mensagem do servidor", () => {
+    // A mensagem que o `@nestjs/throttler` manda de verdade, em inglês.
+    const DO_SERVIDOR = "ThrottlerException: Too Many Requests";
+    const MUITAS = { statusCode: 429, message: DO_SERVIDOR };
+
+    it("SPEC-090/I9 — 429 no GET: o texto fixo, sem dizer que o link morreu; 'Tentar de novo' busca outra vez", async () => {
+      fetchMock
+        .mockResolvedValueOnce(resposta(429, MUITAS))
+        .mockResolvedValueOnce(resposta(200, { contas: [CONTA_GESTOR] }));
+      render(<RedefinirSenhaForm token={TOKEN} />);
+
+      const alerta = await screen.findByRole("alert");
+      expect(alerta.textContent).toBe(TEXTO_DE_MUITAS_TENTATIVAS);
+      expect(screen.queryByText(DO_SERVIDOR)).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Pedir outro link" })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+      expect(await screen.findByLabelText("Senha nova")).toBeInTheDocument();
+    });
+
+    it("SPEC-090/I9 — 429 no POST: o texto fixo, e o formulário fica", async () => {
+      fetchMock
+        .mockResolvedValueOnce(resposta(200, { contas: [CONTA_GESTOR] }))
+        .mockResolvedValueOnce(resposta(429, MUITAS));
+      render(<RedefinirSenhaForm token={TOKEN} />);
+      await screen.findByLabelText("Senha nova");
+
+      preencher("senha-nova-123", "senha-nova-123");
+
+      const alerta = await screen.findByRole("alert");
+      expect(alerta.textContent).toBe(TEXTO_DE_MUITAS_TENTATIVAS);
+      expect(screen.queryByText(DO_SERVIDOR)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Redefinir minha senha" })).toBeEnabled();
+      expect(replaceMock).not.toHaveBeenCalled();
+    });
   });
 });
 
