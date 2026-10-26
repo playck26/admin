@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Share, SquarePlus, X } from "lucide-react";
 import {
   assinarInstalacao,
@@ -60,12 +61,48 @@ import {
  * comum) — a mesma razão pela qual os tokens de `DESIGN.md` são copiados
  * localmente.
  */
+/**
+ * SPEC-090 (I10, 2026-10-26) — **as telas de redefinir a senha ficam sem
+ * convite.** O Israel decidiu esconder o convite em `/esqueci-senha` e em
+ * `/redefinir-senha/<token>`, como o Cliente já fazia em `/ativar/<token>`
+ * (SPEC-083, I17). **O resto do Admin não muda** — inclusive o `/login`, que
+ * aqui continua com o convite (a I1 da SPEC-084 foi só do Cliente).
+ *
+ * Duas listas, na forma do `instalacao-pwa.ts` do Cliente:
+ *
+ * - `ROTAS_SEM_CONVITE` é **exata**: `/esqueci-senha` não tem subcaminho, e um
+ *   prefixo `/esqueci-senha` pegaria por acidente qualquer `/esqueci-senha-x`.
+ * - `PREFIXOS_SEM_CONVITE` termina em `/`: `/redefinir-senha/` pega todo token
+ *   e não pega uma rota vizinha que só comece com as mesmas letras, nem a
+ *   própria `/redefinir-senha` sem token.
+ *
+ * Moram aqui, e não em `lib/instalacao-pwa.ts`, porque são da tela, não da
+ * decisão de instalar — e porque é o arquivo que o write-set da TASK-004 nomeia.
+ *
+ * Esconder **não é dispensar**: nada é gravado e o evento guardado não é
+ * consumido. `null` é o caminho fora do roteador do Next (testes de
+ * componente): ali o convite se comporta como antes.
+ */
+export const ROTAS_SEM_CONVITE: readonly string[] = ["/esqueci-senha"];
+
+export const PREFIXOS_SEM_CONVITE: readonly string[] = ["/redefinir-senha/"];
+
+export function conviteCabeNaRota(caminho: string | null): boolean {
+  if (caminho === null) return true;
+  if (ROTAS_SEM_CONVITE.includes(caminho)) return false;
+  return !PREFIXOS_SEM_CONVITE.some((prefixo) => caminho.startsWith(prefixo));
+}
+
 export function ConviteDeInstalacao() {
   const modo = useSyncExternalStore(
     assinarInstalacao,
     lerModoDeConvite,
     modoNoServidor,
   );
+
+  // Hook incondicional, antes de qualquer retorno: a rota só decide o que
+  // desenha, nunca se os hooks rodam.
+  const caminho = usePathname();
 
   const dispensar = useCallback(() => registrarDispensa(), []);
 
@@ -92,7 +129,7 @@ export function ConviteDeInstalacao() {
     }
   }, []);
 
-  if (modo === "oculto") return null;
+  if (modo === "oculto" || !conviteCabeNaRota(caminho)) return null;
 
   return (
     <div
