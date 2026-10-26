@@ -1,7 +1,16 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RedefinirSenhaForm, TEXTO_LINK_DE_REDEFINICAO_INVALIDO } from "./redefinir-senha-form";
-import { LOGIN_APOS_REDEFINICAO } from "./login-form";
+import {
+  ATRASO_DO_ANUNCIO_MS,
+  CHAVE_SENHA_REDEFINIDA,
+  LOGIN_APOS_REDEFINICAO,
+  LoginForm,
+  TEXTO_SENHA_REDEFINIDA,
+  VALOR_SENHA_REDEFINIDA,
+} from "./login-form";
 import { metadata } from "@/app/redefinir-senha/[token]/page";
 
 /**
@@ -178,5 +187,142 @@ describe("RedefinirSenhaForm (SPEC-090/AC-025)", () => {
 
     expect(await screen.findByLabelText("Senha nova")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * SPEC-090 (D9), REV-090-F02 — **o outro lado do protocolo: o login que lê
+ * `LOGIN_APOS_REDEFINICAO`.** Mora aqui, e não no `login-form.test.tsx`, porque
+ * é o contrato desta página com o login, e o teste do login está fora do
+ * write-set da TASK-004.
+ *
+ * Com relógio simulado, o atraso é medido, e não adivinhado: a região nasce
+ * vazia no render (depois do efeito), continua vazia um milissegundo antes
+ * de `ATRASO_DO_ANUNCIO_MS`, e só então recebe a frase. Preencher no corpo do
+ * efeito, sem o atraso, fica vermelho no primeiro `toBeEmptyDOMElement`; e
+ * os endereços fora do protocolo esperam bem mais que o atraso antes de
+ * conferir que a região continuou vazia.
+ */
+describe("o login depois da redefinição (SPEC-090/D9, REV-090-F02)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    window.history.replaceState({}, "", "/");
+  });
+
+  it(`${LOGIN_APOS_REDEFINICAO}: a região nasce vazia e a frase só entra depois de ${ATRASO_DO_ANUNCIO_MS} ms`, async () => {
+    expect(ATRASO_DO_ANUNCIO_MS).toBe(150);
+    window.history.replaceState({}, "", LOGIN_APOS_REDEFINICAO);
+    render(<LoginForm />);
+
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    const regiao = screen.getByRole("status");
+    expect(regiao).toBeEmptyDOMElement();
+
+    await act(async () => {
+      vi.advanceTimersByTime(ATRASO_DO_ANUNCIO_MS - 1);
+    });
+    expect(regiao).toBeEmptyDOMElement();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(regiao.textContent).toBe(TEXTO_SENHA_REDEFINIDA);
+    // O aviso informa e não interrompe: o foco não sai de onde está.
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it.each(["/login", "/login?senha=1", "/login?senha=Redefinida", "/login?senha=redefinida2", "/login?ativado=1"])(
+    "%s: muito depois do atraso, a região continua vazia",
+    async (endereco) => {
+      window.history.replaceState({}, "", endereco);
+      render(<LoginForm />);
+      await act(async () => {
+        vi.advanceTimersByTime(ATRASO_DO_ANUNCIO_MS * 10);
+      });
+      expect(screen.getAllByRole("status")).toHaveLength(1);
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    },
+  );
+
+  it("desmontar antes do atraso não escreve nada (o efeito limpa o relógio)", async () => {
+    window.history.replaceState({}, "", LOGIN_APOS_REDEFINICAO);
+    const { unmount } = render(<LoginForm />);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+/**
+ * SPEC-090 (D9), REV-090-F04 — **o literal do protocolo só existe na
+ * constante**, como a varredura do `ativacao-navigation.test.ts` do Cliente.
+ * O teste de cima compara com a constante importada; uma segunda cópia do
+ * literal, escrita à mão em outra página, teria o mesmo valor e o deixaria
+ * verde. Esta varredura é quem a reprova.
+ *
+ * O alvo é o par escrito à mão (`senha=redefinida`) e o valor como literal
+ * entre aspas (`{ senha: "redefinida" }`). O texto do aviso, "Senha
+ * redefinida. Entre…", não é nenhum dos dois. Fica de fora só o arquivo da
+ * constante (`login-form.tsx`, que declara `VALOR_SENHA_REDEFINIDA`).
+ */
+const SRC = join(__dirname, "..");
+const ARQUIVO_DA_CONSTANTE = "components/login-form.tsx";
+const VALOR_ENTRE_ASPAS = new RegExp(`["'\`]${VALOR_SENHA_REDEFINIDA}["'\`]`);
+
+function citaOProtocoloDaRedefinicao(conteudo: string): boolean {
+  return (
+    conteudo.includes(`${CHAVE_SENHA_REDEFINIDA}=${VALOR_SENHA_REDEFINIDA}`) ||
+    VALOR_ENTRE_ASPAS.test(conteudo)
+  );
+}
+
+function arquivosDeProducao(dir: string): string[] {
+  const saida: string[] = [];
+  for (const nome of readdirSync(dir)) {
+    const caminho = join(dir, nome);
+    if (statSync(caminho).isDirectory()) {
+      saida.push(...arquivosDeProducao(caminho));
+      continue;
+    }
+    if (!/\.(tsx?|css|m?js)$/.test(nome)) continue;
+    if (/\.test\.(tsx?|m?js)$/.test(nome)) continue;
+    if (relative(SRC, caminho).replace(/\\/g, "/") === ARQUIVO_DA_CONSTANTE) continue;
+    saida.push(caminho);
+  }
+  return saida;
+}
+
+describe("o literal da redefinição só existe na constante (SPEC-090/D9, REV-090-F04)", () => {
+  it("a regra acha o literal escrito à mão, e não acha quem importa a constante nem o texto do aviso", () => {
+    expect(citaOProtocoloDaRedefinicao('router.replace("/login?senha=redefinida")')).toBe(true);
+    expect(citaOProtocoloDaRedefinicao("router.replace(`/login?senha=redefinida`)")).toBe(true);
+    expect(citaOProtocoloDaRedefinicao('new URLSearchParams({ senha: "redefinida" })')).toBe(true);
+    expect(citaOProtocoloDaRedefinicao("new URLSearchParams({ senha: 'redefinida' })")).toBe(true);
+    expect(citaOProtocoloDaRedefinicao("router.replace(LOGIN_APOS_REDEFINICAO)")).toBe(false);
+    expect(citaOProtocoloDaRedefinicao('"Senha redefinida. Entre com a senha nova."')).toBe(false);
+    // A constante é o que a regra procura: se ela não achasse o próprio
+    // arquivo da constante, não acharia uma cópia dele.
+    expect(
+      citaOProtocoloDaRedefinicao(readFileSync(join(SRC, ARQUIVO_DA_CONSTANTE), "utf8")),
+    ).toBe(true);
+  });
+
+  it("nenhum arquivo de produção fora da constante escreve o literal", () => {
+    const arquivos = arquivosDeProducao(SRC).map((a) => relative(SRC, a).replace(/\\/g, "/"));
+    // Contra a vacuidade: a varredura viu o código de verdade, inclusive o
+    // emissor (esta página) e as duas páginas novas.
+    expect(arquivos.length).toBeGreaterThan(30);
+    expect(arquivos).toContain("components/redefinir-senha-form.tsx");
+    expect(arquivos).toContain("components/esqueci-senha-form.tsx");
+    expect(arquivos).toContain("app/redefinir-senha/[token]/page.tsx");
+    expect(arquivos).not.toContain(ARQUIVO_DA_CONSTANTE);
+
+    const copias = arquivos.filter((a) => citaOProtocoloDaRedefinicao(readFileSync(join(SRC, a), "utf8")));
+    expect(copias).toEqual([]);
   });
 });

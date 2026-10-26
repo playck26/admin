@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,26 @@ export const TEXTO_DO_PEDIDO_ENVIADO =
  *
  * O link chega pelo papel da conta (D6), não pelo app onde se pediu: o
  * gestor recebe link do Admin mesmo pedindo no Cliente, e vice-versa.
+ *
+ * ## A confirmação e o foco (REV-090-F03)
+ *
+ * A região `role="status"` existe **vazia desde a montagem** e recebe a frase
+ * quando o `202` chega: uma região viva que já nasce com o texto costuma não
+ * ser anunciada, a que muda depois, sim — a mesma regra do aviso do login.
+ * E, como o formulário sai (com o botão que tinha o foco), o foco vai para
+ * "Voltar ao login", a única ação que sobra; sem isso ele cairia no `body`,
+ * e o próximo Tab recomeçaria do topo da página.
  */
 export function EsqueciSenhaForm() {
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const voltarRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (enviado) voltarRef.current?.focus();
+  }, [enviado]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,59 +76,63 @@ export function EsqueciSenhaForm() {
     }
   }
 
-  const voltar = (
-    <Link
-      href="/login"
-      className="flex min-h-11 items-center justify-center gap-2 self-center rounded-lg px-2 text-sm font-bold text-[var(--color-primary-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-    >
-      <ArrowLeft className="size-4" aria-hidden="true" />
-      Voltar ao login
-    </Link>
-  );
-
-  if (enviado) {
-    return (
-      <div className="flex flex-col gap-4">
-        <p
-          role="status"
-          className="flex items-start gap-3 rounded-lg bg-[var(--color-primary-container)]/40 p-3 text-sm leading-snug"
-        >
-          <MailCheck className="mt-px size-5 shrink-0 text-[var(--color-primary-strong)]" aria-hidden="true" />
-          <span className="min-w-0">{TEXTO_DO_PEDIDO_ENVIADO}</span>
-        </p>
-        {voltar}
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="seu@email.com"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={enviando}
-          className="h-11 px-4"
-        />
+    <div>
+      <p
+        role="status"
+        className={
+          enviado
+            ? "mb-4 flex items-start gap-3 rounded-lg bg-[var(--color-primary-container)]/40 p-3 text-sm leading-snug"
+            : undefined
+        }
+      >
+        {enviado ? (
+          <>
+            <MailCheck className="mt-px size-5 shrink-0 text-[var(--color-primary-strong)]" aria-hidden="true" />
+            <span className="min-w-0">{TEXTO_DO_PEDIDO_ENVIADO}</span>
+          </>
+        ) : null}
+      </p>
+
+      <div className="flex flex-col gap-4">
+        {enviado ? null : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={enviando}
+                className="h-11 px-4"
+              />
+            </div>
+
+            {erro ? (
+              <p role="alert" className="text-sm text-[var(--color-error)]">
+                {erro}
+              </p>
+            ) : null}
+
+            <Button type="submit" disabled={enviando} className="mt-2 h-12 text-sm font-bold">
+              {enviando ? "Enviando..." : "Enviar link"}
+            </Button>
+          </form>
+        )}
+
+        <Link
+          ref={voltarRef}
+          href="/login"
+          className="flex min-h-11 items-center justify-center gap-2 self-center rounded-lg px-2 text-sm font-bold text-[var(--color-primary-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Voltar ao login
+        </Link>
       </div>
-
-      {erro ? (
-        <p role="alert" className="text-sm text-[var(--color-error)]">
-          {erro}
-        </p>
-      ) : null}
-
-      <Button type="submit" disabled={enviando} className="mt-2 h-12 text-sm font-bold">
-        {enviando ? "Enviando..." : "Enviar link"}
-      </Button>
-
-      {voltar}
-    </form>
+    </div>
   );
 }

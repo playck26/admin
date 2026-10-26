@@ -34,20 +34,34 @@ function chegouDaRedefinicao(busca: string): boolean {
   return new URLSearchParams(busca).get(CHAVE_SENHA_REDEFINIDA) === VALOR_SENHA_REDEFINIDA;
 }
 
+/**
+ * Quanto esperar depois da montagem para pôr o texto na região viva — o
+ * mesmo `ATRASO_DO_ANUNCIO_MS` do `AvisoDeAtivacao` do Cliente. Não é para o
+ * olho: é para o leitor de tela já ter registrado a região quando o conteúdo
+ * chegar. Exportado para o teste medir o atraso, e não adivinhá-lo.
+ */
+export const ATRASO_DO_ANUNCIO_MS = 150;
+
 export function LoginForm() {
   const router = useRouter();
   /**
    * Lido em efeito, por `window.location.search`, **sem `useSearchParams`**:
    * o hook exigiria `Suspense` na página do login, que é estática. A região
    * do aviso existe desde o servidor e começa **vazia**; o texto entra depois
-   * de hidratar. O custo é um quadro sem aviso, e nenhum HTML diferente entre
-   * servidor e navegador.
+   * de hidratar, e mais `ATRASO_DO_ANUNCIO_MS`. Uma região viva que muda
+   * junto com a própria montagem costuma não ser anunciada; a que muda
+   * depois, sim (REV-090-F02).
+   *
+   * O `setState` mora dentro do `setTimeout`, e não no corpo do efeito: é o
+   * atraso que torna o anúncio confiável, e é o que mantém o
+   * `react-hooks/set-state-in-effect` satisfeito sem desligá-lo.
    */
   const [senhaRedefinida, setSenhaRedefinida] = useState(false);
   useEffect(() => {
-    // Leitura única do endereço depois de hidratar; não há o que sincronizar.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSenhaRedefinida(chegouDaRedefinicao(window.location.search));
+    const id = window.setTimeout(() => {
+      setSenhaRedefinida(chegouDaRedefinicao(window.location.search));
+    }, ATRASO_DO_ANUNCIO_MS);
+    return () => window.clearTimeout(id);
   }, []);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");

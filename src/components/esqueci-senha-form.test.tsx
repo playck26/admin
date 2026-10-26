@@ -21,6 +21,12 @@ function resposta(status: number, corpo?: unknown) {
   };
 }
 
+/** A região de status existe desde a montagem; o texto é o que chega depois. */
+async function esperarAFrase() {
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(TEXTO_DO_PEDIDO_ENVIADO));
+  return screen.getByRole("status");
+}
+
 function pedir(email: string) {
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: email } });
   fireEvent.click(screen.getByRole("button", { name: "Enviar link" }));
@@ -41,7 +47,7 @@ describe("EsqueciSenhaForm (SPEC-090/AC-025)", () => {
 
     pedir("  gestor@clube.com ");
 
-    expect(await screen.findByRole("status")).toHaveTextContent(TEXTO_DO_PEDIDO_ENVIADO);
+    await esperarAFrase();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(/\/api\/v1\/auth\/esqueci-senha$/);
@@ -55,12 +61,12 @@ describe("EsqueciSenhaForm (SPEC-090/AC-025)", () => {
     fetchMock.mockResolvedValue(resposta(202));
     const { unmount } = render(<EsqueciSenhaForm />);
     pedir("tem-conta@clube.com");
-    const primeira = (await screen.findByRole("status")).textContent;
+    const primeira = (await esperarAFrase()).textContent;
     unmount();
 
     render(<EsqueciSenhaForm />);
     pedir("nao-existe@lugar-nenhum.com");
-    const segunda = (await screen.findByRole("status")).textContent;
+    const segunda = (await esperarAFrase()).textContent;
 
     expect(primeira).toBe(TEXTO_DO_PEDIDO_ENVIADO);
     expect(segunda).toBe(primeira);
@@ -76,7 +82,8 @@ describe("EsqueciSenhaForm (SPEC-090/AC-025)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Muitas tentativas. Aguarde alguns minutos.",
     );
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(screen.getByRole("button", { name: "Enviar link" })).toBeEnabled();
   });
 
@@ -114,9 +121,39 @@ describe("EsqueciSenhaForm (SPEC-090/AC-025)", () => {
     expect(screen.getByRole("link", { name: "Voltar ao login" })).toHaveAttribute("href", "/login");
 
     pedir("gestor@clube.com");
-    await screen.findByRole("status");
+    await esperarAFrase();
     await waitFor(() =>
       expect(screen.getByRole("link", { name: "Voltar ao login" })).toHaveAttribute("href", "/login"),
+    );
+  });
+
+  /**
+   * REV-090-F03 — a região viva existe **vazia** antes do pedido (a que nasce
+   * com o texto costuma não ser anunciada), continua uma só depois do `202`, e
+   * o foco não cai no `body` quando o formulário sai.
+   */
+  it("a região de status existe vazia desde a montagem e é a mesma que recebe a frase", async () => {
+    fetchMock.mockResolvedValue(resposta(202));
+    render(<EsqueciSenhaForm />);
+
+    const regiao = screen.getByRole("status");
+    expect(regiao).toBeEmptyDOMElement();
+
+    pedir("gestor@clube.com");
+    await esperarAFrase();
+    // O mesmo nó: o texto entrou numa região que já existia.
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toBe(regiao);
+  });
+
+  it('depois do 202, o foco vai para "Voltar ao login", e não para o body', async () => {
+    fetchMock.mockResolvedValue(resposta(202));
+    render(<EsqueciSenhaForm />);
+
+    pedir("gestor@clube.com");
+    await esperarAFrase();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("link", { name: "Voltar ao login" })),
     );
   });
 });
