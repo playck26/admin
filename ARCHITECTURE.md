@@ -1,7 +1,7 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
 **Fonte: análise direta do código.** Data: **2026-10-26** (era 2026-10-04).
-**Estado atual, no head `3a91833` da branch da SPEC-090
+**Estado atual, no head de código `3a91833` da branch da SPEC-090 (o HEAD do repositório é um commit só de documentação depois dele)
 (`spec090/esqueci-senha`, TASK-004), sem push:** **63 arquivos de teste, 662
 casos** (`vitest run --pool=threads`, sozinho, exit 0), **82 componentes**
 (`.tsx` de `src/components`, sem subpastas e sem os `.test.tsx`). A conta:
