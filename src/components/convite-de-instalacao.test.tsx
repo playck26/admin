@@ -1,7 +1,19 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConviteDeInstalacao } from "./convite-de-instalacao";
+import {
+  ConviteDeInstalacao,
+  conviteCabeNaRota,
+  PREFIXOS_SEM_CONVITE,
+  ROTAS_SEM_CONVITE,
+} from "./convite-de-instalacao";
 import type { EventoDeInstalacao } from "@/lib/instalacao-pwa";
+
+/**
+ * SPEC-090 (I10) — a rota simulada. `null` é o "fora do roteador" dos casos da
+ * SPEC-050, que continuam como eram; os casos da I10 trocam o valor.
+ */
+const rota = vi.hoisted(() => ({ atual: null as string | null }));
+vi.mock("next/navigation", () => ({ usePathname: () => rota.atual }));
 
 /**
  * SPEC-050 — **o que a pessoa vê, em cada um dos dois mundos.**
@@ -42,6 +54,7 @@ function eventoFalso(outcome: "accepted" | "dismissed" = "accepted") {
 const CHAVE = "playck_instalacao_dispensada_em";
 
 beforeEach(() => {
+  rota.atual = null;
   window.localStorage.clear();
   delete window.__playckEventoDeInstalacao;
   definirUA("Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/120", 5);
@@ -234,4 +247,82 @@ describe("ConviteDeInstalacao — dispensar é definitivo por 15 dias", () => {
     await waitFor(() => expect(convite()).toBeNull());
     expect(window.localStorage.getItem(CHAVE)).toBeNull();
   });
+});
+
+describe("SPEC-090/I10 — as telas de redefinir a senha ficam sem convite", () => {
+  /**
+   * Tokens de formatos diferentes: o de verdade (43 de base64url), curto, com
+   * `-`/`_` e escapado. O de 43 é montado em pedaços, como no Cliente: num
+   * literal só ele tem forma de chave.
+   */
+  const tokens = [
+    ["AbCdEfGhIjKlMnOpQrStUvWxYz", "0123456789", "-_AbCdE"].join(""),
+    "x",
+    "-_-_",
+    "%C3%A9",
+  ];
+
+  it("SPEC-090/I10 — as listas: /esqueci-senha exata, /redefinir-senha/ como prefixo", () => {
+    expect(ROTAS_SEM_CONVITE).toEqual(["/esqueci-senha"]);
+    expect(PREFIXOS_SEM_CONVITE).toEqual(["/redefinir-senha/"]);
+  });
+
+  it("SPEC-090/I10 — /esqueci-senha → sem convite", () => {
+    expect(conviteCabeNaRota("/esqueci-senha")).toBe(false);
+  });
+
+  it.each(tokens)("SPEC-090/I10 — /redefinir-senha/%s → sem convite", (token) => {
+    expect(conviteCabeNaRota(`/redefinir-senha/${token}`)).toBe(false);
+  });
+
+  it.each([
+    // O resto do Admin não muda — inclusive o login, que aqui tem convite.
+    ["/login", true],
+    ["/", true],
+    ["/agenda", true],
+    // Vizinhas que só começam com as mesmas letras continuam com o convite.
+    ["/esqueci-senha-x", true],
+    ["/esqueci-senhas", true],
+    ["/redefinir-senha", true],
+    ["/redefinir-senhax/abc", true],
+    ["/x/redefinir-senha/abc", true],
+    [null, true],
+  ])("SPEC-090/I10 — %s → convite cabe? %s", (caminho, esperado) => {
+    expect(conviteCabeNaRota(caminho)).toBe(esperado);
+  });
+
+  /**
+   * A tela, não só a função: com evento na mão (o convite apareceria), a rota
+   * sozinha decide. E esconder não é dispensar — nada vai ao `localStorage` e
+   * o evento continua guardado.
+   */
+  it.each([["/esqueci-senha"], ["/redefinir-senha/abc-_123"]])(
+    "SPEC-090/I10 — %s: a tela não desenha o convite, e não registra dispensa",
+    async (caminho) => {
+      rota.atual = caminho;
+      const { e } = eventoFalso();
+      window.__playckEventoDeInstalacao = e;
+
+      render(<ConviteDeInstalacao />);
+
+      await waitFor(() => expect(convite()).toBeNull());
+      expect(screen.queryByRole("button", { name: "Instalar" })).toBeNull();
+      expect(window.localStorage.getItem(CHAVE)).toBeNull();
+      expect(window.__playckEventoDeInstalacao).toBe(e);
+    },
+  );
+
+  it.each([["/login"], ["/esqueci-senha-x"], ["/redefinir-senha"]])(
+    "SPEC-090/I10 — %s: a tela continua desenhando o convite",
+    async (caminho) => {
+      rota.atual = caminho;
+      const { e } = eventoFalso();
+      window.__playckEventoDeInstalacao = e;
+
+      render(<ConviteDeInstalacao />);
+
+      expect(await screen.findByRole("button", { name: "Instalar" })).toBeInTheDocument();
+      expect(convite()).toBeInTheDocument();
+    },
+  );
 });
