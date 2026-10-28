@@ -43,7 +43,9 @@ import {
  */
 
 /**
- * SPEC-083/D2 — **o modelo é o arquivo de referência da spec, byte a byte.**
+ * SPEC-083/D2 e SPEC-091/D1 — **o modelo é o arquivo de referência da spec,
+ * byte a byte**, e é o único que o Back aceita: as sete colunas, até três
+ * turmas por aluno.
  *
  * `;` como separador, BOM UTF-8 e CRLF: é o que o Excel em português abre já
  * em colunas. Com vírgula e sem BOM (o modelo antigo), o cabeçalho inteiro
@@ -58,17 +60,15 @@ const BOM = "﻿";
 const MODELO =
   BOM +
   [
-    "nome;email;telefone;nivel;turma",
-    "Ana Souza;ana@exemplo.com;(11) 99999-0000;Iniciante;Turma Terça 19h",
-    "Carlos Lima;carlos@exemplo.com;(11) 98888-7777;;",
-    "Beatriz Rocha;beatriz@exemplo.com;;Intermediário;",
+    "Nome;E-mail;Telefone;Nível;Turma 1;Turma 2;Turma 3",
+    "Ana Souza;ana@exemplo.com;(11) 99999-0000;Iniciante;Turma Terça 19h;;",
+    "Carlos Lima;carlos@exemplo.com;;Iniciante;;;",
+    "Beatriz Rocha;beatriz@exemplo.com;(11) 98888-7777;Intermediário;Turma Quinta 19h;Turma Sábado 9h;",
   ]
     .map((linha) => `${linha}\r\n`)
     .join("");
 
 const MENSAGEM: Record<string, string> = {
-  PLANILHA_SEM_CABECALHO:
-    "A primeira linha precisa ser o cabeçalho, com pelo menos as colunas `nome` e `email`. Baixe o modelo abaixo.",
   PLANILHA_VAZIA:
     "A planilha tem cabeçalho e nenhum aluno. Preencha ao menos uma linha.",
 };
@@ -104,6 +104,11 @@ export function ImportarAlunos() {
 
   function traduzir(e: unknown): string {
     const code = e instanceof ApiError ? e.code : undefined;
+    // SPEC-091/D1 — a mensagem do Back diz quais colunas faltam; um texto
+    // fixo aqui esconderia justamente isso.
+    if (code === "PLANILHA_SEM_CABECALHO" && e instanceof ApiError) {
+      return `${e.message} Baixe o modelo abaixo.`;
+    }
     return (
       (code ? MENSAGEM[code] : undefined) ??
       (e instanceof ApiError ? e.message : "Não foi possível ler a planilha.")
@@ -286,7 +291,9 @@ export function ImportarAlunos() {
                 >
                   <span>
                     <strong>Linha {l.linha}</strong> · {l.nome} · {l.email}
-                    {l.turmaNome ? ` · ${l.turmaNome}` : ""}
+                    {l.turmas.length > 0
+                      ? ` · ${l.turmas.map((t) => t.nome).join(", ")}`
+                      : ""}
                   </span>
                   <label className="flex items-center gap-2">
                     <input

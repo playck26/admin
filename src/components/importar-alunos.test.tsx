@@ -140,6 +140,51 @@ describe("ImportarAlunos", () => {
     ).toBeInTheDocument();
   });
 
+  it("SPEC-091/D1 — `PLANILHA_SEM_CABECALHO` mostra as colunas que faltam, vindas do Back", async () => {
+    conferirPlanilha.mockRejectedValue(
+      new ApiError(
+        422,
+        "A primeira linha precisa ser o cabeçalho do modelo. Faltam: turma 3.",
+        undefined,
+        "PLANILHA_SEM_CABECALHO",
+      ),
+    );
+    escolherArquivo();
+    fireEvent.click(screen.getByText("Conferir"));
+
+    expect(
+      await screen.findByText(/Faltam: turma 3\. Baixe o modelo abaixo\./),
+    ).toBeInTheDocument();
+  });
+
+  it("SPEC-091/D3 — a linha válida lista todas as turmas dela, na ordem", async () => {
+    conferirPlanilha.mockResolvedValue({
+      total: 1,
+      validas: 1,
+      erros: [],
+      linhas: [
+        {
+          linha: 2,
+          nome: "Ana",
+          email: "ana@x.com",
+          telefone: null,
+          nivelId: "n1",
+          turmas: [
+            { id: "t1", nome: "Terça 19h", coluna: "turma 1" },
+            { id: "t2", nome: "Quinta 19h", coluna: "turma 2" },
+            { id: "t3", nome: "Sábado 9h", coluna: "turma 3" },
+          ],
+        },
+      ],
+    });
+    escolherArquivo();
+    fireEvent.click(screen.getByText("Conferir"));
+
+    expect(
+      await screen.findByText(/Terça 19h, Quinta 19h, Sábado 9h/),
+    ).toBeInTheDocument();
+  });
+
   it("sem arquivo, os dois botões ficam barrados", () => {
     render(<ImportarAlunos />);
     expect(screen.getByText("Conferir")).toBeDisabled();
@@ -151,14 +196,14 @@ describe("ImportarAlunos", () => {
  * SPEC-083/AC-006 — **o "Baixar modelo" publica os bytes da fixture do Back.**
  *
  * O SHA-256 abaixo é o de `apps/Back/test/fixtures/modelo-alunos.csv` e o de
- * `specs/changes/083-o-convite-que-chega-por-email/modelo-alunos.csv` (os dois
- * são o mesmo arquivo, 208 bytes, conferido com `sha256sum` em 2026-10-04). Em
+ * `specs/changes/091-planilha-com-tres-turmas/modelo-alunos.csv` (os dois
+ * são o mesmo arquivo, 275 bytes, conferido em 2026-10-28 — SPEC-091). Em
  * poly-repo o CI do Admin não tem `../Back`, então o número fica aqui; a
  * comparação cruzada vai ao `CLI_AUDIT.md`. A fixture passa na conferência do
  * Back sem erro de cabeçalho (AC-001, AC-006, do lado de lá).
  */
 const SHA256_DA_FIXTURE_DO_BACK =
-  "5846b7ea861fef5fcf032c45f4cad048a5ffb4ca393f90aa99c3a25310a771a6";
+  "06f4e954f1217030014e5f48481c0123df47174ba9e378779715d77d5bcce85d";
 
 describe("SPEC-083/AC-006 — o modelo novo", () => {
   let blobs: Blob[];
@@ -192,11 +237,11 @@ describe("SPEC-083/AC-006 — o modelo novo", () => {
     return Buffer.from(await blobs[0].arrayBuffer());
   }
 
-  it("começa com o BOM UTF-8 e com `nome;email;telefone;nivel;turma`", async () => {
+  it("começa com o BOM UTF-8 e com as sete colunas da SPEC-091", async () => {
     const bytes = await bytesBaixados();
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(bytes.subarray(3).toString("utf8").split("\r\n")[0]).toBe(
-      "nome;email;telefone;nivel;turma",
+      "Nome;E-mail;Telefone;Nível;Turma 1;Turma 2;Turma 3",
     );
   });
 
@@ -211,7 +256,7 @@ describe("SPEC-083/AC-006 — o modelo novo", () => {
 
   it("**os bytes são os da fixture do Back** (SHA-256)", async () => {
     const bytes = await bytesBaixados();
-    expect(bytes.length).toBe(208);
+    expect(bytes.length).toBe(275);
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(
       SHA256_DA_FIXTURE_DO_BACK,
     );
@@ -234,8 +279,7 @@ function linha(n: number) {
     email: `p${n}@x.com`,
     telefone: null,
     nivelId: null,
-    turmaId: null,
-    turmaNome: null,
+    turmas: [],
   };
 }
 
