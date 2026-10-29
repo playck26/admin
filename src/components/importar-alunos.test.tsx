@@ -56,6 +56,19 @@ function escolherArquivo(nome?: string) {
 }
 
 describe("ImportarAlunos", () => {
+  it("o botão 'Enviar planilha' abre o seletor de arquivo e mostra o nome escolhido", () => {
+    render(<ImportarAlunos />);
+    const campo = screen.getByLabelText("Arquivo CSV") as HTMLInputElement;
+    const abrir = vi.spyOn(campo, "click");
+
+    expect(screen.getByText("Nenhum arquivo escolhido")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar planilha" }));
+    expect(abrir).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(campo, { target: { files: [csv("minha-turma.csv")] } });
+    expect(screen.getByText("minha-turma.csv")).toBeInTheDocument();
+  });
+
   it("**'Importar' nasce desabilitado** — conferir vem antes", async () => {
     escolherArquivo();
     expect(screen.getByText("Importar")).toBeDisabled();
