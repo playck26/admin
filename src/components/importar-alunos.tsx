@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FormCard } from "@/components/form-card";
@@ -81,6 +81,7 @@ function contador(n: number): string {
 
 export function ImportarAlunos() {
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const campoDoArquivo = useRef<HTMLInputElement>(null);
   const [relatorio, setRelatorio] = useState<RelatorioDeImportacao | null>(
     null,
   );
@@ -188,14 +189,29 @@ export function ImportarAlunos() {
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
+          {/* O campo nativo ("Escolher arquivo") não parecia botão: o gestor
+              não achava onde enviar a planilha. Ele fica escondido, e o botão
+              visível abre a mesma janela. */}
           <input
+            ref={campoDoArquivo}
             type="file"
             accept=".csv,text/csv"
             aria-label="Arquivo CSV"
             onChange={escolher}
             disabled={ocupado}
-            className="text-sm"
+            className="sr-only"
           />
+          <Button
+            type="button"
+            onClick={() => campoDoArquivo.current?.click()}
+            disabled={ocupado}
+            className="h-9 px-4 text-[12px] font-semibold"
+          >
+            Enviar planilha
+          </Button>
+          <span className="text-sm text-[var(--color-on-surface-variant)]">
+            {arquivo ? arquivo.name : "Nenhum arquivo escolhido"}
+          </span>
           <Button
             type="button"
             variant="outline"
