@@ -44,8 +44,9 @@ import {
 
 /**
  * SPEC-083/D2 e SPEC-091/D1 — **o modelo é o arquivo de referência da spec,
- * byte a byte**, e é o único que o Back aceita: as sete colunas, até três
- * turmas por aluno.
+ * byte a byte**, e é o único que o Back aceita: as sete colunas. O modelo
+ * continua com Turma 1 a 3 (SPEC-092/D9); para mais turmas, o gestor
+ * acrescenta Turma 4 até Turma 10 à direita, em sequência (D8).
  *
  * `;` como separador, BOM UTF-8 e CRLF: é o que o Excel em português abre já
  * em colunas. Com vírgula e sem BOM (o modelo antigo), o cabeçalho inteiro
@@ -185,7 +186,7 @@ export function ImportarAlunos() {
   return (
     <FormCard
       title="Importar alunos"
-      description="Um arquivo CSV com cabeçalho. Confira antes de importar: se houver qualquer problema, nada é gravado."
+      description="Um arquivo CSV com cabeçalho. Para mais de 3 turmas por aluno, acrescente as colunas Turma 4 até Turma 10, em sequência. Confira antes de importar: se houver qualquer problema, nada é gravado."
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">

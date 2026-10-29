@@ -198,6 +198,44 @@ describe("ImportarAlunos", () => {
     ).toBeInTheDocument();
   });
 
+  it("SPEC-092/D8 — com Turma 1 a 10, a linha válida lista as dez, na ordem das colunas", async () => {
+    const turmas = Array.from({ length: 10 }, (_, i) => ({
+      id: `t${i + 1}`,
+      nome: `Aula ${i + 1}`,
+      coluna: `turma ${i + 1}` as const,
+    }));
+    conferirPlanilha.mockResolvedValue({
+      total: 1,
+      validas: 1,
+      erros: [],
+      linhas: [
+        {
+          linha: 2,
+          nome: "Ana",
+          email: "ana@x.com",
+          telefone: null,
+          nivelId: "n1",
+          turmas,
+        },
+      ],
+    });
+    escolherArquivo();
+    fireEvent.click(screen.getByText("Conferir"));
+
+    expect(
+      await screen.findByText(
+        /Aula 1, Aula 2, Aula 3, Aula 4, Aula 5, Aula 6, Aula 7, Aula 8, Aula 9, Aula 10/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("SPEC-092/D9 — o cartão diz como pôr mais de 3 turmas", () => {
+    render(<ImportarAlunos />);
+    expect(
+      screen.getByText(/acrescente as colunas Turma 4 até Turma 10, em sequência/),
+    ).toBeInTheDocument();
+  });
+
   it("sem arquivo, os dois botões ficam barrados", () => {
     render(<ImportarAlunos />);
     expect(screen.getByText("Conferir")).toBeDisabled();
