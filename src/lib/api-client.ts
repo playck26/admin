@@ -755,6 +755,38 @@ export async function importarPlanilha(
 }
 
 /**
+ * SPEC-092 — a planilha de todos os alunos do clube, no formato do modelo.
+ *
+ * **Os bytes vão como `Blob`, sem passar por texto.** `res.text()` decodifica
+ * e o BOM some na decodificação; regravado sem ele, o Excel abriria os acentos
+ * quebrados. O Blob entrega ao disco exatamente o que o Back mandou.
+ *
+ * O nome do arquivo é o do `Content-Disposition` (D6: a data no fuso do
+ * clube, decidida no Back). O Back expõe esse cabeçalho na própria resposta;
+ * se ele não vier, o nome é montado aqui com a mesma regra.
+ */
+export async function exportarAlunos(
+  agora: Date = new Date(),
+): Promise<{ nomeDoArquivo: string; arquivo: Blob }> {
+  const res = await authFetch("/students/exportar");
+  const disposicao = res.headers.get("Content-Disposition") ?? "";
+  const nomeDoArquivo =
+    /filename="([^"]+)"/.exec(disposicao)?.[1] ??
+    `alunos-${hojeNoFusoDoClube(agora)}.csv`;
+  return { nomeDoArquivo, arquivo: await res.blob() };
+}
+
+/** `AAAA-MM-DD` de hoje em São Paulo — `en-CA` formata exatamente assim. */
+function hojeNoFusoDoClube(agora: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(agora);
+}
+
+/**
  * SPEC-083/D9 — a situação do convite por e-mail, no cartão da ficha.
  *
  * Rota própria, e não campo do aluno: o DTO do aluno é o das listas, e a
