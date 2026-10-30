@@ -1457,6 +1457,20 @@ export async function definirLimiteDeTurmas(
 }
 
 /**
+ * SPEC-093 — liga ou desliga a restricao de nivel do clube (a chave da
+ * SPEC-089). Manda so este campo: o `PATCH` e parcial.
+ */
+export async function definirRestricaoDeNivel(
+  nivelRestringeAcesso: boolean,
+): Promise<MinhaEmpresa> {
+  const res = await authFetch("/me/company", {
+    method: "PATCH",
+    body: JSON.stringify({ nivelRestringeAcesso }),
+  });
+  return (await res.json()) as MinhaEmpresa;
+}
+
+/**
  * SPEC-031/REQ-001 — os dois prazos de cancelamento, em horas.
  *
  * `null` em qualquer um dos dois é **"sem prazo"**, e é o estado de quem nunca

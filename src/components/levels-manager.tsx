@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormCard } from "@/components/form-card";
+import { RestricaoDeNivelCard } from "@/components/restricao-de-nivel-card";
 import {
   ApiError,
   createLevel,
@@ -137,6 +138,8 @@ export function LevelsManager() {
       <h1 className="text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-[var(--color-on-surface)]">
         Níveis
       </h1>
+
+      <RestricaoDeNivelCard />
 
       <FormCard
         title="Novo nível"

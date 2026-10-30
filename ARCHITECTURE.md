@@ -1,6 +1,15 @@
 # ARCHITECTURE — `admin` (PlayCK)
 
-**Fonte: análise direta do código.** Data: **2026-10-26** (era 2026-10-04).
+**Fonte: análise direta do código.** Data: **2026-10-30** (era 2026-10-26).
+
+**SPEC-093, na branch `spec-093-restricao-de-nivel-no-admin` (sobre o `main` em
+`28321ec`), 2026-10-30:** **65 arquivos de teste, 680 casos** (`vitest run
+--pool=threads`, sozinho, exit 0; o `main` tinha 64 e 671: +7 no cartão novo,
++2 no `api-client.test.ts`), **84 componentes**. A tela de Níveis
+ganha o `restricao-de-nivel-card` no topo: lê `GET /me/company` e liga ou
+desliga a restrição de nível com `PATCH /me/company` (`definirRestricaoDeNivel`,
+só o campo `nivelRestringeAcesso`). Ligar pede `window.confirm` com a frase da
+D6; desligar não. Contrato fixado em `back@52b41e0`.
 **Estado atual, no head de código `3a91833` da branch da SPEC-090 (o HEAD do repositório é um commit só de documentação depois dele)
 (`spec090/esqueci-senha`, TASK-004), sem push:** **63 arquivos de teste, 662
 casos** (`vitest run --pool=threads`, sozinho, exit 0), **82 componentes**

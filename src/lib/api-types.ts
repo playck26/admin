@@ -2974,6 +2974,8 @@ export interface components {
              * @example 2
              */
             limiteTurmasPorAluno?: Record<string, never> | null;
+            /** @description SPEC-093 — liga (`true`) ou desliga (`false`) a restrição de nível: ligada, cada aluno só entra nas turmas do seu nível; desligada, o nível é só um rótulo. Vale para entrar, nunca para expulsar (SPEC-089/D2): ligar não tira ninguém de turma. */
+            nivelRestringeAcesso?: boolean;
         };
         LogoDaEmpresaResponseDto: {
             logoUrl: string | null;
