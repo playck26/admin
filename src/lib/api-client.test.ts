@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, listLevels } from "./api-client";
+import { ApiError, definirRestricaoDeNivel, listLevels } from "./api-client";
 
 /**
  * DEF-008 (2026-08-24) — o defeito que sumiu com os dados do painel.
@@ -142,4 +142,36 @@ describe("authFetch — sessão com claims velhas (DEF-008)", () => {
     await expect(listLevels()).resolves.toEqual([]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("definirRestricaoDeNivel — o corpo do PATCH (SPEC-093)", () => {
+  beforeEach(() => {
+    window.localStorage.setItem("playck_admin_access_token", "token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.localStorage.clear();
+  });
+
+  it.each([true, false])(
+    "manda só `nivelRestringeAcesso: %s` para /me/company, sem id de clube",
+    async (valor) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(respostaDe(200, { nivelRestringeAcesso: valor }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(definirRestricaoDeNivel(valor)).resolves.toEqual({
+        nivelRestringeAcesso: valor,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toMatch(/\/me\/company$/);
+      expect(init.method).toBe("PATCH");
+      expect(JSON.parse(init.body as string)).toEqual({
+        nivelRestringeAcesso: valor,
+      });
+    },
+  );
 });

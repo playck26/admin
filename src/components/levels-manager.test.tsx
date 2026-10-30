@@ -17,10 +17,13 @@ const listLevels = vi.hoisted(() => vi.fn());
 const updateLevel = vi.hoisted(() => vi.fn());
 const createLevel = vi.hoisted(() => vi.fn());
 const deleteLevel = vi.hoisted(() => vi.fn());
+// SPEC-093 — a tela agora tem o cartão da restrição de nível, que lê a
+// empresa. As provas dele moram em `restricao-de-nivel-card.test.tsx`.
+const getMinhaEmpresa = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", async () => {
   const real = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
-  return { ...real, listLevels, updateLevel, createLevel, deleteLevel };
+  return { ...real, listLevels, updateLevel, createLevel, deleteLevel, getMinhaEmpresa };
 });
 
 function nivel(id: string, nome: string, ordem: number, createdAt = "2026-01-01T10:00:00.000Z"): Level {
@@ -34,6 +37,7 @@ const AVA = nivel("n3", "Avançado", 3);
 beforeEach(() => {
   for (const f of [listLevels, updateLevel, createLevel, deleteLevel]) f.mockReset();
   listLevels.mockResolvedValue([INI, INT, AVA]);
+  getMinhaEmpresa.mockResolvedValue({ nivelRestringeAcesso: false });
 });
 
 describe("primeiroNivel — o mesmo desempate do servidor (SPEC-075/D1)", () => {
